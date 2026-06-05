@@ -223,7 +223,7 @@ Include placeholders for Taobao credentials, WeChat app credentials, admin token
 
 - [ ] **Step 3: Validate Prisma schema**
 
-Run: `npm run prisma --workspace server -- validate`
+Run: `DATABASE_URL="file:./dev.db" npm run prisma --workspace server -- validate`
 
 Expected: PASS.
 
@@ -354,7 +354,7 @@ Run:
 ```bash
 npm test
 npm run typecheck
-npm run prisma --workspace server -- validate
+DATABASE_URL="file:./dev.db" npm run prisma --workspace server -- validate
 ```
 
 Expected: all commands PASS.
