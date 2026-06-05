@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "推广记录",
+  "usingComponents": {
+    "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-tag": "tdesign-miniprogram/tag/tag"
+  }
+}

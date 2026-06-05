@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/records/index",
+    "pages/orders/index",
+    "pages/claim/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "淘宝客转链",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f8fb"
+  },
+  "tabBar": {
+    "color": "#6b7280",
+    "selectedColor": "#111827",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "转链"
+      },
+      {
+        "pagePath": "pages/records/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/orders/index",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

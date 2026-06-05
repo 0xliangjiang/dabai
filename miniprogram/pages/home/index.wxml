@@ -1,0 +1,34 @@
+<view class="page">
+  <view class="section">
+    <view class="title">粘贴口令或链接</view>
+    <view class="subtitle">系统会生成你的专属推广口令和链接，复制后用于后续订单归因。</view>
+  </view>
+
+  <view class="panel section stack">
+    <view class="label">淘宝内容</view>
+    <t-textarea value="{{rawContent}}" placeholder="粘贴淘宝口令、商品链接或短链" autosize bind:change="onInput" />
+    <t-button theme="primary" size="large" block loading="{{loading}}" bind:tap="convert">生成推广内容</t-button>
+  </view>
+
+  <view wx:if="{{result}}" class="panel section stack">
+    <view class="row">
+      <view class="label">{{result.itemTitle}}</view>
+      <t-tag theme="success" variant="light">可复制</t-tag>
+    </view>
+    <view class="subtitle">预估佣金以淘宝客结算结果为准。</view>
+    <view class="stack">
+      <view>
+        <view class="label">淘口令</view>
+        <view class="subtitle">{{result.generatedPassword}}</view>
+      </view>
+      <view>
+        <view class="label">推广链接</view>
+        <view class="subtitle">{{result.generatedShortUrl}}</view>
+      </view>
+    </view>
+    <view class="row">
+      <t-button theme="primary" variant="outline" bind:tap="copyPassword">复制口令</t-button>
+      <t-button theme="primary" bind:tap="copyLink">复制链接</t-button>
+    </view>
+  </view>
+</view>

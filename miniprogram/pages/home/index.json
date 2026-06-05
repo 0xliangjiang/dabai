@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "智能转链",
+  "usingComponents": {
+    "t-button": "tdesign-miniprogram/button/button",
+    "t-textarea": "tdesign-miniprogram/textarea/textarea",
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-tag": "tdesign-miniprogram/tag/tag"
+  }
+}

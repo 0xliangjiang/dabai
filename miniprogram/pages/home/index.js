@@ -1,0 +1,55 @@
+const { loginWithMockCode, request } = require("../../utils/api");
+
+Page({
+  data: {
+    rawContent: "",
+    loading: false,
+    result: null
+  },
+
+  async onLoad() {
+    if (!wx.getStorageSync("token")) {
+      await loginWithMockCode();
+    }
+  },
+
+  onInput(event) {
+    this.setData({ rawContent: event.detail.value });
+  },
+
+  async convert() {
+    if (!this.data.rawContent.trim()) {
+      wx.showToast({ title: "请先粘贴内容", icon: "none" });
+      return;
+    }
+
+    this.setData({ loading: true });
+    try {
+      const result = await request("/api/conversions", {
+        method: "POST",
+        data: { rawContent: this.data.rawContent }
+      });
+      this.setData({ result });
+    } catch (error) {
+      wx.showToast({ title: error.error || "转链失败", icon: "none" });
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
+
+  copyPassword() {
+    this.copyResult("password", this.data.result.generatedPassword);
+  },
+
+  copyLink() {
+    this.copyResult("link", this.data.result.generatedShortUrl);
+  },
+
+  async copyResult(copyType, data) {
+    await wx.setClipboardData({ data });
+    await request(`/api/conversions/${this.data.result.id}/copy`, {
+      method: "POST",
+      data: { copyType }
+    });
+  }
+});

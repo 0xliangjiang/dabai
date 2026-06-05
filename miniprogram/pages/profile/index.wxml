@@ -1,0 +1,19 @@
+<view class="page">
+  <view class="section">
+    <view class="title">我的</view>
+    <view class="subtitle">收益展示为预估值，退款、失效或复核结果会影响最终金额。</view>
+  </view>
+
+  <view class="panel section row">
+    <view>
+      <view class="label">佣金规则</view>
+      <view class="subtitle">按平台配置比例从实际淘宝客佣金中分成。</view>
+    </view>
+    <t-tag theme="primary" variant="light">预估</t-tag>
+  </view>
+
+  <t-cell-group>
+    <t-cell title="订单补充" note="提交后几位或截图" arrow url="/pages/claim/index" />
+    <t-cell title="客服入口" note="后续接入微信客服" />
+  </t-cell-group>
+</view>

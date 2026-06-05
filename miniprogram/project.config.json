@@ -1,0 +1,17 @@
+{
+  "description": "Taobaoke conversion mini program",
+  "packOptions": {
+    "ignore": []
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "latest",
+  "appid": "touristappid",
+  "projectname": "taobaoke-wx",
+  "condition": {}
+}

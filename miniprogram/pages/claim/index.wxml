@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="section">
+    <view class="title">补充订单信息</view>
+    <view class="subtitle">用于辅助复核，不会自动发放佣金。</view>
+  </view>
+
+  <view class="panel stack">
+    <t-input label="订单后几位" value="{{orderSuffix}}" placeholder="例如 1234" bind:change="onSuffixChange" />
+    <t-textarea value="{{notes}}" placeholder="补充说明（选填）" autosize bind:change="onNotesChange" />
+    <t-upload files="{{files}}" max="{{1}}" bind:add="onAddFile" bind:remove="onRemoveFile" />
+    <t-button theme="primary" block bind:tap="submit">提交复核</t-button>
+  </view>
+</view>
