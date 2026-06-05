@@ -1,0 +1,17 @@
+{
+  "name": "taobaoke-wx",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "server",
+    "admin"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace server",
+    "test": "npm test --workspace server",
+    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace admin"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
