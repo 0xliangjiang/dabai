@@ -1,8 +1,7 @@
 <view class="cu-page page-shell">
   <view class="hero">
     <view class="eyebrow">订单收益</view>
-    <view class="hero-title">订单匹配后，收益会显示在这里</view>
-    <view class="hero-desc">佣金为预估展示，最终以订单结算和人工复核结果为准。</view>
+    <view class="hero-title">我的订单收益</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -12,7 +11,7 @@
         <view class="metric-value">{{orders.length}}</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">展示口径</view>
+        <view class="muted text-sm">收益状态</view>
         <view class="metric-value">预估</view>
       </view>
     </view>
@@ -20,7 +19,7 @@
     <view wx:if="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center">
       <view class="empty-icon">¥</view>
       <view class="text-bold">暂未匹配到订单</view>
-      <view class="section-desc">用户下单后，系统同步到订单会在这里展示。</view>
+      <view class="section-desc">有订单后会显示在这里。</view>
     </view>
 
     <view wx:for="{{orders}}" wx:key="id" class="cu-card product-card flex-direction gap">
@@ -31,7 +30,6 @@
       <view class="soft-panel flex align-center justify-between">
         <view>
           <view class="muted text-sm">预估佣金</view>
-          <view class="section-desc">实际到账以结算复核为准</view>
         </view>
         <view class="price">¥{{item.estimatedCommission}}</view>
       </view>

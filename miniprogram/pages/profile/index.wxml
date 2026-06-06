@@ -1,8 +1,7 @@
 <view class="cu-page page-shell">
   <view class="hero">
-    <view class="eyebrow">个人中心</view>
-    <view class="hero-title">查看规则，补充订单信息</view>
-    <view class="hero-desc">收益展示为预估值，退款、失效或复核结果会影响最终金额。</view>
+    <view class="eyebrow">我的</view>
+    <view class="hero-title">账户中心</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -21,17 +20,16 @@
       <view class="flex align-start justify-between gap-sm">
         <view class="flex-sub">
           <view class="section-title">佣金规则</view>
-          <view class="section-desc">按平台配置比例从实际淘宝客佣金中分成，最终以结算和复核为准。</view>
+          <view class="section-desc">按平台配置比例分成。</view>
         </view>
         <view class="cu-tag blue">预估</view>
       </view>
-      <view class="hint-bar">建议用户每次都复制新生成的口令或链接，后续订单更容易匹配。</view>
     </view>
 
     <view class="cu-card flex align-start justify-between gap-sm">
       <view class="flex-sub">
         <view class="section-title">订单有遗漏？</view>
-        <view class="section-desc">提交订单后几位或截图，后台可以辅助复核。</view>
+        <view class="section-desc">提交订单信息。</view>
       </view>
       <navigator class="mini-link" url="/pages/claim/index">去补充</navigator>
     </view>
@@ -40,14 +38,14 @@
       <navigator class="cu-item flex align-center justify-between line" url="/pages/claim/index">
         <view>
           <view class="cu-label">订单补充</view>
-          <view class="section-desc">提交后几位或截图</view>
+          <view class="section-desc">补充订单信息</view>
         </view>
         <view class="cu-arrow">›</view>
       </navigator>
       <view class="cu-item flex align-center justify-between">
         <view>
           <view class="cu-label">客服入口</view>
-          <view class="section-desc">后续接入微信客服</view>
+          <view class="section-desc">联系平台客服</view>
         </view>
       </view>
     </view>

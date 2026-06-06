@@ -1,8 +1,8 @@
 <view class="cu-page page-shell">
   <view class="hero">
     <view class="eyebrow">AI 转链助手</view>
-    <view class="hero-title">粘贴淘宝内容，一键生成推广口令</view>
-    <view class="hero-desc">识别淘口令、商品链接和短链，生成你的专属推广内容，复制后即可分享。</view>
+    <view class="hero-title">一键生成推广口令</view>
+    <view class="hero-desc">粘贴淘口令或链接，立即生成可分享内容。</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -16,12 +16,12 @@
       <view class="step-pill">
         <view class="step-index">2</view>
         <view class="cu-label">生成</view>
-        <view class="muted text-sm margin-top-xs">推广内容</view>
+        <view class="muted text-sm margin-top-xs">专属口令</view>
       </view>
       <view class="step-pill">
         <view class="step-index">3</view>
         <view class="cu-label">复制</view>
-        <view class="muted text-sm margin-top-xs">分享下单</view>
+        <view class="muted text-sm margin-top-xs">去分享</view>
       </view>
     </view>
   </view>
@@ -30,7 +30,6 @@
     <view class="section-heading">
       <view>
         <view class="section-title">淘宝内容</view>
-        <view class="section-desc">支持淘口令、商品链接、短链。</view>
       </view>
       <view class="cu-tag blue">自动识别</view>
     </view>
@@ -55,7 +54,7 @@
       </view>
     </view>
 
-    <view class="hint-bar">已生成你的推广内容。复制后发给用户，后续订单会按复制记录辅助归因。</view>
+    <view class="hint-bar">推广内容已生成，复制后即可分享。</view>
     <view class="flex-direction gap">
       <view>
         <view class="cu-label">淘口令</view>
@@ -70,7 +69,6 @@
       <button class="cu-btn secondary flex-sub" bindtap="copyPassword">复制口令</button>
       <button class="cu-btn success flex-sub" bindtap="copyLink">复制链接</button>
     </view>
-    <view class="section-desc">预估佣金以淘宝客结算结果为准。</view>
   </view>
   </view>
 </view>

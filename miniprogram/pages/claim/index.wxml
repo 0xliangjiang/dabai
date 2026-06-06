@@ -1,12 +1,10 @@
 <view class="cu-page page-shell">
   <view class="hero">
     <view class="eyebrow">订单补充</view>
-    <view class="hero-title">补充订单信息，方便人工复核</view>
-    <view class="hero-desc">用于辅助复核，不会自动发放佣金，请尽量填写准确。</view>
+    <view class="hero-title">提交订单信息</view>
   </view>
 
   <view class="cu-card cu-form floating-stack">
-    <view class="hint-bar">只需要填写订单号末尾几位。截图不是必须，但有截图会更方便后台确认。</view>
     <view>
       <view class="cu-label margin-bottom-sm">订单后几位</view>
       <input class="cu-input" value="{{orderSuffix}}" placeholder="例如 1234" bindinput="onSuffixChange" />
@@ -20,6 +18,6 @@
       <view class="muted text-sm">{{uploadText}}</view>
     </view>
     <button wx:if="{{hasFiles}}" class="cu-btn secondary block" bindtap="onRemoveFile">移除截图</button>
-    <button class="cu-btn primary block" bindtap="submit">提交复核</button>
+    <button class="cu-btn primary block" bindtap="submit">提交</button>
   </view>
 </view>
