@@ -1,7 +1,7 @@
 page {
   min-height: 100vh;
-  background: #fbf5ea;
-  color: #241a10;
+  background: #fff8dc;
+  color: #2b2116;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
 
@@ -20,8 +20,8 @@ page {
   padding: 52rpx 36rpx 64rpx;
   border-bottom-left-radius: 34rpx;
   border-bottom-right-radius: 34rpx;
-  background: linear-gradient(135deg, #7c3f12 0%, #b76a1d 58%, #d99832 100%);
-  color: #ffffff;
+  background: linear-gradient(135deg, #f8d45c 0%, #f5b83d 58%, #eaa12f 100%);
+  color: #3a260f;
 }
 
 .eyebrow {
@@ -29,8 +29,8 @@ page {
   min-height: 46rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.34);
+  color: #5f3d10;
   font-size: 22rpx;
   font-weight: 700;
   line-height: 46rpx;
@@ -46,7 +46,7 @@ page {
 .hero-desc {
   margin-top: 14rpx;
   max-width: 620rpx;
-  color: rgba(255, 255, 255, 0.78);
+  color: #6d4a1a;
   font-size: 26rpx;
   line-height: 1.55;
 }
@@ -63,10 +63,10 @@ page {
 
 .cu-card {
   background: rgba(255, 255, 255, 0.99);
-  border: 1rpx solid rgba(238, 222, 196, 0.96);
+  border: 1rpx solid rgba(242, 218, 153, 0.9);
   border-radius: 28rpx;
   padding: 30rpx;
-  box-shadow: 0 16rpx 42rpx rgba(92, 53, 18, 0.08);
+  box-shadow: 0 16rpx 42rpx rgba(148, 101, 25, 0.09);
   box-sizing: border-box;
 }
 
@@ -76,7 +76,7 @@ page {
 }
 
 .section-title {
-  color: #241a10;
+  color: #2b2116;
   font-size: 30rpx;
   font-weight: 800;
   line-height: 1.25;
@@ -91,19 +91,19 @@ page {
 
 .section-desc {
   margin-top: 8rpx;
-  color: #806f5d;
+  color: #8a7147;
   font-size: 24rpx;
   line-height: 1.5;
 }
 
 .cu-label {
-  color: #4b3927;
+  color: #5a421f;
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .muted {
-  color: #806f5d;
+  color: #8a7147;
 }
 
 .text-sm {
@@ -123,19 +123,19 @@ page {
 }
 
 .text-green {
-  color: #9a5c0b;
+  color: #b87912;
 }
 
 .text-blue {
-  color: #9a5c0b;
+  color: #b87912;
 }
 
 .text-orange {
-  color: #b76a1d;
+  color: #c98716;
 }
 
 .text-grey {
-  color: #806f5d;
+  color: #8a7147;
 }
 
 .text-cut-2 {
@@ -234,7 +234,7 @@ page {
   min-height: 108rpx;
   padding: 18rpx 12rpx;
   border-radius: 22rpx;
-  background: #fff9ef;
+  background: #fffbea;
   box-sizing: border-box;
   text-align: center;
 }
@@ -244,8 +244,8 @@ page {
   height: 38rpx;
   margin: 0 auto 10rpx;
   border-radius: 999rpx;
-  background: #fff1d6;
-  color: #9a5c0b;
+  background: #fff0b8;
+  color: #a8660d;
   font-size: 22rpx;
   font-weight: 900;
   line-height: 38rpx;
@@ -256,14 +256,14 @@ page {
   min-width: 0;
   padding: 22rpx;
   border-radius: 22rpx;
-  background: linear-gradient(180deg, #ffffff 0%, #fff9ef 100%);
-  border: 1rpx solid #f0dfc2;
+  background: linear-gradient(180deg, #ffffff 0%, #fffbea 100%);
+  border: 1rpx solid #f1dfa5;
   box-sizing: border-box;
 }
 
 .metric-value {
   margin-top: 8rpx;
-  color: #2f2012;
+  color: #3b2a16;
   font-size: 32rpx;
   font-weight: 800;
 }
@@ -272,10 +272,10 @@ page {
 .cu-textarea {
   width: 100%;
   box-sizing: border-box;
-  border: 1rpx solid #ead8b9;
+  border: 1rpx solid #ecd99b;
   border-radius: 22rpx;
-  background: #fff9ef;
-  color: #241a10;
+  background: #fffbea;
+  color: #2b2116;
   font-size: 28rpx;
 }
 
@@ -323,19 +323,19 @@ page {
 
 .cu-btn.primary {
   color: #ffffff;
-  background: linear-gradient(135deg, #8f4d13 0%, #d08a24 100%);
-  box-shadow: 0 14rpx 28rpx rgba(183, 106, 29, 0.22);
+  background: linear-gradient(135deg, #f0b429 0%, #d98b18 100%);
+  box-shadow: 0 14rpx 28rpx rgba(217, 139, 24, 0.24);
 }
 
 .cu-btn.secondary {
-  color: #9a5c0b;
-  background: #fff4df;
-  border: 1rpx solid #efd3a2;
+  color: #a8660d;
+  background: #fff6cf;
+  border: 1rpx solid #efd982;
 }
 
 .cu-btn.success {
   color: #ffffff;
-  background: #9a5c0b;
+  background: #d98b18;
 }
 
 .cu-tag {
@@ -351,23 +351,23 @@ page {
 }
 
 .cu-tag.blue {
-  color: #8f4d13;
-  background: #fff1d6;
+  color: #a8660d;
+  background: #fff0b8;
 }
 
 .cu-tag.green {
-  color: #8f4d13;
-  background: #ffedc2;
+  color: #a8660d;
+  background: #ffed9f;
 }
 
 .cu-tag.orange {
-  color: #9a5c0b;
+  color: #a8660d;
   background: #fff0ca;
 }
 
 .cu-tag.dark {
-  color: #2f2012;
-  background: #efe4d4;
+  color: #3b2a16;
+  background: #f3e7c9;
 }
 
 .product-card {
@@ -379,17 +379,17 @@ page {
   height: 156rpx;
   flex: 0 0 156rpx;
   border-radius: 22rpx;
-  background: #efe4d4;
+  background: #f3e7c9;
 }
 
 .product-thumb.placeholder {
-  color: #806f5d;
+  color: #8a7147;
   font-size: 24rpx;
   font-weight: 800;
 }
 
 .price {
-  color: #b45309;
+  color: #c76a12;
   font-size: 34rpx;
   font-weight: 900;
 }
@@ -397,8 +397,8 @@ page {
 .rate-badge {
   padding: 8rpx 12rpx;
   border-radius: 12rpx;
-  background: #fff1d6;
-  color: #9a5c0b;
+  background: #fff0b8;
+  color: #a8660d;
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -406,8 +406,8 @@ page {
 .code-box {
   padding: 20rpx;
   border-radius: 18rpx;
-  background: #fff9ef;
-  color: #4b3927;
+  background: #fffbea;
+  color: #5a421f;
   font-size: 24rpx;
   line-height: 1.55;
   word-break: break-all;
@@ -416,8 +416,8 @@ page {
 .hint-bar {
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: #fff4df;
-  color: #8f4d13;
+  background: #fff6cf;
+  color: #a8660d;
   font-size: 24rpx;
   line-height: 1.45;
 }
@@ -425,13 +425,13 @@ page {
 .soft-panel {
   padding: 20rpx;
   border-radius: 20rpx;
-  background: #fff9ef;
-  border: 1rpx solid #f0dfc2;
+  background: #fffbea;
+  border: 1rpx solid #f1dfa5;
 }
 
 .cu-empty {
   min-height: 260rpx;
-  color: #806f5d;
+  color: #8a7147;
   font-size: 26rpx;
   text-align: center;
 }
@@ -441,8 +441,8 @@ page {
   height: 92rpx;
   margin: 0 auto 18rpx;
   border-radius: 999rpx;
-  background: #fff1d6;
-  color: #9a5c0b;
+  background: #fff0b8;
+  color: #a8660d;
   font-size: 42rpx;
   font-weight: 900;
   line-height: 92rpx;
@@ -452,8 +452,8 @@ page {
   overflow: hidden;
   border-radius: 24rpx;
   background: rgba(255, 255, 255, 0.96);
-  border: 1rpx solid rgba(238, 222, 196, 0.96);
-  box-shadow: 0 18rpx 50rpx rgba(92, 53, 18, 0.08);
+  border: 1rpx solid rgba(242, 218, 153, 0.9);
+  box-shadow: 0 18rpx 50rpx rgba(148, 101, 25, 0.09);
 }
 
 .cu-item {
@@ -463,25 +463,25 @@ page {
 }
 
 .line {
-  border-bottom: 1rpx solid #efe2cf;
+  border-bottom: 1rpx solid #f2e2ae;
 }
 
 .cu-arrow {
-  color: #b7a28d;
+  color: #b79d63;
   font-size: 38rpx;
 }
 
 .cu-upload {
   height: 168rpx;
-  border: 2rpx dashed #e2c89e;
+  border: 2rpx dashed #e8cd71;
   border-radius: 22rpx;
-  color: #806f5d;
-  background: #fff9ef;
+  color: #8a7147;
+  background: #fffbea;
   box-sizing: border-box;
 }
 
 .mini-link {
-  color: #9a5c0b;
+  color: #a8660d;
   font-size: 24rpx;
   font-weight: 800;
 }

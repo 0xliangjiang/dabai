@@ -10,12 +10,12 @@
     "navigationBarTitleText": "淘宝客转链",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#fbf5ea"
+    "backgroundColor": "#fff8dc"
   },
   "tabBar": {
     "custom": true,
-    "color": "#806f5d",
-    "selectedColor": "#9a5c0b",
+    "color": "#8a7147",
+    "selectedColor": "#a8660d",
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
