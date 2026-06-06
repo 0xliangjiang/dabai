@@ -29,7 +29,7 @@ Page({
         method: "POST",
         data: { rawContent: this.data.rawContent }
       });
-      this.setData({ result });
+      this.setData({ result: this.formatResult(result) });
     } catch (error) {
       wx.showToast({ title: error.error || "转链失败", icon: "none" });
     } finally {
@@ -43,6 +43,14 @@ Page({
 
   copyLink() {
     this.copyResult("link", this.data.result.generatedShortUrl || this.data.result.generatedClickUrl);
+  },
+
+  formatResult(result) {
+    return {
+      ...result,
+      itemPrice: ((result.itemPriceCents || 0) / 100).toFixed(2),
+      commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`
+    };
   },
 
   async copyResult(copyType, data) {

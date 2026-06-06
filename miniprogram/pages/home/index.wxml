@@ -1,34 +1,63 @@
-<view class="cu-page">
-  <view class="cu-section">
-    <view class="cu-title">粘贴口令或链接</view>
-    <view class="cu-subtitle">系统会生成你的专属推广口令和链接，复制后用于后续订单归因。</view>
+<view class="cu-page page-shell">
+  <view class="hero">
+    <view class="eyebrow">AI 转链助手</view>
+    <view class="hero-title">粘贴淘宝内容，一键生成推广口令</view>
+    <view class="hero-desc">识别淘口令、商品链接和短链，生成你的专属推广内容，复制后即可分享。</view>
   </view>
 
-  <view class="cu-card cu-section cu-form">
-    <view class="cu-label">淘宝内容</view>
-    <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴淘宝口令、商品链接或短链" auto-height bindinput="onInput" />
-    <button class="cu-btn bg-blue block" loading="{{loading}}" bindtap="convert">生成推广内容</button>
-  </view>
-
-  <view wx:if="{{result}}" class="cu-card cu-section flex-direction gap">
-    <view class="flex align-start justify-between gap-sm">
-      <view class="cu-label flex-sub text-cut-2">{{result.itemTitle}}</view>
-      <view class="cu-tag green">可复制</view>
+  <view class="content-stack">
+  <view class="cu-card glass-card grid-2">
+    <view class="metric">
+      <view class="muted text-sm">归因方式</view>
+      <view class="metric-value">复制记录</view>
     </view>
-    <view class="cu-subtitle">预估佣金以淘宝客结算结果为准。</view>
+    <view class="metric">
+      <view class="muted text-sm">收益状态</view>
+      <view class="metric-value">预估</view>
+    </view>
+  </view>
+
+  <view class="cu-card prompt-box flex-direction gap">
+    <view>
+      <view class="section-title">淘宝内容</view>
+      <view class="section-desc">支持淘口令、商品链接、短链，系统会自动转为你的推广内容。</view>
+    </view>
+    <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴淘宝口令、商品链接或短链" auto-height bindinput="onInput" />
+    <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">生成推广内容</button>
+  </view>
+
+  <view wx:if="{{result}}" class="cu-card product-card flex-direction gap">
+    <view class="flex align-start gap">
+      <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" />
+      <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
+      <view class="flex-sub">
+        <view class="flex align-center justify-between gap-sm">
+          <view class="cu-tag green">已生成</view>
+          <view class="cu-tag dark">可复制</view>
+        </view>
+        <view class="section-title margin-top-sm text-cut-2">{{result.itemTitle}}</view>
+        <view class="flex align-center gap-sm margin-top-sm">
+          <view class="price">¥{{result.itemPrice}}</view>
+          <view class="muted text-sm">佣金率 {{result.commissionPercent}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-desc">预估佣金以淘宝客结算结果为准。</view>
     <view class="flex-direction gap">
       <view>
         <view class="cu-label">淘口令</view>
-        <view class="cu-subtitle result-code">{{result.generatedPassword}}</view>
+        <view class="code-box margin-top-xs">{{result.generatedPassword}}</view>
       </view>
       <view>
         <view class="cu-label">推广链接</view>
-        <view class="cu-subtitle result-code">{{result.generatedShortUrl || result.generatedClickUrl}}</view>
+        <view class="code-box margin-top-xs">{{result.generatedShortUrl || result.generatedClickUrl}}</view>
       </view>
     </view>
     <view class="flex gap-sm">
-      <button class="cu-btn line-blue flex-sub" bindtap="copyPassword">复制口令</button>
-      <button class="cu-btn bg-cyan flex-sub" bindtap="copyLink">复制链接</button>
+      <button class="cu-btn secondary flex-sub" bindtap="copyPassword">复制口令</button>
+      <button class="cu-btn success flex-sub" bindtap="copyLink">复制链接</button>
     </view>
+  </view>
   </view>
 </view>

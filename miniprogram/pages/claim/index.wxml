@@ -1,7 +1,8 @@
-<view class="cu-page">
-  <view class="cu-section">
-    <view class="cu-title">补充订单信息</view>
-    <view class="cu-subtitle">用于辅助复核，不会自动发放佣金。</view>
+<view class="cu-page page-shell">
+  <view class="hero">
+    <view class="eyebrow">订单补充</view>
+    <view class="hero-title">补充订单信息，方便人工复核</view>
+    <view class="hero-desc">用于辅助复核，不会自动发放佣金，请尽量填写准确。</view>
   </view>
 
   <view class="cu-card cu-form">
@@ -15,9 +16,9 @@
     </view>
     <view class="cu-upload flex-direction align-center justify-center gap-sm" bindtap="onAddFile">
       <view class="cu-label">上传截图</view>
-      <view class="text-grey">{{files.length ? "已选择 1 张截图" : "点击选择订单截图"}}</view>
+      <view class="muted text-sm">{{files.length ? "已选择 1 张截图" : "点击选择订单截图"}}</view>
     </view>
-    <button wx:if="{{files.length}}" class="cu-btn line-blue block" bindtap="onRemoveFile">移除截图</button>
-    <button class="cu-btn bg-blue block" bindtap="submit">提交复核</button>
+    <button wx:if="{{files.length}}" class="cu-btn secondary block" bindtap="onRemoveFile">移除截图</button>
+    <button class="cu-btn primary block" bindtap="submit">提交复核</button>
   </view>
 </view>

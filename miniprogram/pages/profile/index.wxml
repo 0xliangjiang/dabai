@@ -1,29 +1,43 @@
-<view class="cu-page">
-  <view class="cu-section">
-    <view class="cu-title">我的</view>
-    <view class="cu-subtitle">收益展示为预估值，退款、失效或复核结果会影响最终金额。</view>
+<view class="cu-page page-shell">
+  <view class="hero">
+    <view class="eyebrow">个人中心</view>
+    <view class="hero-title">查看规则，补充订单信息</view>
+    <view class="hero-desc">收益展示为预估值，退款、失效或复核结果会影响最终金额。</view>
   </view>
 
-  <view class="cu-card cu-section flex align-start justify-between gap-sm">
-    <view class="flex-sub">
-      <view class="cu-label">佣金规则</view>
-      <view class="cu-subtitle">按平台配置比例从实际淘宝客佣金中分成。</view>
-    </view>
-    <view class="cu-tag blue">预估</view>
-  </view>
-
-  <view class="cu-list">
-    <navigator class="cu-item flex align-center justify-between line" url="/pages/claim/index">
-      <view>
-        <view class="cu-label">订单补充</view>
-        <view class="cu-subtitle">提交后几位或截图</view>
+  <view class="content-stack">
+    <view class="cu-card glass-card grid-2">
+      <view class="metric">
+        <view class="muted text-sm">身份</view>
+        <view class="metric-value">用户</view>
       </view>
-      <view class="cu-arrow">›</view>
-    </navigator>
-    <view class="cu-item flex align-center justify-between">
-      <view>
-        <view class="cu-label">客服入口</view>
-        <view class="cu-subtitle">后续接入微信客服</view>
+      <view class="metric">
+        <view class="muted text-sm">收益</view>
+        <view class="metric-value">预估</view>
+      </view>
+    </view>
+
+    <view class="cu-card flex align-start justify-between gap-sm">
+      <view class="flex-sub">
+        <view class="section-title">佣金规则</view>
+        <view class="section-desc">按平台配置比例从实际淘宝客佣金中分成，最终以结算和复核为准。</view>
+      </view>
+      <view class="cu-tag blue">预估</view>
+    </view>
+
+    <view class="cu-list">
+      <navigator class="cu-item flex align-center justify-between line" url="/pages/claim/index">
+        <view>
+          <view class="cu-label">订单补充</view>
+          <view class="section-desc">提交后几位或截图</view>
+        </view>
+        <view class="cu-arrow">›</view>
+      </navigator>
+      <view class="cu-item flex align-center justify-between">
+        <view>
+          <view class="cu-label">客服入口</view>
+          <view class="section-desc">后续接入微信客服</view>
+        </view>
       </view>
     </view>
   </view>

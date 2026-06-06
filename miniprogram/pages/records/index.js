@@ -11,7 +11,9 @@ Page({
       this.setData({
         records: data.conversions.map((item) => ({
           ...item,
-          status: "已生成"
+          status: "已生成",
+          commissionPercent: `${Math.round((item.commissionRate || 0) * 100)}%`,
+          createdAtText: item.createdAt ? item.createdAt.slice(0, 10) : "刚刚"
         }))
       });
     } catch (_error) {
