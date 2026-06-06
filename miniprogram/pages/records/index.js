@@ -1,4 +1,5 @@
 const { request } = require("../../utils/api");
+const { syncTabBar } = require("../../utils/tabbar");
 
 Page({
   data: {
@@ -7,6 +8,8 @@ Page({
   },
 
   async onShow() {
+    syncTabBar(this);
+
     try {
       const data = await request("/api/conversions");
       const records = data.conversions.map((item) => ({

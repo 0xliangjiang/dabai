@@ -1,4 +1,5 @@
 const { loginWithMockCode, request } = require("../../utils/api");
+const { syncTabBar } = require("../../utils/tabbar");
 
 Page({
   data: {
@@ -11,6 +12,10 @@ Page({
     if (!wx.getStorageSync("token")) {
       await loginWithMockCode();
     }
+  },
+
+  onShow() {
+    syncTabBar(this);
   },
 
   onInput(event) {

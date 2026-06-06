@@ -43,7 +43,7 @@ Component({
 
   methods: {
     switchTab(event) {
-      const index = event.currentTarget.dataset.index;
+      const index = Number(event.currentTarget.dataset.index);
       const item = this.data.list[index];
       if (!item || index === this.data.selected) return;
       wx.switchTab({ url: item.pagePath });
