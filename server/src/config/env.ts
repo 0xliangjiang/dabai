@@ -9,6 +9,16 @@ export type AppConfig = {
   dingdanxiaApiKey: string;
   dingdanxiaApiUrl: string;
   dingdanxiaPid: string;
+  dingdanxiaJdApiUrl: string;
+  dingdanxiaJdSiteId: string;
+  dingdanxiaJdPositionId: string;
+  dingdanxiaJdPid: string;
+  dingdanxiaPddApiUrl: string;
+  dingdanxiaPddPid: string;
+  dingdanxiaPddCustomParameters: string;
+  dingdanxiaVipApiUrl: string;
+  dingdanxiaVipChanTag: string;
+  dingdanxiaVipStatParam: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -20,6 +30,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     commissionSharingRatio: Number(env.COMMISSION_SHARING_RATIO ?? 0.5),
     dingdanxiaApiKey: env.DINGDANXIA_API_KEY ?? "",
     dingdanxiaApiUrl: env.DINGDANXIA_API_URL ?? "https://api.tbk.dingdanxia.com/tbk/wn_convert",
-    dingdanxiaPid: env.DINGDANXIA_PID ?? ""
+    dingdanxiaPid: env.DINGDANXIA_PID ?? "",
+    dingdanxiaJdApiUrl: env.DINGDANXIA_JD_API_URL ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
+    dingdanxiaJdSiteId: env.DINGDANXIA_JD_SITE_ID ?? "",
+    dingdanxiaJdPositionId: env.DINGDANXIA_JD_POSITION_ID ?? "",
+    dingdanxiaJdPid: env.DINGDANXIA_JD_PID ?? "",
+    dingdanxiaPddApiUrl: env.DINGDANXIA_PDD_API_URL ?? "https://api.tbk.dingdanxia.com/pdd/url_convert",
+    dingdanxiaPddPid: env.DINGDANXIA_PDD_PID ?? "",
+    dingdanxiaPddCustomParameters: env.DINGDANXIA_PDD_CUSTOM_PARAMETERS ?? "{\"uid\":\"default\"}",
+    dingdanxiaVipApiUrl: env.DINGDANXIA_VIP_API_URL ?? "https://api.tbk.dingdanxia.com/vip/url_privilege",
+    dingdanxiaVipChanTag: env.DINGDANXIA_VIP_CHAN_TAG ?? "",
+    dingdanxiaVipStatParam: env.DINGDANXIA_VIP_STAT_PARAM ?? ""
   };
 }

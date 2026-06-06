@@ -26,7 +26,7 @@ npm run dev --workspace server
 
 默认服务地址：`http://localhost:3001`。
 
-服务端会自动读取 `server/.env`。当前转链只使用订单侠万能高佣转链接口；如果没有配置订单侠 API key，会回退到 `MockTaobaoClient`，方便本地开发。
+服务端会自动读取 `server/.env`。当前转链使用订单侠接口，支持淘宝、京东、拼多多、唯品会链接自动识别；如果没有配置订单侠 API key，会回退到 `MockTaobaoClient`，方便本地开发。
 
 真实转链最小配置：
 
@@ -38,6 +38,20 @@ DINGDANXIA_PID="mm_xxx_xxx_xxx"
 
 订单侠接口仍然应使用你授权到订单侠平台下的淘宝联盟 PID，确保订单和佣金归属可控。
 
+其它平台按需配置：
+
+```env
+DINGDANXIA_JD_SITE_ID="your-jd-site-id"
+DINGDANXIA_JD_POSITION_ID=""
+DINGDANXIA_JD_PID=""
+
+DINGDANXIA_PDD_PID="your-pdd-pid"
+DINGDANXIA_PDD_CUSTOM_PARAMETERS="{\"uid\":\"default\"}"
+
+DINGDANXIA_VIP_CHAN_TAG=""
+DINGDANXIA_VIP_STAT_PARAM=""
+```
+
 ## Mini Program
 
 用微信开发者工具导入：
@@ -46,25 +60,7 @@ DINGDANXIA_PID="mm_xxx_xxx_xxx"
 miniprogram/
 ```
 
-首次启动或依赖变化后，先安装小程序端 npm 包：
-
-```bash
-npm install --prefix miniprogram
-```
-
-然后在微信开发者工具里执行：
-
-```text
-工具 > 构建 npm
-```
-
-如果微信开发者工具没有生成 `miniprogram/miniprogram_npm`，可以用本地脚本生成：
-
-```bash
-npm run build:npm --prefix miniprogram
-```
-
-页面组件引用使用 `/miniprogram_npm/tdesign-miniprogram/...`，必须构建 npm 或运行上面的脚本后才会生成对应组件目录。
+小程序端使用原生组件和 ColorUI 风格样式，不需要构建 npm 组件。首次启动只需要按微信开发者工具提示编译项目。
 
 本地联调时需要服务端运行在 `http://localhost:3001`，并在微信开发者工具里关闭本地 URL 校验或配置合法域名。
 
@@ -95,6 +91,9 @@ Important values:
 - `DINGDANXIA_API_KEY`
 - `DINGDANXIA_API_URL`
 - `DINGDANXIA_PID`
+- `DINGDANXIA_JD_SITE_ID`
+- `DINGDANXIA_PDD_PID`
+- `DINGDANXIA_VIP_CHAN_TAG`
 - `WECHAT_APP_ID`
 - `WECHAT_APP_SECRET`
 - `COMMISSION_SHARING_RATIO`

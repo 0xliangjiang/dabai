@@ -11,6 +11,7 @@ export type ConversionRecord = {
   id: string;
   userId: string;
   rawContent: string;
+  platform: "taobao" | "jd" | "pdd" | "vip";
   itemId: string;
   itemTitle: string;
   itemImageUrl: string;

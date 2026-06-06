@@ -30,7 +30,7 @@
           </view>
           <view class="section-title margin-top-sm text-cut-2">{{item.itemTitle}}</view>
           <view class="flex align-center justify-between margin-top-sm">
-            <view class="rate-badge">佣金率 {{item.commissionPercent}}</view>
+            <view class="rate-badge">{{item.platformLabel}} · {{item.commissionPercent}}</view>
           </view>
         </view>
       </view>

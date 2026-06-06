@@ -55,8 +55,19 @@ Page({
       ...result,
       itemPrice: ((result.itemPriceCents || 0) / 100).toFixed(2),
       commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`,
-      displayLink: result.generatedShortUrl || result.generatedClickUrl || ""
+      displayLink: result.generatedShortUrl || result.generatedClickUrl || "",
+      platformLabel: this.platformLabel(result.platform),
+      hasPassword: Boolean(result.generatedPassword)
     };
+  },
+
+  platformLabel(platform) {
+    return {
+      taobao: "淘宝",
+      jd: "京东",
+      pdd: "拼多多",
+      vip: "唯品会"
+    }[platform] || "商品";
   },
 
   async copyResult(copyType, data) {

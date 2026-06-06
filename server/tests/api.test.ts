@@ -13,7 +13,17 @@ describe("server API", () => {
     commissionSharingRatio: 0.5,
     dingdanxiaApiKey: "",
     dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
-    dingdanxiaPid: ""
+    dingdanxiaPid: "",
+    dingdanxiaJdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
+    dingdanxiaJdSiteId: "",
+    dingdanxiaJdPositionId: "",
+    dingdanxiaJdPid: "",
+    dingdanxiaPddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",
+    dingdanxiaPddPid: "",
+    dingdanxiaPddCustomParameters: "{\"uid\":\"default\"}",
+    dingdanxiaVipApiUrl: "https://api.tbk.dingdanxia.com/vip/url_privilege",
+    dingdanxiaVipChanTag: "",
+    dingdanxiaVipStatParam: ""
   };
 
   async function buildTestApp() {
@@ -87,6 +97,7 @@ describe("server API", () => {
     expect(response.json()).toMatchObject({
       id: expect.any(String),
       itemId: "mock-item-100",
+      platform: "taobao",
       generatedPassword: "￥mockpassword￥",
       generatedShortUrl: "https://s.click.taobao.com/mock",
       generatedClickUrl: "https://uland.taobao.com/mock"
