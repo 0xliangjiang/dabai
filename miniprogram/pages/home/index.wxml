@@ -26,6 +26,31 @@
     </view>
   </view>
 
+  <view class="cu-card flex-direction gap-sm">
+    <view class="section-heading">
+      <view class="section-title">支持平台</view>
+      <view class="cu-tag blue">自动识别</view>
+    </view>
+    <view class="platform-grid">
+      <view class="platform-pill">
+        <view class="platform-mark">淘</view>
+        <view class="cu-label">淘宝/天猫</view>
+      </view>
+      <view class="platform-pill">
+        <view class="platform-mark">京</view>
+        <view class="cu-label">京东</view>
+      </view>
+      <view class="platform-pill">
+        <view class="platform-mark">拼</view>
+        <view class="cu-label">拼多多</view>
+      </view>
+      <view class="platform-pill">
+        <view class="platform-mark">唯</view>
+        <view class="cu-label">唯品会</view>
+      </view>
+    </view>
+  </view>
+
   <view class="cu-card prompt-box flex-direction gap">
     <view class="section-heading">
       <view>

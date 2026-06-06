@@ -228,6 +228,38 @@ page {
   gap: 14rpx;
 }
 
+.platform-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.platform-pill {
+  display: flex;
+  width: calc(50% - 7rpx);
+  min-height: 86rpx;
+  align-items: center;
+  gap: 14rpx;
+  padding: 14rpx;
+  border-radius: 22rpx;
+  background: #fffbea;
+  border: 1rpx solid #f1dfa5;
+  box-sizing: border-box;
+}
+
+.platform-mark {
+  width: 46rpx;
+  height: 46rpx;
+  flex: 0 0 46rpx;
+  border-radius: 999rpx;
+  background: #fff0b8;
+  color: #a8660d;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 46rpx;
+  text-align: center;
+}
+
 .step-pill {
   flex: 1;
   min-width: 0;
