@@ -12,9 +12,13 @@ describe("server API", () => {
     schedulerToken: "dev-scheduler-token",
     adzoneId: "mock-adzone",
     commissionSharingRatio: 0.5,
+    provider: "official",
     taobaoAppKey: "",
     taobaoAppSecret: "",
-    taobaoApiUrl: "https://eco.taobao.com/router/rest"
+    taobaoApiUrl: "https://eco.taobao.com/router/rest",
+    dingdanxiaApiKey: "",
+    dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
+    dingdanxiaPid: ""
   };
 
   async function buildTestApp() {

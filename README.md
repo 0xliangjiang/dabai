@@ -26,7 +26,9 @@ npm run dev --workspace server
 
 默认服务地址：`http://localhost:3001`。
 
-服务端会自动读取 `server/.env`。当 `TAOBAO_APP_KEY`、`TAOBAO_APP_SECRET` 和真实 `TBK_ADZONE_ID` 配齐时，会使用淘宝开放平台 TOP 签名请求调用 `taobao.tbk.tpwd.convert`。如果缺少凭证或 `TBK_ADZONE_ID=mock-adzone`，会回退到 `MockTaobaoClient`，方便本地开发。
+服务端会自动读取 `server/.env`。
+
+默认 `TAOBAO_PROVIDER=official`。当 `TAOBAO_APP_KEY`、`TAOBAO_APP_SECRET` 和真实 `TBK_ADZONE_ID` 配齐时，会使用淘宝开放平台 TOP 签名请求调用 `taobao.tbk.tpwd.convert`。如果缺少凭证或 `TBK_ADZONE_ID=mock-adzone`，会回退到 `MockTaobaoClient`，方便本地开发。
 
 真实转链最小配置：
 
@@ -38,6 +40,17 @@ TBK_ADZONE_ID="your-adzone-id"
 ```
 
 `taobao.tbk.tpwd.convert` 官方标注为不需要授权，当前转链实现不使用 `TAOBAO_SESSION`。
+
+如果官方接口权限不可用，可以切到订单侠万能高佣转链接口：
+
+```env
+TAOBAO_PROVIDER="dingdanxia"
+DINGDANXIA_API_KEY="your-dingdanxia-api-key"
+DINGDANXIA_API_URL="https://api.tbk.dingdanxia.com/tbk/wn_convert"
+DINGDANXIA_PID="mm_xxx_xxx_xxx"
+```
+
+订单侠接口仍然应使用你授权到订单侠平台下的淘宝联盟 PID，确保订单和佣金归属可控。
 
 ## Mini Program
 
@@ -97,6 +110,10 @@ Important values:
 - `TAOBAO_APP_SECRET`
 - `TAOBAO_API_URL`
 - `TBK_ADZONE_ID`
+- `TAOBAO_PROVIDER`
+- `DINGDANXIA_API_KEY`
+- `DINGDANXIA_API_URL`
+- `DINGDANXIA_PID`
 - `WECHAT_APP_ID`
 - `WECHAT_APP_SECRET`
 - `COMMISSION_SHARING_RATIO`
