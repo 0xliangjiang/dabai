@@ -1,11 +1,27 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app.js";
+import type { AppConfig } from "../src/config/env.js";
+import { MockTaobaoClient } from "../src/integrations/taobao/client.js";
 
 describe("server API", () => {
   const apps: Awaited<ReturnType<typeof createApp>>[] = [];
+  const testConfig: AppConfig = {
+    nodeEnv: "test",
+    port: 3001,
+    adminToken: "dev-admin-token",
+    schedulerToken: "dev-scheduler-token",
+    adzoneId: "mock-adzone",
+    commissionSharingRatio: 0.5,
+    taobaoAppKey: "",
+    taobaoAppSecret: "",
+    taobaoApiUrl: "https://eco.taobao.com/router/rest"
+  };
 
   async function buildTestApp() {
-    const app = await createApp();
+    const app = await createApp({
+      config: testConfig,
+      taobaoClient: new MockTaobaoClient()
+    });
     apps.push(app);
     return app;
   }

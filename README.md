@@ -26,7 +26,18 @@ npm run dev --workspace server
 
 默认服务地址：`http://localhost:3001`。
 
-当前淘宝转链使用 `MockTaobaoClient`，在没有真实淘宝开放平台凭证时返回固定的测试商品、淘口令和链接。真实接入时替换 `server/src/integrations/taobao/client.ts` 中的适配器实现，并继续把签名和密钥保留在服务端。
+服务端会自动读取 `server/.env`。当 `TAOBAO_APP_KEY`、`TAOBAO_APP_SECRET` 和真实 `TBK_ADZONE_ID` 配齐时，会使用淘宝开放平台 TOP 签名请求调用 `taobao.tbk.tpwd.convert`。如果缺少凭证或 `TBK_ADZONE_ID=mock-adzone`，会回退到 `MockTaobaoClient`，方便本地开发。
+
+真实转链最小配置：
+
+```env
+TAOBAO_APP_KEY="your-app-key"
+TAOBAO_APP_SECRET="your-app-secret"
+TAOBAO_API_URL="https://eco.taobao.com/router/rest"
+TBK_ADZONE_ID="your-adzone-id"
+```
+
+`taobao.tbk.tpwd.convert` 官方标注为不需要授权，当前转链实现不使用 `TAOBAO_SESSION`。
 
 ## Mini Program
 
@@ -64,11 +75,10 @@ Important values:
 
 - `TAOBAO_APP_KEY`
 - `TAOBAO_APP_SECRET`
-- `TAOBAO_SESSION`
+- `TAOBAO_API_URL`
 - `TBK_ADZONE_ID`
 - `WECHAT_APP_ID`
 - `WECHAT_APP_SECRET`
 - `COMMISSION_SHARING_RATIO`
 - `ADMIN_TOKEN`
 - `SCHEDULER_TOKEN`
-

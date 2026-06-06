@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { loadConfig } from "./config/env.js";
-import { MockTaobaoClient } from "./integrations/taobao/client.js";
+import { type AppConfig, loadConfig } from "./config/env.js";
+import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
 import { createRepositories } from "./repositories/memory.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -15,11 +15,16 @@ declare module "fastify" {
   }
 }
 
-export async function createApp() {
+export type CreateAppOptions = {
+  config?: AppConfig;
+  taobaoClient?: TaobaoClient;
+};
+
+export async function createApp(options: CreateAppOptions = {}) {
   const app = Fastify({ logger: false });
-  const config = loadConfig();
+  const config = options.config ?? loadConfig();
   const repositories = createRepositories();
-  const taobaoClient = new MockTaobaoClient();
+  const taobaoClient = options.taobaoClient ?? createTaobaoClient(config);
 
   await app.register(cors, { origin: true });
 
