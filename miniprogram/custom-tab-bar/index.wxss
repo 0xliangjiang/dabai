@@ -15,10 +15,10 @@
   justify-content: space-between;
   min-height: 108rpx;
   padding: 10rpx;
-  border: 1rpx solid rgba(219, 231, 241, 0.96);
+  border: 1rpx solid rgba(218, 228, 223, 0.96);
   border-radius: 34rpx;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18rpx 52rpx rgba(15, 23, 42, 0.16);
+  box-shadow: 0 18rpx 48rpx rgba(15, 61, 62, 0.14);
   box-sizing: border-box;
   pointer-events: auto;
 }
@@ -32,23 +32,23 @@
   justify-content: center;
   gap: 8rpx;
   border-radius: 26rpx;
-  color: #64748b;
+  color: #6b7975;
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .tab-item.active {
   color: #ffffff;
-  background: linear-gradient(135deg, #0f766e 0%, #2563eb 100%);
-  box-shadow: 0 12rpx 26rpx rgba(37, 99, 235, 0.22);
+  background: linear-gradient(135deg, #0f3d3e 0%, #1f7a68 100%);
+  box-shadow: 0 12rpx 26rpx rgba(15, 61, 62, 0.2);
 }
 
 .tab-mark {
   width: 42rpx;
   height: 42rpx;
   border-radius: 999rpx;
-  background: #eef6fb;
-  color: #2563eb;
+  background: #edf7f4;
+  color: #14645f;
   font-size: 22rpx;
   font-weight: 900;
   line-height: 42rpx;
