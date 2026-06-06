@@ -59,7 +59,13 @@ npm install --prefix miniprogram
 工具 > 构建 npm
 ```
 
-页面组件引用使用 `/miniprogram_npm/tdesign-miniprogram/...`，必须构建 npm 后才会生成对应组件目录。
+如果微信开发者工具没有生成 `miniprogram/miniprogram_npm`，可以用本地脚本生成：
+
+```bash
+npm run build:npm --prefix miniprogram
+```
+
+页面组件引用使用 `/miniprogram_npm/tdesign-miniprogram/...`，必须构建 npm 或运行上面的脚本后才会生成对应组件目录。
 
 本地联调时需要服务端运行在 `http://localhost:3001`，并在微信开发者工具里关闭本地 URL 校验或配置合法域名。
 
