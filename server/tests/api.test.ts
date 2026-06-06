@@ -115,4 +115,82 @@ describe("server API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ orders: [] });
   });
+
+  test("GET /api/admin/users lists mini program users", async () => {
+    const app = await buildTestApp();
+
+    await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "admin-visible-user" }
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/admin/users",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      users: [
+        {
+          id: "user-1",
+          openid: "mock_openid_admin-visible-user"
+        }
+      ]
+    });
+  });
+
+  test("GET /api/admin/config returns operation settings", async () => {
+    const app = await buildTestApp();
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/admin/config",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      config: {
+        adzoneId: "mock-adzone",
+        commissionSharingRatio: 0.5,
+        attributionWindowHours: 24,
+        highValueReviewThresholdCents: 5000
+      }
+    });
+  });
+
+  test("GET /api/admin/overview returns dashboard metrics", async () => {
+    const app = await buildTestApp();
+
+    await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "overview-user" }
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/admin/overview",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      metrics: {
+        userCount: 1,
+        conversionCount: 1,
+        copyEventCount: 0,
+        pendingAttributionCount: 0
+      }
+    });
+  });
 });

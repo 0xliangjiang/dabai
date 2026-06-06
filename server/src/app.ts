@@ -48,7 +48,7 @@ export async function createApp() {
   await registerConversionRoutes(app, repositories, taobaoClient);
   await registerOrderRoutes(app, repositories);
   await registerJobRoutes(app, config);
-  await registerAdminRoutes(app, config);
+  await registerAdminRoutes(app, config, repositories);
 
   return app;
 }

@@ -64,6 +64,9 @@ export function createRepositories() {
         users.set(id, user);
         usersByOpenid.set(openid, id);
         return user;
+      },
+      list(): UserRecord[] {
+        return [...users.values()];
       }
     },
     conversions: {
@@ -92,11 +95,24 @@ export function createRepositories() {
         };
         copyEvents.set(record.id, record);
         return record;
+      },
+      count(): number {
+        return copyEvents.size;
       }
     },
     orders: {
       listByUser(_userId: string): OrderSummary[] {
         return [];
+      }
+    },
+    admin: {
+      overview() {
+        return {
+          userCount: users.size,
+          conversionCount: conversions.size,
+          copyEventCount: copyEvents.size,
+          pendingAttributionCount: 0
+        };
       }
     }
   };
