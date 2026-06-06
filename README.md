@@ -47,6 +47,20 @@ TBK_ADZONE_ID="your-adzone-id"
 miniprogram/
 ```
 
+首次启动或依赖变化后，先安装小程序端 npm 包：
+
+```bash
+npm install --prefix miniprogram
+```
+
+然后在微信开发者工具里执行：
+
+```text
+工具 > 构建 npm
+```
+
+页面组件引用使用 `/miniprogram_npm/tdesign-miniprogram/...`，必须构建 npm 后才会生成对应组件目录。
+
 本地联调时需要服务端运行在 `http://localhost:3001`，并在微信开发者工具里关闭本地 URL 校验或配置合法域名。
 
 ## Admin

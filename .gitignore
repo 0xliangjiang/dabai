@@ -4,3 +4,5 @@ dist/
 .env
 *.local
 .DS_Store
+project.private.config.json
+miniprogram/project.private.config.json
