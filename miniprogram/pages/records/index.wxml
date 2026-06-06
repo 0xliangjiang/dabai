@@ -1,18 +1,18 @@
-<view class="page">
-  <view class="section">
-    <view class="title">推广记录</view>
-    <view class="subtitle">查看你复制过的商品和预估收益状态。</view>
+<view class="cu-page">
+  <view class="cu-section">
+    <view class="cu-title">推广记录</view>
+    <view class="cu-subtitle">查看你复制过的商品和预估收益状态。</view>
   </view>
 
-  <view wx:if="{{records.length === 0}}" class="panel">
-    <t-empty description="还没有转链记录" />
+  <view wx:if="{{records.length === 0}}" class="cu-card cu-empty flex align-center justify-center">
+    <view>还没有转链记录</view>
   </view>
 
-  <view wx:for="{{records}}" wx:key="id" class="panel section">
-    <view class="row">
-      <view class="label">{{item.itemTitle}}</view>
-      <t-tag theme="primary" variant="light">{{item.status}}</t-tag>
+  <view wx:for="{{records}}" wx:key="id" class="cu-card cu-section">
+    <view class="flex align-start justify-between gap-sm">
+      <view class="cu-label flex-sub text-cut-2">{{item.itemTitle}}</view>
+      <view class="cu-tag blue">{{item.status}}</view>
     </view>
-    <view class="subtitle">{{item.createdAt}}</view>
+    <view class="cu-subtitle">{{item.createdAt}}</view>
   </view>
 </view>

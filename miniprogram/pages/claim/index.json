@@ -1,9 +1,3 @@
 {
-  "navigationBarTitleText": "订单补充",
-  "usingComponents": {
-    "t-button": "/miniprogram_npm/tdesign-miniprogram/button/button",
-    "t-input": "/miniprogram_npm/tdesign-miniprogram/input/input",
-    "t-textarea": "/miniprogram_npm/tdesign-miniprogram/textarea/textarea",
-    "t-upload": "/miniprogram_npm/tdesign-miniprogram/upload/upload"
-  }
+  "navigationBarTitleText": "订单补充"
 }

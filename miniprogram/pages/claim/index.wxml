@@ -1,13 +1,23 @@
-<view class="page">
-  <view class="section">
-    <view class="title">补充订单信息</view>
-    <view class="subtitle">用于辅助复核，不会自动发放佣金。</view>
+<view class="cu-page">
+  <view class="cu-section">
+    <view class="cu-title">补充订单信息</view>
+    <view class="cu-subtitle">用于辅助复核，不会自动发放佣金。</view>
   </view>
 
-  <view class="panel stack">
-    <t-input label="订单后几位" value="{{orderSuffix}}" placeholder="例如 1234" bind:change="onSuffixChange" />
-    <t-textarea value="{{notes}}" placeholder="补充说明（选填）" autosize bind:change="onNotesChange" />
-    <t-upload files="{{files}}" max="{{1}}" bind:add="onAddFile" bind:remove="onRemoveFile" />
-    <t-button theme="primary" block bind:tap="submit">提交复核</t-button>
+  <view class="cu-card cu-form">
+    <view>
+      <view class="cu-label margin-bottom-sm">订单后几位</view>
+      <input class="cu-input" value="{{orderSuffix}}" placeholder="例如 1234" bindinput="onSuffixChange" />
+    </view>
+    <view>
+      <view class="cu-label margin-bottom-sm">补充说明</view>
+      <textarea class="cu-textarea" value="{{notes}}" placeholder="补充说明（选填）" auto-height bindinput="onNotesChange" />
+    </view>
+    <view class="cu-upload flex-direction align-center justify-center gap-sm" bindtap="onAddFile">
+      <view class="cu-label">上传截图</view>
+      <view class="text-grey">{{files.length ? "已选择 1 张截图" : "点击选择订单截图"}}</view>
+    </view>
+    <button wx:if="{{files.length}}" class="cu-btn line-blue block" bindtap="onRemoveFile">移除截图</button>
+    <button class="cu-btn bg-blue block" bindtap="submit">提交复核</button>
   </view>
 </view>

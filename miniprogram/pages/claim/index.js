@@ -15,8 +15,13 @@ Page({
     this.setData({ notes: event.detail.value });
   },
 
-  onAddFile(event) {
-    this.setData({ files: event.detail.files });
+  async onAddFile() {
+    const result = await wx.chooseMedia({
+      count: 1,
+      mediaType: ["image"],
+      sourceType: ["album", "camera"]
+    });
+    this.setData({ files: result.tempFiles });
   },
 
   onRemoveFile() {

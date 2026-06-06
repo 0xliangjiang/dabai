@@ -42,7 +42,7 @@ Page({
   },
 
   copyLink() {
-    this.copyResult("link", this.data.result.generatedShortUrl);
+    this.copyResult("link", this.data.result.generatedShortUrl || this.data.result.generatedClickUrl);
   },
 
   async copyResult(copyType, data) {

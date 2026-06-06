@@ -1,11 +1,5 @@
 {
   "name": "taobaoke-miniprogram",
   "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "build:npm": "node scripts/sync-tdesign-miniprogram.cjs"
-  },
-  "dependencies": {
-    "tdesign-miniprogram": "1.15.1"
-  }
+  "private": true
 }
