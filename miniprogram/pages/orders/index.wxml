@@ -5,7 +5,7 @@
     <view class="hero-desc">佣金为预估展示，最终以订单结算和人工复核结果为准。</view>
   </view>
 
-  <view class="content-stack">
+  <view class="content-stack floating-stack">
     <view class="cu-card glass-card grid-2">
       <view class="metric">
         <view class="muted text-sm">订单数量</view>
@@ -23,13 +23,16 @@
       <view class="section-desc">用户下单后，系统同步到订单会在这里展示。</view>
     </view>
 
-    <view wx:for="{{orders}}" wx:key="id" class="cu-card product-card flex-direction gap-sm">
+    <view wx:for="{{orders}}" wx:key="id" class="cu-card product-card flex-direction gap">
       <view class="flex align-start justify-between gap-sm">
         <view class="section-title flex-sub text-cut-2">{{item.itemTitle}}</view>
         <view class="cu-tag orange">{{item.status}}</view>
       </view>
-      <view class="flex align-center justify-between margin-top-sm">
-        <view class="muted text-sm">预估佣金</view>
+      <view class="soft-panel flex align-center justify-between">
+        <view>
+          <view class="muted text-sm">预估佣金</view>
+          <view class="section-desc">实际到账以结算复核为准</view>
+        </view>
         <view class="price">¥{{item.estimatedCommission}}</view>
       </view>
     </view>

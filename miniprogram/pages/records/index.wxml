@@ -5,7 +5,15 @@
     <view class="hero-desc">查看已生成的推广内容，后续订单归因会优先参考复制记录。</view>
   </view>
 
-  <view class="content-stack">
+  <view class="content-stack floating-stack">
+    <view class="cu-card glass-card flex align-center justify-between">
+      <view>
+        <view class="muted text-sm">累计生成</view>
+        <view class="metric-value">{{records.length}}</view>
+      </view>
+      <view class="cu-tag green">复制后归因</view>
+    </view>
+
     <view wx:if="{{records.length === 0}}" class="cu-card cu-empty flex-direction align-center justify-center">
       <view class="empty-icon">0</view>
       <view class="text-bold">还没有转链记录</view>
@@ -22,7 +30,10 @@
             <view class="muted text-sm">{{item.createdAtText}}</view>
           </view>
           <view class="section-title margin-top-sm text-cut-2">{{item.itemTitle}}</view>
-          <view class="section-desc">佣金率 {{item.commissionPercent}} · 已生成推广内容</view>
+          <view class="flex align-center justify-between margin-top-sm">
+            <view class="rate-badge">佣金率 {{item.commissionPercent}}</view>
+            <view class="mini-link">已生成</view>
+          </view>
         </view>
       </view>
     </view>

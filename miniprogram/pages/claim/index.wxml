@@ -5,7 +5,8 @@
     <view class="hero-desc">用于辅助复核，不会自动发放佣金，请尽量填写准确。</view>
   </view>
 
-  <view class="cu-card cu-form">
+  <view class="cu-card cu-form floating-stack">
+    <view class="hint-bar">只需要填写订单号末尾几位。截图不是必须，但有截图会更方便后台确认。</view>
     <view>
       <view class="cu-label margin-bottom-sm">订单后几位</view>
       <input class="cu-input" value="{{orderSuffix}}" placeholder="例如 1234" bindinput="onSuffixChange" />

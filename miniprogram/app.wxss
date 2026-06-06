@@ -1,6 +1,6 @@
 page {
   min-height: 100vh;
-  background: #eef4f8;
+  background: #edf5f3;
   color: #101827;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
@@ -21,32 +21,34 @@ page {
   top: 0;
   left: 0;
   right: 0;
-  height: 360rpx;
-  background: linear-gradient(135deg, #0f766e 0%, #2563eb 58%, #7c3aed 100%);
+  height: 390rpx;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0) 34%),
+    linear-gradient(135deg, #0f766e 0%, #2563eb 68%, #4f46e5 100%);
   content: "";
   z-index: -1;
 }
 
 .hero {
-  padding: 24rpx 8rpx 30rpx;
+  padding: 24rpx 8rpx 34rpx;
   color: #ffffff;
 }
 
 .eyebrow {
   display: inline-flex;
   align-items: center;
-  min-height: 44rpx;
+  min-height: 46rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.92);
   font-size: 22rpx;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .hero-title {
   margin-top: 22rpx;
-  font-size: 46rpx;
+  font-size: 48rpx;
   font-weight: 800;
   line-height: 1.15;
 }
@@ -65,17 +67,21 @@ page {
   gap: 24rpx;
 }
 
+.floating-stack {
+  margin-top: -4rpx;
+}
+
 .cu-card {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1rpx solid rgba(226, 232, 240, 0.9);
-  border-radius: 26rpx;
-  padding: 28rpx;
-  box-shadow: 0 18rpx 50rpx rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1rpx solid rgba(222, 232, 240, 0.92);
+  border-radius: 28rpx;
+  padding: 30rpx;
+  box-shadow: 0 16rpx 42rpx rgba(15, 23, 42, 0.07);
   box-sizing: border-box;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   border-color: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18rpx);
 }
@@ -85,6 +91,13 @@ page {
   font-size: 30rpx;
   font-weight: 800;
   line-height: 1.25;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
 }
 
 .section-desc {
@@ -142,6 +155,12 @@ page {
   text-overflow: ellipsis;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.text-cut {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flex {
@@ -216,17 +235,45 @@ page {
   gap: 18rpx;
 }
 
+.quick-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.step-pill {
+  min-height: 108rpx;
+  padding: 18rpx 12rpx;
+  border-radius: 22rpx;
+  background: #f8fafc;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.step-index {
+  width: 38rpx;
+  height: 38rpx;
+  margin: 0 auto 10rpx;
+  border-radius: 999rpx;
+  background: #e0f2fe;
+  color: #2563eb;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 38rpx;
+}
+
 .metric {
   padding: 22rpx;
   border-radius: 22rpx;
-  background: #f8fafc;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1rpx solid #e7eef6;
   box-sizing: border-box;
 }
 
 .metric-value {
   margin-top: 8rpx;
   color: #0f172a;
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: 800;
 }
 
@@ -253,7 +300,7 @@ page {
 }
 
 .cu-textarea {
-  min-height: 244rpx;
+  min-height: 230rpx;
   padding: 26rpx;
   line-height: 1.55;
 }
@@ -344,9 +391,9 @@ page {
 }
 
 .product-thumb {
-  width: 150rpx;
-  height: 150rpx;
-  flex: 0 0 150rpx;
+  width: 156rpx;
+  height: 156rpx;
+  flex: 0 0 156rpx;
   border-radius: 22rpx;
   background: #e2e8f0;
 }
@@ -363,6 +410,15 @@ page {
   font-weight: 900;
 }
 
+.rate-badge {
+  padding: 8rpx 12rpx;
+  border-radius: 12rpx;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
 .code-box {
   padding: 20rpx;
   border-radius: 18rpx;
@@ -371,6 +427,22 @@ page {
   font-size: 24rpx;
   line-height: 1.55;
   word-break: break-all;
+}
+
+.hint-bar {
+  padding: 18rpx 20rpx;
+  border-radius: 18rpx;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+.soft-panel {
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e7eef6;
 }
 
 .cu-empty {
@@ -422,4 +494,10 @@ page {
   color: #64748b;
   background: #f8fafc;
   box-sizing: border-box;
+}
+
+.mini-link {
+  color: #2563eb;
+  font-size: 24rpx;
+  font-weight: 800;
 }
