@@ -22,6 +22,8 @@ export type CreateTaobaoClientConfig = {
   dingdanxiaPid?: string;
   dingdanxiaJdApiUrl?: string;
   dingdanxiaJdSiteId?: string;
+  dingdanxiaJdUnionId?: string;
+  dingdanxiaJdAuthKey?: string;
   dingdanxiaJdPositionId?: string;
   dingdanxiaJdPid?: string;
   dingdanxiaPddApiUrl?: string;
@@ -52,6 +54,8 @@ export type DingdanxiaClientConfig = {
   pid?: string;
   jdApiUrl: string;
   jdSiteId?: string;
+  jdUnionId?: string;
+  jdAuthKey?: string;
   jdPositionId?: string;
   jdPid?: string;
   pddApiUrl: string;
@@ -160,15 +164,19 @@ export class DingdanxiaClient implements TaobaoClient {
   }
 
   private async convertJd(rawContent: string): Promise<TaobaoConversionResult> {
-    if (!isRealConfigValue(this.config.jdSiteId ?? "")) {
+    const siteId = this.config.jdSiteId || this.config.jdUnionId;
+    const unionId = this.config.jdUnionId || this.config.jdSiteId;
+    if (!isRealConfigValue(siteId ?? "")) {
       throw new DingdanxiaApiError("DINGDANXIA_JD_SITE_ID is required for JD conversion");
     }
 
     const body = new URLSearchParams({
       apikey: this.config.apiKey,
       materialId: rawContent,
-      siteId: this.config.jdSiteId!
+      siteId: siteId!
     });
+    if (isRealConfigValue(unionId ?? "")) body.set("unionId", unionId!);
+    if (isRealConfigValue(this.config.jdAuthKey ?? "")) body.set("key", this.config.jdAuthKey!);
     if (isRealConfigValue(this.config.jdPositionId ?? "")) body.set("positionId", this.config.jdPositionId!);
     if (isRealConfigValue(this.config.jdPid ?? "")) body.set("pid", this.config.jdPid!);
 
@@ -284,6 +292,8 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
       pid: config.dingdanxiaPid,
       jdApiUrl: config.dingdanxiaJdApiUrl ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
       jdSiteId: config.dingdanxiaJdSiteId,
+      jdUnionId: config.dingdanxiaJdUnionId,
+      jdAuthKey: config.dingdanxiaJdAuthKey,
       jdPositionId: config.dingdanxiaJdPositionId,
       jdPid: config.dingdanxiaJdPid,
       pddApiUrl: config.dingdanxiaPddApiUrl ?? "https://api.tbk.dingdanxia.com/pdd/url_convert",

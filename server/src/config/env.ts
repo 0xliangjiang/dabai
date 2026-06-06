@@ -11,6 +11,8 @@ export type AppConfig = {
   dingdanxiaPid: string;
   dingdanxiaJdApiUrl: string;
   dingdanxiaJdSiteId: string;
+  dingdanxiaJdUnionId: string;
+  dingdanxiaJdAuthKey: string;
   dingdanxiaJdPositionId: string;
   dingdanxiaJdPid: string;
   dingdanxiaPddApiUrl: string;
@@ -33,6 +35,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dingdanxiaPid: env.DINGDANXIA_PID ?? "",
     dingdanxiaJdApiUrl: env.DINGDANXIA_JD_API_URL ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
     dingdanxiaJdSiteId: env.DINGDANXIA_JD_SITE_ID ?? "",
+    dingdanxiaJdUnionId: env.DINGDANXIA_JD_UNION_ID ?? env.DINGDANXIA_JD_SITE_ID ?? "",
+    dingdanxiaJdAuthKey: env.DINGDANXIA_JD_AUTH_KEY ?? "",
     dingdanxiaJdPositionId: env.DINGDANXIA_JD_POSITION_ID ?? "",
     dingdanxiaJdPid: env.DINGDANXIA_JD_PID ?? "",
     dingdanxiaPddApiUrl: env.DINGDANXIA_PDD_API_URL ?? "https://api.tbk.dingdanxia.com/pdd/url_convert",

@@ -12,6 +12,8 @@ const baseDingdanxiaConfig = {
   pid: "mm_1_2_3",
   jdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
   jdSiteId: "jd-site",
+  jdUnionId: "jd-union",
+  jdAuthKey: "jd-auth-key",
   jdPositionId: "jd-position",
   jdPid: "jd-pid",
   pddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",
@@ -101,6 +103,8 @@ describe("DingdanxiaClient", () => {
       expect(body).toContain("apikey=ddx-key");
       expect(body).toContain("materialId=https%3A%2F%2Fitem.jd.com%2F100.html");
       expect(body).toContain("siteId=jd-site");
+      expect(body).toContain("unionId=jd-union");
+      expect(body).toContain("key=jd-auth-key");
       expect(body).toContain("positionId=jd-position");
       expect(body).toContain("pid=jd-pid");
 

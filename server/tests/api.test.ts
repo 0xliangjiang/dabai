@@ -16,6 +16,8 @@ describe("server API", () => {
     dingdanxiaPid: "",
     dingdanxiaJdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
     dingdanxiaJdSiteId: "",
+    dingdanxiaJdUnionId: "",
+    dingdanxiaJdAuthKey: "",
     dingdanxiaJdPositionId: "",
     dingdanxiaJdPid: "",
     dingdanxiaPddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",
