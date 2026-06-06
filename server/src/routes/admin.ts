@@ -23,7 +23,7 @@ export async function registerAdminRoutes(app: FastifyInstance, config: AppConfi
 
   app.get("/api/admin/config", async () => ({
     config: {
-      adzoneId: config.adzoneId,
+      dingdanxiaPid: config.dingdanxiaPid,
       commissionSharingRatio: config.commissionSharingRatio,
       attributionWindowHours: 24,
       highValueReviewThresholdCents: 5000

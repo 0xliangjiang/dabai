@@ -49,7 +49,7 @@ const users = [
 ];
 
 const configItems = [
-  ["推广位 adzone_id", "mock-adzone"],
+  ["订单侠 PID", "mm_xxx_xxx_xxx"],
   ["用户分佣比例", "50%"],
   ["自动归因窗口", "复制后 24 小时"],
   ["高佣复核阈值", "¥50.00"],

@@ -10,12 +10,7 @@ describe("server API", () => {
     port: 3001,
     adminToken: "dev-admin-token",
     schedulerToken: "dev-scheduler-token",
-    adzoneId: "mock-adzone",
     commissionSharingRatio: 0.5,
-    provider: "official",
-    taobaoAppKey: "",
-    taobaoAppSecret: "",
-    taobaoApiUrl: "https://eco.taobao.com/router/rest",
     dingdanxiaApiKey: "",
     dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
     dingdanxiaPid: ""
@@ -174,7 +169,7 @@ describe("server API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       config: {
-        adzoneId: "mock-adzone",
+        dingdanxiaPid: "",
         commissionSharingRatio: 0.5,
         attributionWindowHours: 24,
         highValueReviewThresholdCents: 5000
