@@ -4,7 +4,9 @@ Page({
   data: {
     orderSuffix: "",
     notes: "",
-    files: []
+    files: [],
+    hasFiles: false,
+    uploadText: "点击选择订单截图"
   },
 
   onSuffixChange(event) {
@@ -21,11 +23,19 @@ Page({
       mediaType: ["image"],
       sourceType: ["album", "camera"]
     });
-    this.setData({ files: result.tempFiles });
+    this.setData({
+      files: result.tempFiles,
+      hasFiles: result.tempFiles.length > 0,
+      uploadText: result.tempFiles.length > 0 ? "已选择 1 张截图" : "点击选择订单截图"
+    });
   },
 
   onRemoveFile() {
-    this.setData({ files: [] });
+    this.setData({
+      files: [],
+      hasFiles: false,
+      uploadText: "点击选择订单截图"
+    });
   },
 
   async submit() {

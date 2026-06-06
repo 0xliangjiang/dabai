@@ -12,31 +12,20 @@ page {
 }
 
 .page-shell {
-  position: relative;
   min-height: 100vh;
 }
 
-.page-shell::before {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 390rpx;
-  background:
-    radial-gradient(circle at 16% 12%, rgba(255, 255, 255, 0.34) 0, rgba(255, 255, 255, 0) 34%),
-    linear-gradient(135deg, #0f766e 0%, #2563eb 68%, #4f46e5 100%);
-  content: "";
-  z-index: -1;
-}
-
 .hero {
-  padding: 24rpx 8rpx 34rpx;
+  margin: -28rpx -28rpx 0;
+  padding: 52rpx 36rpx 64rpx;
+  border-bottom-left-radius: 34rpx;
+  border-bottom-right-radius: 34rpx;
+  background: linear-gradient(135deg, #0f766e 0%, #2563eb 72%, #4f46e5 100%);
   color: #ffffff;
 }
 
 .eyebrow {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   min-height: 46rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
@@ -44,6 +33,7 @@ page {
   color: rgba(255, 255, 255, 0.92);
   font-size: 22rpx;
   font-weight: 700;
+  line-height: 46rpx;
 }
 
 .hero-title {
@@ -68,7 +58,7 @@ page {
 }
 
 .floating-stack {
-  margin-top: -4rpx;
+  margin-top: -34rpx;
 }
 
 .cu-card {
@@ -83,7 +73,6 @@ page {
 .glass-card {
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(18rpx);
 }
 
 .section-title {
@@ -230,18 +219,18 @@ page {
 }
 
 .grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
   gap: 18rpx;
 }
 
 .quick-steps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 14rpx;
 }
 
 .step-pill {
+  flex: 1;
+  min-width: 0;
   min-height: 108rpx;
   padding: 18rpx 12rpx;
   border-radius: 22rpx;
@@ -263,6 +252,8 @@ page {
 }
 
 .metric {
+  flex: 1;
+  min-width: 0;
   padding: 22rpx;
   border-radius: 22rpx;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -310,23 +301,16 @@ page {
   overflow: hidden;
 }
 
-.prompt-box::after {
-  position: absolute;
-  right: -64rpx;
-  bottom: -72rpx;
-  width: 190rpx;
-  height: 190rpx;
-  border-radius: 999rpx;
-  background: rgba(15, 118, 110, 0.08);
-  content: "";
-}
-
 .cu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 92rpx;
+  padding: 0;
   border-radius: 18rpx;
   font-size: 30rpx;
   font-weight: 800;
-  line-height: 92rpx;
+  line-height: 1;
 }
 
 .cu-btn::after {
@@ -355,7 +339,7 @@ page {
 }
 
 .cu-tag {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   min-height: 44rpx;

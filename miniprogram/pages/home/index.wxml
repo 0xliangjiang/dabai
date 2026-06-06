@@ -63,7 +63,7 @@
       </view>
       <view>
         <view class="cu-label">推广链接</view>
-        <view class="code-box margin-top-xs">{{result.generatedShortUrl || result.generatedClickUrl}}</view>
+        <view class="code-box margin-top-xs">{{result.displayLink}}</view>
       </view>
     </view>
     <view class="flex gap-sm">

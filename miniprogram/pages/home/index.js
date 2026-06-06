@@ -49,7 +49,8 @@ Page({
     return {
       ...result,
       itemPrice: ((result.itemPriceCents || 0) / 100).toFixed(2),
-      commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`
+      commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`,
+      displayLink: result.generatedShortUrl || result.generatedClickUrl || ""
     };
   },
 

@@ -17,7 +17,7 @@
       </view>
     </view>
 
-    <view wx:if="{{orders.length === 0}}" class="cu-card cu-empty flex-direction align-center justify-center">
+    <view wx:if="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center">
       <view class="empty-icon">¥</view>
       <view class="text-bold">暂未匹配到订单</view>
       <view class="section-desc">用户下单后，系统同步到订单会在这里展示。</view>

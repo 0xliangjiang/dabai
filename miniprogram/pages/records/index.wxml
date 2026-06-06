@@ -14,7 +14,7 @@
       <view class="cu-tag green">复制后归因</view>
     </view>
 
-    <view wx:if="{{records.length === 0}}" class="cu-card cu-empty flex-direction align-center justify-center">
+    <view wx:if="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center">
       <view class="empty-icon">0</view>
       <view class="text-bold">还没有转链记录</view>
       <view class="section-desc">去首页粘贴淘口令，生成后会出现在这里。</view>
