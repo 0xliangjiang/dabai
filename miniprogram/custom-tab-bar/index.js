@@ -9,12 +9,6 @@ Component({
         activeClass: "active"
       },
       {
-        pagePath: "/pages/records/index",
-        label: "记录",
-        mark: "记",
-        activeClass: ""
-      },
-      {
         pagePath: "/pages/orders/index",
         label: "订单",
         mark: "单",

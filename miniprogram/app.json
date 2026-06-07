@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/records/index",
     "pages/orders/index",
     "pages/claim/index",
     "pages/profile/index"
@@ -22,10 +21,6 @@
       {
         "pagePath": "pages/home/index",
         "text": "转链"
-      },
-      {
-        "pagePath": "pages/records/index",
-        "text": "记录"
       },
       {
         "pagePath": "pages/orders/index",

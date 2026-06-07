@@ -454,13 +454,6 @@ page {
   font-weight: 900;
 }
 
-.record-rebate {
-  color: #b9540c;
-  font-size: 24rpx;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
 .code-box {
   padding: 20rpx;
   border-radius: 18rpx;
