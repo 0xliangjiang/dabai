@@ -39,7 +39,10 @@
       <view>
         <view class="section-title">商品内容</view>
       </view>
-      <view class="cu-tag blue">自动识别</view>
+      <view class="flex align-center gap-xs">
+        <view class="cu-tag blue">自动识别</view>
+        <button class="paste-chip" bindtap="pasteFromClipboard">粘贴</button>
+      </view>
     </view>
     <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
     <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">查看预估返利</button>

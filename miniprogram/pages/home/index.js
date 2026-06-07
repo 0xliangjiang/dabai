@@ -14,10 +14,30 @@ Page({
 
   onShow() {
     syncTabBar(this);
+    this.autoPasteFromClipboard();
   },
 
   onInput(event) {
     this.setData({ rawContent: event.detail.value });
+  },
+
+  async pasteFromClipboard() {
+    const content = await this.readClipboard();
+    if (!content) {
+      wx.showToast({ title: "剪贴板为空", icon: "none" });
+      return;
+    }
+
+    this.fillRawContent(content);
+    wx.showToast({ title: "已粘贴", icon: "success" });
+  },
+
+  async autoPasteFromClipboard() {
+    const content = await this.readClipboard();
+    if (!content || !looksLikeProductContent(content)) return;
+    if (content === this.data.rawContent.trim()) return;
+
+    this.fillRawContent(content);
   },
 
   async convert() {
@@ -85,5 +105,31 @@ Page({
     } catch (_error) {
       wx.showToast({ title: "请先完成微信登录", icon: "none" });
     }
+  },
+
+  readClipboard() {
+    return new Promise((resolve) => {
+      wx.getClipboardData({
+        success(result) {
+          resolve((result.data || "").trim());
+        },
+        fail() {
+          resolve("");
+        }
+      });
+    });
+  },
+
+  fillRawContent(content) {
+    this.setData({
+      rawContent: content,
+      result: null
+    });
   }
 });
+
+function looksLikeProductContent(content) {
+  return /https?:\/\/\S+/i.test(content) ||
+    /[￥$][^￥$]{4,}[￥$]/.test(content) ||
+    /(淘宝|天猫|京东|拼多多|唯品会|口令|券|到手|下单|返利)/.test(content);
+}

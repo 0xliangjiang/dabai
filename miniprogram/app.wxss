@@ -385,6 +385,26 @@ page {
   background: #ffe875;
 }
 
+.paste-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92rpx;
+  height: 44rpx;
+  margin: 0;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  color: #2f2500;
+  background: #ffd21c;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 44rpx;
+}
+
+.paste-chip::after {
+  border: 0;
+}
+
 .cu-tag.green {
   color: #6f4d00;
   background: #fff18b;
