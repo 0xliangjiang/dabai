@@ -6,16 +6,16 @@
     "pages/profile/index"
   ],
   "window": {
-    "navigationBarTitleText": "返利助手",
-    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "大白小助手",
+    "navigationBarBackgroundColor": "#fff7bf",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#fff8dc"
+    "backgroundColor": "#fffbe6"
   },
   "tabBar": {
     "custom": true,
-    "color": "#8a7147",
-    "selectedColor": "#a8660d",
-    "backgroundColor": "#ffffff",
+    "color": "#7a6724",
+    "selectedColor": "#6f4d00",
+    "backgroundColor": "#fffdf2",
     "borderStyle": "white",
     "list": [
       {

@@ -1,6 +1,6 @@
 page {
   min-height: 100vh;
-  background: #fff8dc;
+  background: #fffbe6;
   color: #2b2116;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
@@ -20,8 +20,8 @@ page {
   padding: 52rpx 36rpx 64rpx;
   border-bottom-left-radius: 34rpx;
   border-bottom-right-radius: 34rpx;
-  background: linear-gradient(135deg, #f8d45c 0%, #f5b83d 58%, #eaa12f 100%);
-  color: #3a260f;
+  background: linear-gradient(135deg, #fff27a 0%, #ffd83d 54%, #ffc414 100%);
+  color: #2f2500;
 }
 
 .eyebrow {
@@ -30,7 +30,7 @@ page {
   padding: 0 18rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.34);
-  color: #5f3d10;
+  color: #5b4700;
   font-size: 22rpx;
   font-weight: 700;
   line-height: 46rpx;
@@ -46,7 +46,7 @@ page {
 .hero-desc {
   margin-top: 14rpx;
   max-width: 620rpx;
-  color: #6d4a1a;
+  color: #5f4a00;
   font-size: 26rpx;
   line-height: 1.55;
 }
@@ -63,10 +63,10 @@ page {
 
 .cu-card {
   background: rgba(255, 255, 255, 0.99);
-  border: 1rpx solid rgba(242, 218, 153, 0.9);
+  border: 1rpx solid rgba(244, 217, 78, 0.42);
   border-radius: 28rpx;
   padding: 30rpx;
-  box-shadow: 0 16rpx 42rpx rgba(148, 101, 25, 0.09);
+  box-shadow: 0 16rpx 42rpx rgba(168, 128, 0, 0.08);
   box-sizing: border-box;
 }
 
@@ -91,19 +91,19 @@ page {
 
 .section-desc {
   margin-top: 8rpx;
-  color: #8a7147;
+  color: #7a6724;
   font-size: 24rpx;
   line-height: 1.5;
 }
 
 .cu-label {
-  color: #5a421f;
+  color: #4f3f10;
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .muted {
-  color: #8a7147;
+  color: #7a6724;
 }
 
 .text-sm {
@@ -135,7 +135,7 @@ page {
 }
 
 .text-grey {
-  color: #8a7147;
+  color: #7a6724;
 }
 
 .text-cut-2 {
@@ -236,13 +236,13 @@ page {
   padding: 10rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.92);
-  border: 1rpx solid #f3e4ad;
+  border: 1rpx solid #f6df69;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .platform-strip-label {
-  color: #8a7147;
+  color: #7a6724;
   font-size: 22rpx;
   font-weight: 700;
   white-space: nowrap;
@@ -251,8 +251,8 @@ page {
 .platform-strip-item {
   padding: 8rpx 14rpx;
   border-radius: 999rpx;
-  background: #fff4cf;
-  color: #a8660d;
+  background: #fff4a3;
+  color: #6f4d00;
   font-size: 22rpx;
   font-weight: 800;
   white-space: nowrap;
@@ -264,7 +264,7 @@ page {
   min-height: 108rpx;
   padding: 18rpx 12rpx;
   border-radius: 22rpx;
-  background: #fffbea;
+  background: #fffdf0;
   box-sizing: border-box;
   text-align: center;
 }
@@ -274,8 +274,8 @@ page {
   height: 38rpx;
   margin: 0 auto 10rpx;
   border-radius: 999rpx;
-  background: #fff0b8;
-  color: #a8660d;
+  background: #ffe875;
+  color: #6f4d00;
   font-size: 22rpx;
   font-weight: 900;
   line-height: 38rpx;
@@ -286,8 +286,8 @@ page {
   min-width: 0;
   padding: 22rpx;
   border-radius: 22rpx;
-  background: linear-gradient(180deg, #ffffff 0%, #fffbea 100%);
-  border: 1rpx solid #f1dfa5;
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf0 100%);
+  border: 1rpx solid #f5dc5b;
   box-sizing: border-box;
 }
 
@@ -302,9 +302,9 @@ page {
 .cu-textarea {
   width: 100%;
   box-sizing: border-box;
-  border: 1rpx solid #ecd99b;
+  border: 1rpx solid #f3da59;
   border-radius: 22rpx;
-  background: #fffbea;
+  background: #fffdf0;
   color: #2b2116;
   font-size: 28rpx;
 }
@@ -352,20 +352,20 @@ page {
 }
 
 .cu-btn.primary {
-  color: #ffffff;
-  background: linear-gradient(135deg, #f0b429 0%, #d98b18 100%);
-  box-shadow: 0 14rpx 28rpx rgba(217, 139, 24, 0.24);
+  color: #2f2500;
+  background: linear-gradient(135deg, #ffe24f 0%, #ffc400 100%);
+  box-shadow: 0 14rpx 28rpx rgba(255, 196, 0, 0.28);
 }
 
 .cu-btn.secondary {
-  color: #a8660d;
-  background: #fff6cf;
-  border: 1rpx solid #efd982;
+  color: #6f4d00;
+  background: #fff8bd;
+  border: 1rpx solid #f2d643;
 }
 
 .cu-btn.success {
-  color: #ffffff;
-  background: #d98b18;
+  color: #2f2500;
+  background: #ffd21c;
 }
 
 .cu-tag {
@@ -381,23 +381,23 @@ page {
 }
 
 .cu-tag.blue {
-  color: #a8660d;
-  background: #fff0b8;
+  color: #6f4d00;
+  background: #ffe875;
 }
 
 .cu-tag.green {
-  color: #a8660d;
-  background: #ffed9f;
+  color: #6f4d00;
+  background: #fff18b;
 }
 
 .cu-tag.orange {
-  color: #a8660d;
-  background: #fff0ca;
+  color: #6f4d00;
+  background: #fff2a6;
 }
 
 .cu-tag.dark {
   color: #3b2a16;
-  background: #f3e7c9;
+  background: #f7edb0;
 }
 
 .product-card {
@@ -409,17 +409,17 @@ page {
   height: 156rpx;
   flex: 0 0 156rpx;
   border-radius: 22rpx;
-  background: #f3e7c9;
+  background: #f7edb0;
 }
 
 .product-thumb.placeholder {
-  color: #8a7147;
+  color: #7a6724;
   font-size: 24rpx;
   font-weight: 800;
 }
 
 .price {
-  color: #c76a12;
+  color: #b06f00;
   font-size: 34rpx;
   font-weight: 900;
 }
@@ -427,8 +427,8 @@ page {
 .rate-badge {
   padding: 8rpx 12rpx;
   border-radius: 12rpx;
-  background: #fff0b8;
-  color: #a8660d;
+  background: #ffe875;
+  color: #6f4d00;
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -439,8 +439,8 @@ page {
   justify-content: space-between;
   padding: 16rpx 18rpx;
   border-radius: 18rpx;
-  background: linear-gradient(135deg, #fff2a8, #ffd15c);
-  color: #5a3a08;
+  background: linear-gradient(135deg, #fff48a, #ffd100);
+  color: #4f3900;
 }
 
 .rebate-label {
@@ -449,7 +449,7 @@ page {
 }
 
 .rebate-value {
-  color: #a8470b;
+  color: #7a4f00;
   font-size: 36rpx;
   font-weight: 900;
 }
@@ -457,8 +457,8 @@ page {
 .code-box {
   padding: 20rpx;
   border-radius: 18rpx;
-  background: #fffbea;
-  color: #5a421f;
+  background: #fffdf0;
+  color: #4f3f10;
   font-size: 24rpx;
   line-height: 1.55;
   word-break: break-all;
@@ -467,8 +467,8 @@ page {
 .hint-bar {
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: #fff6cf;
-  color: #a8660d;
+  background: #fff8bd;
+  color: #6f4d00;
   font-size: 24rpx;
   line-height: 1.45;
 }
@@ -476,13 +476,13 @@ page {
 .soft-panel {
   padding: 20rpx;
   border-radius: 20rpx;
-  background: #fffbea;
-  border: 1rpx solid #f1dfa5;
+  background: #fffdf0;
+  border: 1rpx solid #f5dc5b;
 }
 
 .cu-empty {
   min-height: 260rpx;
-  color: #8a7147;
+  color: #7a6724;
   font-size: 26rpx;
   text-align: center;
 }
@@ -492,8 +492,8 @@ page {
   height: 92rpx;
   margin: 0 auto 18rpx;
   border-radius: 999rpx;
-  background: #fff0b8;
-  color: #a8660d;
+  background: #ffe875;
+  color: #6f4d00;
   font-size: 42rpx;
   font-weight: 900;
   line-height: 92rpx;
@@ -503,8 +503,8 @@ page {
   overflow: hidden;
   border-radius: 24rpx;
   background: rgba(255, 255, 255, 0.96);
-  border: 1rpx solid rgba(242, 218, 153, 0.9);
-  box-shadow: 0 18rpx 50rpx rgba(148, 101, 25, 0.09);
+  border: 1rpx solid rgba(244, 217, 78, 0.42);
+  box-shadow: 0 18rpx 50rpx rgba(168, 128, 0, 0.08);
 }
 
 .cu-item {
@@ -514,25 +514,25 @@ page {
 }
 
 .line {
-  border-bottom: 1rpx solid #f2e2ae;
+  border-bottom: 1rpx solid #f3df6f;
 }
 
 .cu-arrow {
-  color: #b79d63;
+  color: #b4961a;
   font-size: 38rpx;
 }
 
 .cu-upload {
   height: 168rpx;
-  border: 2rpx dashed #e8cd71;
+  border: 2rpx dashed #e7c91f;
   border-radius: 22rpx;
-  color: #8a7147;
-  background: #fffbea;
+  color: #7a6724;
+  background: #fffdf0;
   box-sizing: border-box;
 }
 
 .mini-link {
-  color: #a8660d;
+  color: #6f4d00;
   font-size: 24rpx;
   font-weight: 800;
 }

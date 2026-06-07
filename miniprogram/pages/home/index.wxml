@@ -1,6 +1,6 @@
 <view class="cu-page page-shell">
   <view class="hero">
-    <view class="eyebrow">返利助手</view>
+    <view class="eyebrow">大白小助手</view>
     <view class="hero-title">粘贴商品 查预估返利</view>
     <view class="hero-desc">支持淘宝、京东、拼多多、唯品会，结果以实际订单结算为准。</view>
   </view>
