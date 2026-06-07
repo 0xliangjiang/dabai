@@ -59,6 +59,10 @@
           <view class="price">¥{{result.itemPrice}}</view>
           <view class="rate-badge">佣金率 {{result.commissionPercent}}</view>
         </view>
+        <view class="rebate-panel margin-top-sm">
+          <view class="rebate-label">预估返利</view>
+          <view class="rebate-value">¥{{result.estimatedRebate}}</view>
+        </view>
       </view>
     </view>
 

@@ -9,7 +9,8 @@ export type CreateConversionInput = {
 export async function createConversion(
   input: CreateConversionInput,
   taobaoClient: TaobaoClient,
-  repositories: Repositories
+  repositories: Repositories,
+  options: { commissionSharingRatio?: number } = {}
 ): Promise<ConversionRecord> {
   const rawContent = input.rawContent.trim();
   if (!rawContent) {
@@ -21,7 +22,10 @@ export async function createConversion(
   return repositories.conversions.create({
     userId: input.userId,
     rawContent,
-    ...converted
+    ...converted,
+    estimatedRebateCents: Math.round(
+      converted.estimatedCommissionCents * (options.commissionSharingRatio ?? 0)
+    )
   });
 }
 

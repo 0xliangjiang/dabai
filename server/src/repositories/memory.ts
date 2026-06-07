@@ -17,6 +17,8 @@ export type ConversionRecord = {
   itemImageUrl: string;
   itemPriceCents: number;
   commissionRate: number;
+  estimatedCommissionCents: number;
+  estimatedRebateCents: number;
   generatedPassword: string;
   generatedShortUrl: string;
   generatedClickUrl: string;

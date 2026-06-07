@@ -16,6 +16,7 @@ Page({
           ...item,
           status: "已生成",
           platformLabel: platformLabel(item.platform),
+          estimatedRebate: ((item.estimatedRebateCents || 0) / 100).toFixed(2),
           commissionPercent: `${Math.round((item.commissionRate || 0) * 100)}%`,
           createdAtText: item.createdAt ? item.createdAt.slice(0, 10) : "刚刚"
         }));

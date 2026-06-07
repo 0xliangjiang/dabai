@@ -11,6 +11,7 @@ const baseDingdanxiaConfig = {
   apiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
   pid: "mm_1_2_3",
   jdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
+  jdGoodsApiUrl: "https://api.tbk.dingdanxia.com/jd/query_goods",
   jdSiteId: "jd-site",
   jdUnionId: "jd-union",
   jdAuthKey: "jd-auth-key",
@@ -73,6 +74,7 @@ describe("DingdanxiaClient", () => {
       itemImageUrl: "https://img.alicdn.com/demo.jpg",
       itemPriceCents: 13900,
       commissionRate: 0.024,
+      estimatedCommissionCents: 334,
       generatedPassword: "0.0fu置内容￥dtnTcW4lw5e￥转移至淘tao寳",
       generatedShortUrl: "",
       generatedClickUrl: "https://s.click.taobao.com/t?e=xxx"
@@ -135,10 +137,86 @@ describe("DingdanxiaClient", () => {
       itemImageUrl: "https://img.jd.com/demo.jpg",
       itemPriceCents: 19900,
       commissionRate: 0.08,
+      estimatedCommissionCents: 1592,
       generatedPassword: "",
       generatedShortUrl: "https://u.jd.com/demo",
       generatedClickUrl: "https://u.jd.com/demo"
     });
+  });
+
+  test("queries JD goods details when promotion response only contains a link", async () => {
+    const fetchMock = vi.fn(async (url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const body = init?.body?.toString() ?? "";
+
+      if (url === "https://api.tbk.dingdanxia.com/jd/promotion_common") {
+        expect(body).toContain("materialId=https%3A%2F%2F3.cn%2F2-R5OdBT%3Fjkl%3D%40G8tEb4d9MSh1%40");
+
+        return new Response(
+          JSON.stringify({
+            code: 200,
+            data: {
+              clickURL: "https://union-click.jd.com/jdc?demo"
+            }
+          }),
+          { status: 200 }
+        );
+      }
+
+      expect(url).toBe("https://api.tbk.dingdanxia.com/jd/query_goods");
+      expect(body).toContain("apikey=ddx-key");
+      expect(body).toContain("keyword=https%3A%2F%2F3.cn%2F2-R5OdBT%3Fjkl%3D%40G8tEb4d9MSh1%40");
+      expect(body).toContain("sceneId=jd-scene");
+      expect(body).toContain("pageIndex=1");
+      expect(body).toContain("pageSize=1");
+
+      return new Response(
+        JSON.stringify({
+          code: 200,
+          data: [
+            {
+              itemId: "jd-item-100",
+              skuName: "棉十三男士短袜5双装",
+              imageInfo: {
+                imageList: [{ url: "https://img.jd.com/socks.jpg" }]
+              },
+              priceInfo: {
+                price: 29.9,
+                lowestCouponPrice: 19.9
+              },
+              commissionInfo: {
+                couponCommission: 3.58,
+                commission: 5.38,
+                commissionShare: 18
+              }
+            }
+          ]
+        }),
+        { status: 200 }
+      );
+    });
+
+    const client = new DingdanxiaClient(
+      {
+        ...baseDingdanxiaConfig,
+        jdGoodsApiUrl: "https://api.tbk.dingdanxia.com/jd/query_goods"
+      },
+      { fetch: fetchMock }
+    );
+
+    await expect(
+      client.convert("【京东】https://3.cn/2-R5OdBT?jkl=@G8tEb4d9MSh1@ ZH9112 「棉十三男士短袜5双装」")
+    ).resolves.toMatchObject({
+      platform: "jd",
+      itemId: "jd-item-100",
+      itemTitle: "棉十三男士短袜5双装",
+      itemImageUrl: "https://img.jd.com/socks.jpg",
+      itemPriceCents: 1990,
+      commissionRate: 0.18,
+      estimatedCommissionCents: 358,
+      generatedShortUrl: "https://union-click.jd.com/jdc?demo",
+      generatedClickUrl: "https://union-click.jd.com/jdc?demo"
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   test("posts PDD url_convert requests and maps the response", async () => {
@@ -182,6 +260,7 @@ describe("DingdanxiaClient", () => {
       itemImageUrl: "https://img.pdd.com/demo.jpg",
       itemPriceCents: 3990,
       commissionRate: 0.12,
+      estimatedCommissionCents: 479,
       generatedPassword: "",
       generatedShortUrl: "https://p.pinduoduo.com/demo",
       generatedClickUrl: "https://mobile.yangkeduo.com/promo"
@@ -226,6 +305,7 @@ describe("DingdanxiaClient", () => {
       itemImageUrl: "https://img.vip.com/demo.jpg",
       itemPriceCents: 8900,
       commissionRate: 0.06,
+      estimatedCommissionCents: 534,
       generatedPassword: "",
       generatedShortUrl: "https://t.vip.com/s",
       generatedClickUrl: "https://t.vip.com/demo"

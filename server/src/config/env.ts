@@ -10,6 +10,7 @@ export type AppConfig = {
   dingdanxiaApiUrl: string;
   dingdanxiaPid: string;
   dingdanxiaJdApiUrl: string;
+  dingdanxiaJdGoodsApiUrl: string;
   dingdanxiaJdSiteId: string;
   dingdanxiaJdUnionId: string;
   dingdanxiaJdAuthKey: string;
@@ -35,6 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dingdanxiaApiUrl: env.DINGDANXIA_API_URL ?? "https://api.tbk.dingdanxia.com/tbk/wn_convert",
     dingdanxiaPid: env.DINGDANXIA_PID ?? "",
     dingdanxiaJdApiUrl: env.DINGDANXIA_JD_API_URL ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
+    dingdanxiaJdGoodsApiUrl: env.DINGDANXIA_JD_GOODS_API_URL ?? "https://api.tbk.dingdanxia.com/jd/query_goods",
     dingdanxiaJdSiteId: env.DINGDANXIA_JD_SITE_ID ?? "",
     dingdanxiaJdUnionId: env.DINGDANXIA_JD_UNION_ID ?? env.DINGDANXIA_JD_SITE_ID ?? "",
     dingdanxiaJdAuthKey: env.DINGDANXIA_JD_AUTH_KEY ?? "",

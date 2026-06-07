@@ -15,6 +15,7 @@ describe("server API", () => {
     dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
     dingdanxiaPid: "",
     dingdanxiaJdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
+    dingdanxiaJdGoodsApiUrl: "https://api.tbk.dingdanxia.com/jd/query_goods",
     dingdanxiaJdSiteId: "",
     dingdanxiaJdUnionId: "",
     dingdanxiaJdAuthKey: "",
@@ -103,7 +104,9 @@ describe("server API", () => {
       platform: "taobao",
       generatedPassword: "￥mockpassword￥",
       generatedShortUrl: "https://s.click.taobao.com/mock",
-      generatedClickUrl: "https://uland.taobao.com/mock"
+      generatedClickUrl: "https://uland.taobao.com/mock",
+      estimatedCommissionCents: 1188,
+      estimatedRebateCents: 594
     });
   });
 

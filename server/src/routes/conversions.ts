@@ -6,7 +6,8 @@ import type { Repositories } from "../repositories/memory.js";
 export async function registerConversionRoutes(
   app: FastifyInstance,
   repositories: Repositories,
-  taobaoClient: TaobaoClient
+  taobaoClient: TaobaoClient,
+  commissionSharingRatio: number
 ) {
   app.post<{ Body: { rawContent?: string } }>("/api/conversions", async (request, reply) => {
     try {
@@ -16,7 +17,8 @@ export async function registerConversionRoutes(
           rawContent: request.body.rawContent ?? ""
         },
         taobaoClient,
-        repositories
+        repositories,
+        { commissionSharingRatio }
       );
     } catch (error) {
       if (error instanceof ConversionValidationError) {

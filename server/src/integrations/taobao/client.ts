@@ -7,6 +7,7 @@ export type TaobaoConversionResult = {
   itemImageUrl: string;
   itemPriceCents: number;
   commissionRate: number;
+  estimatedCommissionCents: number;
   generatedPassword: string;
   generatedShortUrl: string;
   generatedClickUrl: string;
@@ -21,6 +22,7 @@ export type CreateTaobaoClientConfig = {
   dingdanxiaApiUrl?: string;
   dingdanxiaPid?: string;
   dingdanxiaJdApiUrl?: string;
+  dingdanxiaJdGoodsApiUrl?: string;
   dingdanxiaJdSiteId?: string;
   dingdanxiaJdUnionId?: string;
   dingdanxiaJdAuthKey?: string;
@@ -54,6 +56,7 @@ export type DingdanxiaClientConfig = {
   apiUrl: string;
   pid?: string;
   jdApiUrl: string;
+  jdGoodsApiUrl: string;
   jdSiteId?: string;
   jdUnionId?: string;
   jdAuthKey?: string;
@@ -159,6 +162,7 @@ export class DingdanxiaClient implements TaobaoClient {
       itemImageUrl: itemInfo.pict_url ?? "",
       itemPriceCents: finalPrice,
       commissionRate,
+      estimatedCommissionCents: estimateCommissionCents(finalPrice, commissionRate),
       generatedPassword: data.long_coupon_tpwd ?? data.long_item_tpwd ?? data.coupon_tpwd ?? data.item_tpwd ?? "",
       generatedShortUrl: "",
       generatedClickUrl: data.coupon_click_url ?? data.item_url ?? ""
@@ -172,9 +176,10 @@ export class DingdanxiaClient implements TaobaoClient {
       throw new DingdanxiaApiError("DINGDANXIA_JD_SITE_ID is required for JD conversion");
     }
 
+    const materialId = extractJdMaterialId(rawContent);
     const body = new URLSearchParams({
       apikey: this.config.apiKey,
-      materialId: extractJdMaterialId(rawContent),
+      materialId,
       siteId: siteId!
     });
     if (isRealConfigValue(unionId ?? "")) body.set("unionId", unionId!);
@@ -183,17 +188,36 @@ export class DingdanxiaClient implements TaobaoClient {
     if (isRealConfigValue(this.config.jdPositionId ?? "")) body.set("positionId", this.config.jdPositionId!);
     if (isRealConfigValue(this.config.jdPid ?? "")) body.set("pid", this.config.jdPid!);
 
-    const data = await this.postGeneric(this.config.jdApiUrl, body);
+    const [data, goods] = await Promise.all([
+      this.postGeneric(this.config.jdApiUrl, body),
+      this.queryJdGoods(materialId)
+    ]);
     const clickUrl = pickString(data, ["clickURL", "clickUrl", "shortURL", "shortUrl", "url"]);
-    const itemId = pickString(data, ["skuId", "sku_id", "goodsId", "itemId"]);
+    const commissionInfo = asRecord(pickValue(goods, ["commissionInfo"])) ?? {};
+    const priceInfo = asRecord(pickValue(goods, ["priceInfo"])) ?? {};
+    const itemId = pickString(goods, ["itemId", "skuId", "sku_id", "goodsId"]) || pickString(data, ["skuId", "sku_id", "goodsId", "itemId"]);
+    const itemPriceCents = parseMoneyToCents(
+      pickValue(priceInfo, ["lowestCouponPrice", "lowestPrice", "price"]) ??
+        pickValue(goods, ["price", "wlPrice", "lowestPrice"]) ??
+        pickValue(data, ["price", "wlPrice", "lowestPrice"])
+    );
+    const commissionRate = parsePercentRate(
+      pickValue(commissionInfo, ["commissionShare", "plusCommissionShare"]) ??
+        pickValue(goods, ["commisionRatioWl", "commissionRate", "commissionShare"]) ??
+        pickValue(data, ["commisionRatioWl", "commissionRate", "commissionShare"])
+    );
+    const estimatedCommissionCents =
+      parseMoneyToCents(pickValue(commissionInfo, ["couponCommission", "commission"])) ||
+      estimateCommissionCents(itemPriceCents, commissionRate);
 
     return {
       platform: "jd",
       itemId: itemId || rawContent,
-      itemTitle: pickString(data, ["skuName", "goodsName", "title", "itemTitle"]) || "京东商品",
-      itemImageUrl: pickString(data, ["imageUrl", "imgUrl", "pictUrl"]),
-      itemPriceCents: parseMoneyToCents(pickValue(data, ["price", "wlPrice", "lowestPrice"])),
-      commissionRate: parsePercentRate(pickValue(data, ["commisionRatioWl", "commissionRate", "commissionShare"])),
+      itemTitle: pickString(goods, ["skuName", "goodsName", "title", "itemTitle"]) || pickString(data, ["skuName", "goodsName", "title", "itemTitle"]) || "京东商品",
+      itemImageUrl: pickJdImage(goods) || pickString(data, ["imageUrl", "imgUrl", "pictUrl"]),
+      itemPriceCents,
+      commissionRate,
+      estimatedCommissionCents,
       generatedPassword: "",
       generatedShortUrl: clickUrl,
       generatedClickUrl: clickUrl
@@ -225,6 +249,10 @@ export class DingdanxiaClient implements TaobaoClient {
       itemImageUrl: pickString(itemInfo, ["goods_thumbnail_url", "goods_image_url", "imageUrl"]) || pickString(data, ["goods_thumbnail_url", "goods_image_url", "imageUrl"]),
       itemPriceCents: parseFenToCents(pickValue(itemInfo, ["min_group_price", "min_normal_price"])) || parseMoneyToCents(pickValue(data, ["price"])),
       commissionRate: parsePermillageRate(pickValue(itemInfo, ["promotion_rate", "predict_promotion_rate"]) ?? pickValue(data, ["promotion_rate", "commission_rate", "commissionRate"])),
+      estimatedCommissionCents: estimateCommissionCents(
+        parseFenToCents(pickValue(itemInfo, ["min_group_price", "min_normal_price"])) || parseMoneyToCents(pickValue(data, ["price"])),
+        parsePermillageRate(pickValue(itemInfo, ["promotion_rate", "predict_promotion_rate"]) ?? pickValue(data, ["promotion_rate", "commission_rate", "commissionRate"]))
+      ),
       generatedPassword: "",
       generatedShortUrl: pickString(data, ["short_url", "mobile_short_url"]),
       generatedClickUrl: clickUrl
@@ -252,10 +280,32 @@ export class DingdanxiaClient implements TaobaoClient {
       itemImageUrl: pickString(itemInfo, ["goodsThumbUrl", "imageUrl", "goodsImageUrl"]) || pickString(data, ["imageUrl"]),
       itemPriceCents: parseMoneyToCents(pickValue(itemInfo, ["vipPrice", "price", "marketPrice"])),
       commissionRate: parsePercentRate(pickValue(data, ["commissionRate", "commRate"])),
+      estimatedCommissionCents: estimateCommissionCents(
+        parseMoneyToCents(pickValue(itemInfo, ["vipPrice", "price", "marketPrice"])),
+        parsePercentRate(pickValue(data, ["commissionRate", "commRate"]))
+      ),
       generatedPassword: "",
       generatedShortUrl: pickString(data, ["shortUrl"]),
       generatedClickUrl: clickUrl
     };
+  }
+
+  private async queryJdGoods(materialId: string): Promise<Record<string, unknown>> {
+    const body = new URLSearchParams({
+      apikey: this.config.apiKey,
+      keyword: materialId,
+      pageIndex: "1",
+      pageSize: "1"
+    });
+    if (isRealConfigValue(this.config.jdSceneId ?? "")) body.set("sceneId", this.config.jdSceneId!);
+    if (isRealConfigValue(this.config.jdPid ?? "")) body.set("pid", this.config.jdPid!);
+
+    try {
+      const data = await this.postGeneric(this.config.jdGoodsApiUrl, body);
+      return firstRecord(data) ?? data;
+    } catch {
+      return {};
+    }
   }
 
   private async postGeneric(url: string, body: URLSearchParams): Promise<Record<string, unknown>> {
@@ -294,6 +344,7 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
       apiUrl: config.dingdanxiaApiUrl ?? "https://api.tbk.dingdanxia.com/tbk/wn_convert",
       pid: config.dingdanxiaPid,
       jdApiUrl: config.dingdanxiaJdApiUrl ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
+      jdGoodsApiUrl: config.dingdanxiaJdGoodsApiUrl ?? "https://api.tbk.dingdanxia.com/jd/query_goods",
       jdSiteId: config.dingdanxiaJdSiteId,
       jdUnionId: config.dingdanxiaJdUnionId,
       jdAuthKey: config.dingdanxiaJdAuthKey,
@@ -321,6 +372,7 @@ export class MockTaobaoClient implements TaobaoClient {
       itemImageUrl: "https://img.alicdn.com/mock-item.png",
       itemPriceCents: 9900,
       commissionRate: 0.12,
+      estimatedCommissionCents: 1188,
       generatedPassword: "￥mockpassword￥",
       generatedShortUrl: "https://s.click.taobao.com/mock",
       generatedClickUrl: "https://uland.taobao.com/mock"
@@ -360,6 +412,60 @@ function pickString(record: Record<string, unknown>, keys: string[]): string {
   const value = pickValue(record, keys);
   if (value === undefined) return "";
   return String(value);
+}
+
+function firstRecord(value: unknown): Record<string, unknown> | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const itemRecord = asRecord(item);
+      if (itemRecord) return itemRecord;
+    }
+    return undefined;
+  }
+
+  const record = asRecord(value);
+  if (!record) return undefined;
+
+  const numericKeyRecord = asRecord(record["0"]);
+  if (numericKeyRecord) return numericKeyRecord;
+
+  const candidates = [
+    pickValue(record, ["data"]),
+    pickValue(record, ["list"]),
+    pickValue(record, ["result"]),
+    pickValue(record, ["goodsList"])
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      const [first] = candidate;
+      const firstAsRecord = asRecord(first);
+      if (firstAsRecord) return firstAsRecord;
+    }
+
+    const candidateRecord = asRecord(candidate);
+    if (candidateRecord) {
+      const nested = firstRecord(candidateRecord);
+      if (nested) return nested;
+    }
+  }
+
+  return undefined;
+}
+
+function pickJdImage(goods: Record<string, unknown>): string {
+  const imageInfo = asRecord(pickValue(goods, ["imageInfo"])) ?? {};
+  const imageList = pickValue(imageInfo, ["imageList"]);
+  if (Array.isArray(imageList)) {
+    for (const image of imageList) {
+      const imageRecord = asRecord(image);
+      if (!imageRecord) continue;
+      const url = pickString(imageRecord, ["url", "imageUrl"]);
+      if (url) return url;
+    }
+  }
+
+  return pickString(goods, ["imageUrl", "imgUrl", "pictUrl"]);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -415,4 +521,8 @@ function parsePermillageRate(value: unknown): number {
     return 0;
   }
   return rate > 100 ? rate / 1000 : rate / 100;
+}
+
+function estimateCommissionCents(priceCents: number, commissionRate: number): number {
+  return Math.round(priceCents * commissionRate);
 }

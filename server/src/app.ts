@@ -50,7 +50,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.get("/health", async () => ({ ok: true }));
 
   await registerAuthRoutes(app, repositories);
-  await registerConversionRoutes(app, repositories, taobaoClient);
+  await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
   await registerOrderRoutes(app, repositories);
   await registerJobRoutes(app, config);
   await registerAdminRoutes(app, config, repositories);
