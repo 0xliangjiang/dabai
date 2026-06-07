@@ -228,63 +228,34 @@ page {
   gap: 14rpx;
 }
 
-.platform-grid {
+.platform-strip {
   display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.platform-pill {
-  display: flex;
-  min-height: 92rpx;
   align-items: center;
-  justify-content: space-between;
-  padding: 16rpx 18rpx;
-  border-radius: 20rpx;
-  background: #fffdf3;
+  gap: 10rpx;
+  min-height: 58rpx;
+  padding: 10rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.92);
   border: 1rpx solid #f3e4ad;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
-.platform-main {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.platform-mark {
-  width: 54rpx;
-  height: 54rpx;
-  flex: 0 0 54rpx;
-  border-radius: 18rpx;
-  background: linear-gradient(135deg, #ffe89b 0%, #f5ba35 100%);
-  color: #a8660d;
-  font-size: 24rpx;
-  font-weight: 900;
-  line-height: 54rpx;
-  text-align: center;
-}
-
-.platform-name {
-  color: #3b2a16;
-  font-size: 28rpx;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.platform-meta {
-  margin-top: 6rpx;
+.platform-strip-label {
   color: #8a7147;
   font-size: 22rpx;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.platform-status {
+.platform-strip-item {
   padding: 8rpx 14rpx;
   border-radius: 999rpx;
   background: #fff4cf;
   color: #a8660d;
   font-size: 22rpx;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .step-pill {

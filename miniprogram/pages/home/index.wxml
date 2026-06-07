@@ -26,53 +26,12 @@
     </view>
   </view>
 
-  <view class="cu-card flex-direction gap-sm">
-    <view class="section-heading">
-      <view class="section-title">支持平台</view>
-      <view class="cu-tag blue">自动识别</view>
-    </view>
-    <view class="platform-grid">
-      <view class="platform-pill">
-        <view class="platform-main">
-          <view class="platform-mark">淘</view>
-          <view>
-            <view class="platform-name">淘宝/天猫</view>
-            <view class="platform-meta">淘口令、商品链接</view>
-          </view>
-        </view>
-        <view class="platform-status">已接入</view>
-      </view>
-      <view class="platform-pill">
-        <view class="platform-main">
-          <view class="platform-mark">京</view>
-          <view>
-            <view class="platform-name">京东</view>
-            <view class="platform-meta">商品链接、分享文案</view>
-          </view>
-        </view>
-        <view class="platform-status">已接入</view>
-      </view>
-      <view class="platform-pill">
-        <view class="platform-main">
-          <view class="platform-mark">拼</view>
-          <view>
-            <view class="platform-name">拼多多</view>
-            <view class="platform-meta">商品链接</view>
-          </view>
-        </view>
-        <view class="platform-status">已接入</view>
-      </view>
-      <view class="platform-pill">
-        <view class="platform-main">
-          <view class="platform-mark">唯</view>
-          <view>
-            <view class="platform-name">唯品会</view>
-            <view class="platform-meta">商品链接</view>
-          </view>
-        </view>
-        <view class="platform-status">已接入</view>
-      </view>
-    </view>
+  <view class="platform-strip">
+    <view class="platform-strip-label">支持</view>
+    <view class="platform-strip-item">淘宝</view>
+    <view class="platform-strip-item">京东</view>
+    <view class="platform-strip-item">拼多多</view>
+    <view class="platform-strip-item">唯品会</view>
   </view>
 
   <view class="cu-card prompt-box flex-direction gap">
