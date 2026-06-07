@@ -6,7 +6,7 @@
     "pages/profile/index"
   ],
   "window": {
-    "navigationBarTitleText": "淘宝客转链",
+    "navigationBarTitleText": "返利助手",
     "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#fff8dc"
@@ -20,7 +20,7 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "转链"
+        "text": "返利"
       },
       {
         "pagePath": "pages/orders/index",

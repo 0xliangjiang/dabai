@@ -36,7 +36,7 @@ Page({
       });
       this.setData({ result: this.formatResult(result) });
     } catch (error) {
-      wx.showToast({ title: error.error || "转链失败", icon: "none" });
+      wx.showToast({ title: error.error || "查询失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
     }

@@ -11,7 +11,7 @@
         <view class="metric-value">用户</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">收益</view>
+        <view class="muted text-sm">返利</view>
         <view class="metric-value">预估</view>
       </view>
     </view>
@@ -19,8 +19,8 @@
     <view class="cu-card flex-direction gap">
       <view class="flex align-start justify-between gap-sm">
         <view class="flex-sub">
-          <view class="section-title">佣金规则</view>
-          <view class="section-desc">按平台配置比例分成。</view>
+          <view class="section-title">返利说明</view>
+          <view class="section-desc">展示金额为预估参考，实际到账以订单结算为准。</view>
         </view>
         <view class="cu-tag blue">预估</view>
       </view>
