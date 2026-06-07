@@ -4,8 +4,8 @@ Component({
     list: [
       {
         pagePath: "/pages/home/index",
-        label: "返利",
-        mark: "返",
+        label: "优惠",
+        mark: "惠",
         activeClass: "active"
       },
       {

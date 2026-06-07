@@ -6,8 +6,8 @@ Page({
     isLoggedIn: false,
     userId: "",
     identityText: "未登录",
-    loginTitle: "登录后查看返利",
-    loginDesc: "使用微信登录，订单和返利记录会跟随你的账号。",
+    loginTitle: "登录后查看优惠",
+    loginDesc: "使用微信登录，订单和优惠记录会跟随你的账号。",
     loggingIn: false
   },
 
@@ -22,8 +22,8 @@ Page({
       isLoggedIn: Boolean(user),
       userId: user?.id || "",
       identityText: user ? "已登录" : "未登录",
-      loginTitle: user ? "微信已登录" : "登录后查看返利",
-      loginDesc: user ? `账号 ${user.id}` : "使用微信登录，订单和返利记录会跟随你的账号。"
+      loginTitle: user ? "微信已登录" : "登录后查看优惠",
+      loginDesc: user ? `账号 ${user.id}` : "使用微信登录，订单和优惠记录会跟随你的账号。"
     });
   },
 

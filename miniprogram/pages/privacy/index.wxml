@@ -1,0 +1,29 @@
+<view class="cu-page page-shell">
+  <view class="hero">
+    <view class="eyebrow">隐私</view>
+    <view class="hero-title">隐私政策</view>
+    <view class="hero-desc">我们仅在提供商品识别、优惠查询、订单匹配和账号服务时使用必要信息。</view>
+  </view>
+
+  <view class="content-stack floating-stack">
+    <view class="cu-card article-card">
+      <view class="section-title">微信登录</view>
+      <view class="article-text">用户使用微信登录时，我们会通过微信提供的登录凭证识别账号，用于保存查询记录、订单匹配状态和基础账号信息。</view>
+    </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">剪贴板读取</view>
+      <view class="article-text">为便于快速填写商品内容，小程序会在用户进入首页时尝试读取剪贴板。系统仅在内容看起来像商品链接、口令或分享文案时自动填入输入框，用户也可以使用手动粘贴按钮。</view>
+    </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">订单与商品信息</view>
+      <view class="article-text">用户提交或查询的商品内容、订单补充信息仅用于优惠查询、订单匹配、客服核对和结算说明，不会用于与本服务无关的用途。</view>
+    </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">数据安全</view>
+      <view class="article-text">我们会尽量采取合理措施保护用户信息。如需删除或更正信息，可通过客服入口联系我们处理。</view>
+    </view>
+  </view>
+</view>

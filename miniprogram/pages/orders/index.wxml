@@ -1,7 +1,7 @@
 <view class="cu-page page-shell">
   <view class="hero">
-    <view class="eyebrow">返利订单</view>
-    <view class="hero-title">我的返利进度</view>
+    <view class="eyebrow">优惠订单</view>
+    <view class="hero-title">我的订单进度</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -11,15 +11,15 @@
         <view class="metric-value">{{orders.length}}</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">返利状态</view>
+        <view class="muted text-sm">结算状态</view>
         <view class="metric-value">预估</view>
       </view>
     </view>
 
     <view wx:if="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center">
       <view class="empty-icon">¥</view>
-      <view class="text-bold">暂未匹配到返利订单</view>
-      <view class="section-desc">通过返利链接下单后会显示在这里。</view>
+      <view class="text-bold">暂未匹配到订单</view>
+      <view class="section-desc">通过本小程序生成的打开内容下单后会显示在这里。</view>
     </view>
 
     <view wx:for="{{orders}}" wx:key="id" class="cu-card product-card flex-direction gap">
@@ -29,7 +29,7 @@
       </view>
       <view class="soft-panel flex align-center justify-between">
         <view>
-          <view class="muted text-sm">预估返利</view>
+          <view class="muted text-sm">预估优惠</view>
         </view>
         <view class="price">¥{{item.estimatedCommission}}</view>
       </view>

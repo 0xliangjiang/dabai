@@ -23,7 +23,7 @@
         <view class="metric-value">{{identityText}}</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">返利</view>
+        <view class="muted text-sm">优惠</view>
         <view class="metric-value">预估</view>
       </view>
     </view>
@@ -31,8 +31,8 @@
     <view class="cu-card flex-direction gap">
       <view class="flex align-start justify-between gap-sm">
         <view class="flex-sub">
-          <view class="section-title">返利说明</view>
-          <view class="section-desc">展示金额为预估参考，实际到账以订单结算为准。</view>
+          <view class="section-title">优惠说明</view>
+          <view class="section-desc">展示金额为预估参考，实际结果以订单结算为准。</view>
         </view>
         <view class="cu-tag blue">预估</view>
       </view>
@@ -47,10 +47,31 @@
     </view>
 
     <view class="cu-list">
+      <navigator class="cu-item flex align-center justify-between line" url="/pages/rebate-rules/index">
+        <view>
+          <view class="cu-label">优惠说明</view>
+          <view class="section-desc">查看预估、结算规则</view>
+        </view>
+        <view class="cu-arrow">›</view>
+      </navigator>
       <navigator class="cu-item flex align-center justify-between line" url="/pages/claim/index">
         <view>
           <view class="cu-label">订单补充</view>
           <view class="section-desc">补充订单信息</view>
+        </view>
+        <view class="cu-arrow">›</view>
+      </navigator>
+      <navigator class="cu-item flex align-center justify-between line" url="/pages/privacy/index">
+        <view>
+          <view class="cu-label">隐私政策</view>
+          <view class="section-desc">了解登录、剪贴板和订单数据用途</view>
+        </view>
+        <view class="cu-arrow">›</view>
+      </navigator>
+      <navigator class="cu-item flex align-center justify-between line" url="/pages/agreement/index">
+        <view>
+          <view class="cu-label">用户协议</view>
+          <view class="section-desc">查看服务使用说明</view>
         </view>
         <view class="cu-arrow">›</view>
       </navigator>

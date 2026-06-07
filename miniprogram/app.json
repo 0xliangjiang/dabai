@@ -3,6 +3,9 @@
     "pages/home/index",
     "pages/orders/index",
     "pages/claim/index",
+    "pages/rebate-rules/index",
+    "pages/privacy/index",
+    "pages/agreement/index",
     "pages/profile/index"
   ],
   "window": {
@@ -20,7 +23,7 @@
     "list": [
       {
         "pagePath": "pages/home/index",
-        "text": "返利"
+        "text": "优惠"
       },
       {
         "pagePath": "pages/orders/index",

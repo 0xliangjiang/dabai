@@ -587,3 +587,14 @@ page {
   color: #2f2500;
   background: linear-gradient(135deg, #ffe24f 0%, #ffc400 100%);
 }
+
+.article-card {
+  gap: 14rpx;
+}
+
+.article-text {
+  margin-top: 14rpx;
+  color: #5f4a00;
+  font-size: 26rpx;
+  line-height: 1.7;
+}

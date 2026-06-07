@@ -1,8 +1,8 @@
 <view class="cu-page page-shell">
   <view class="hero">
     <view class="eyebrow">大白小助手</view>
-    <view class="hero-title">粘贴商品 查预估返利</view>
-    <view class="hero-desc">支持淘宝、京东、拼多多、唯品会，结果以实际订单结算为准。</view>
+    <view class="hero-title">粘贴商品 查预估优惠</view>
+    <view class="hero-desc">支持淘宝、京东、拼多多、唯品会，展示结果仅供参考，以实际订单结算为准。</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -16,7 +16,7 @@
       <view class="step-pill">
         <view class="step-index">2</view>
         <view class="cu-label">查询</view>
-        <view class="muted text-sm margin-top-xs">预估返利</view>
+        <view class="muted text-sm margin-top-xs">预估优惠</view>
       </view>
       <view class="step-pill">
         <view class="step-index">3</view>
@@ -45,7 +45,7 @@
       </view>
     </view>
     <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
-    <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">查看预估返利</button>
+    <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">查看预估优惠</button>
   </view>
 
   <view wx:if="{{result}}" class="cu-card product-card flex-direction gap">
@@ -60,23 +60,22 @@
         <view class="section-title margin-top-sm text-cut-2">{{result.itemTitle}}</view>
         <view class="flex align-center gap-sm margin-top-sm">
           <view class="price">¥{{result.itemPrice}}</view>
-          <view class="rate-badge">预估比例 {{result.commissionPercent}}</view>
         </view>
         <view class="rebate-panel margin-top-sm">
-          <view class="rebate-label">预估返利</view>
+          <view class="rebate-label">预估优惠</view>
           <view class="rebate-value">¥{{result.estimatedRebate}}</view>
         </view>
       </view>
     </view>
 
-    <view class="hint-bar">返利结果为预估值，实际金额以平台订单结算为准。</view>
+    <view class="hint-bar">结果为预估参考，实际优惠和最终金额以订单结算为准。</view>
     <view class="flex-direction gap">
       <view wx:if="{{result.hasPassword}}">
-        <view class="cu-label">返利口令</view>
+        <view class="cu-label">打开口令</view>
         <view class="code-box margin-top-xs">{{result.generatedPassword}}</view>
       </view>
       <view>
-        <view class="cu-label">返利链接</view>
+        <view class="cu-label">打开链接</view>
         <view class="code-box margin-top-xs">{{result.displayLink}}</view>
       </view>
     </view>
