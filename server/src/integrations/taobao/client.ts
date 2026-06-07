@@ -174,7 +174,7 @@ export class DingdanxiaClient implements TaobaoClient {
 
     const body = new URLSearchParams({
       apikey: this.config.apiKey,
-      materialId: rawContent,
+      materialId: extractJdMaterialId(rawContent),
       siteId: siteId!
     });
     if (isRealConfigValue(unionId ?? "")) body.set("unionId", unionId!);
@@ -334,6 +334,11 @@ function detectPlatform(rawContent: string): ConversionPlatform {
   if (lower.includes("yangkeduo.com") || lower.includes("pinduoduo.com") || lower.includes("pdd")) return "pdd";
   if (lower.includes("vip.com") || lower.includes("vipshop.com")) return "vip";
   return "taobao";
+}
+
+function extractJdMaterialId(rawContent: string): string {
+  const match = rawContent.match(/https?:\/\/(?:u\.jd\.com|3\.cn|item\.jd\.com|item\.m\.jd\.com)\/[^\s，。"'<>]+/i);
+  return match?.[0] ?? rawContent;
 }
 
 function isRealConfigValue(value: string): boolean {
