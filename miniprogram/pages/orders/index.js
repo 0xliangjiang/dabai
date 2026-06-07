@@ -1,4 +1,4 @@
-const { request } = require("../../utils/api");
+const { ensureLogin, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
 
 Page({
@@ -11,6 +11,7 @@ Page({
     syncTabBar(this);
 
     try {
+      await ensureLogin();
       const data = await request("/api/orders/me");
       this.setData({
         orders: data.orders.map((order) => ({

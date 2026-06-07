@@ -18,6 +18,7 @@ declare module "fastify" {
 export type CreateAppOptions = {
   config?: AppConfig;
   taobaoClient?: TaobaoClient;
+  wechatAuthFetch?: typeof fetch;
 };
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -49,7 +50,7 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   app.get("/health", async () => ({ ok: true }));
 
-  await registerAuthRoutes(app, repositories);
+  await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
   await registerOrderRoutes(app, repositories);
   await registerJobRoutes(app, config);

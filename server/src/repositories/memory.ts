@@ -51,17 +51,21 @@ export function createRepositories() {
 
   return {
     users: {
-      findOrCreateByOpenid(openid: string): UserRecord {
+      findOrCreateByOpenid(openid: string, input: { unionid?: string | null } = {}): UserRecord {
         const existingId = usersByOpenid.get(openid);
         if (existingId) {
-          return users.get(existingId)!;
+          const existing = users.get(existingId)!;
+          if (!existing.unionid && input.unionid) {
+            existing.unionid = input.unionid;
+          }
+          return existing;
         }
 
         const id = `user-${users.size + 1}`;
         const user: UserRecord = {
           id,
           openid,
-          unionid: null,
+          unionid: input.unionid ?? null,
           createdAt: new Date()
         };
         users.set(id, user);

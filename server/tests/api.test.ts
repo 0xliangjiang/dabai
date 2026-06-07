@@ -10,6 +10,8 @@ describe("server API", () => {
     port: 3001,
     adminToken: "dev-admin-token",
     schedulerToken: "dev-scheduler-token",
+    wechatAppId: "",
+    wechatAppSecret: "",
     commissionSharingRatio: 0.5,
     dingdanxiaApiKey: "",
     dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
@@ -69,6 +71,77 @@ describe("server API", () => {
         openid: "mock_openid_mock-login-code"
       }
     });
+  });
+
+  test("POST /api/auth/wechat-login exchanges real WeChat code when credentials are configured", async () => {
+    const app = await createApp({
+      config: {
+        ...testConfig,
+        wechatAppId: "wx-app-id",
+        wechatAppSecret: "wx-secret"
+      },
+      taobaoClient: new MockTaobaoClient(),
+      wechatAuthFetch: async (url) => {
+        expect(String(url)).toContain("https://api.weixin.qq.com/sns/jscode2session");
+        expect(String(url)).toContain("appid=wx-app-id");
+        expect(String(url)).toContain("secret=wx-secret");
+        expect(String(url)).toContain("js_code=real-login-code");
+
+        return new Response(
+          JSON.stringify({
+            openid: "real-openid-1",
+            unionid: "real-unionid-1"
+          }),
+          { status: 200 }
+        );
+      }
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "real-login-code" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      token: "local_user-1",
+      user: {
+        id: "user-1",
+        openid: "real-openid-1",
+        unionid: "real-unionid-1"
+      }
+    });
+  });
+
+  test("POST /api/auth/wechat-login returns 401 when WeChat rejects the code", async () => {
+    const app = await createApp({
+      config: {
+        ...testConfig,
+        wechatAppId: "wx-app-id",
+        wechatAppSecret: "wx-secret"
+      },
+      taobaoClient: new MockTaobaoClient(),
+      wechatAuthFetch: async () =>
+        new Response(
+          JSON.stringify({
+            errcode: 40029,
+            errmsg: "invalid code"
+          }),
+          { status: 200 }
+        )
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "bad-login-code" }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ error: "微信登录失败，请重试" });
   });
 
   test("POST /api/conversions validates empty input", async () => {

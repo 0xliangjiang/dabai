@@ -1,4 +1,4 @@
-const { request } = require("../../utils/api");
+const { ensureLogin, request } = require("../../utils/api");
 
 Page({
   data: {
@@ -44,6 +44,7 @@ Page({
       return;
     }
 
+    await ensureLogin();
     await request("/api/orders/claim", {
       method: "POST",
       data: {

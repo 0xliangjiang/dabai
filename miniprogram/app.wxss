@@ -536,3 +536,34 @@ page {
   font-size: 24rpx;
   font-weight: 800;
 }
+
+.profile-card {
+  min-height: 150rpx;
+}
+
+.profile-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  flex: 0 0 88rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #fff48a, #ffd100);
+  color: #2f2500;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 88rpx;
+  text-align: center;
+}
+
+.login-btn,
+.mini-btn {
+  width: 164rpx;
+  height: 72rpx;
+  flex: 0 0 164rpx;
+  border-radius: 18rpx;
+  font-size: 24rpx;
+}
+
+.login-btn {
+  color: #2f2500;
+  background: linear-gradient(135deg, #ffe24f 0%, #ffc400 100%);
+}

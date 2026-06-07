@@ -1,4 +1,4 @@
-const { loginWithMockCode, request } = require("../../utils/api");
+const { ensureLogin, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
 
 Page({
@@ -9,9 +9,7 @@ Page({
   },
 
   async onLoad() {
-    if (!wx.getStorageSync("token")) {
-      await loginWithMockCode();
-    }
+    await this.loginQuietly();
   },
 
   onShow() {
@@ -30,6 +28,7 @@ Page({
 
     this.setData({ loading: true });
     try {
+      await ensureLogin();
       const result = await request("/api/conversions", {
         method: "POST",
         data: { rawContent: this.data.rawContent }
@@ -72,10 +71,19 @@ Page({
   },
 
   async copyResult(copyType, data) {
+    await ensureLogin();
     await wx.setClipboardData({ data });
     await request(`/api/conversions/${this.data.result.id}/copy`, {
       method: "POST",
       data: { copyType }
     });
+  },
+
+  async loginQuietly() {
+    try {
+      await ensureLogin();
+    } catch (_error) {
+      wx.showToast({ title: "请先完成微信登录", icon: "none" });
+    }
   }
 });

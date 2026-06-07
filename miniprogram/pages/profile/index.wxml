@@ -5,10 +5,22 @@
   </view>
 
   <view class="content-stack floating-stack">
+    <view class="cu-card profile-card flex align-center justify-between gap">
+      <view class="flex align-center gap-sm flex-sub">
+        <view class="profile-avatar">白</view>
+        <view class="flex-sub">
+          <view class="section-title">{{loginTitle}}</view>
+          <view class="section-desc">{{loginDesc}}</view>
+        </view>
+      </view>
+      <button wx:if="{{!isLoggedIn}}" class="cu-btn login-btn" loading="{{loggingIn}}" bindtap="login">微信登录</button>
+      <button wx:else class="cu-btn secondary mini-btn" bindtap="logout">退出</button>
+    </view>
+
     <view class="cu-card glass-card grid-2">
       <view class="metric">
         <view class="muted text-sm">身份</view>
-        <view class="metric-value">用户</view>
+        <view class="metric-value">{{identityText}}</view>
       </view>
       <view class="metric">
         <view class="muted text-sm">返利</view>
