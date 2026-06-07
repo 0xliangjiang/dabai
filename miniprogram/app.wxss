@@ -230,34 +230,61 @@ page {
 
 .platform-grid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
+  flex-direction: column;
+  gap: 10rpx;
 }
 
 .platform-pill {
   display: flex;
-  width: calc(50% - 7rpx);
-  min-height: 86rpx;
+  min-height: 92rpx;
   align-items: center;
-  gap: 14rpx;
-  padding: 14rpx;
-  border-radius: 22rpx;
-  background: #fffbea;
-  border: 1rpx solid #f1dfa5;
+  justify-content: space-between;
+  padding: 16rpx 18rpx;
+  border-radius: 20rpx;
+  background: #fffdf3;
+  border: 1rpx solid #f3e4ad;
   box-sizing: border-box;
 }
 
+.platform-main {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
 .platform-mark {
-  width: 46rpx;
-  height: 46rpx;
-  flex: 0 0 46rpx;
+  width: 54rpx;
+  height: 54rpx;
+  flex: 0 0 54rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(135deg, #ffe89b 0%, #f5ba35 100%);
+  color: #a8660d;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 54rpx;
+  text-align: center;
+}
+
+.platform-name {
+  color: #3b2a16;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.platform-meta {
+  margin-top: 6rpx;
+  color: #8a7147;
+  font-size: 22rpx;
+}
+
+.platform-status {
+  padding: 8rpx 14rpx;
   border-radius: 999rpx;
-  background: #fff0b8;
+  background: #fff4cf;
   color: #a8660d;
   font-size: 22rpx;
-  font-weight: 900;
-  line-height: 46rpx;
-  text-align: center;
+  font-weight: 800;
 }
 
 .step-pill {
