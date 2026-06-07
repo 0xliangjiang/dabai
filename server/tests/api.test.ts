@@ -18,6 +18,7 @@ describe("server API", () => {
     dingdanxiaJdSiteId: "",
     dingdanxiaJdUnionId: "",
     dingdanxiaJdAuthKey: "",
+    dingdanxiaJdSceneId: "",
     dingdanxiaJdPositionId: "",
     dingdanxiaJdPid: "",
     dingdanxiaPddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",

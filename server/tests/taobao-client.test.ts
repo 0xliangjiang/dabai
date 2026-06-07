@@ -14,6 +14,7 @@ const baseDingdanxiaConfig = {
   jdSiteId: "jd-site",
   jdUnionId: "jd-union",
   jdAuthKey: "jd-auth-key",
+  jdSceneId: "jd-scene",
   jdPositionId: "jd-position",
   jdPid: "jd-pid",
   pddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",
@@ -105,6 +106,7 @@ describe("DingdanxiaClient", () => {
       expect(body).toContain("siteId=jd-site");
       expect(body).toContain("unionId=jd-union");
       expect(body).toContain("key=jd-auth-key");
+      expect(body).toContain("sceneId=jd-scene");
       expect(body).toContain("positionId=jd-position");
       expect(body).toContain("pid=jd-pid");
 

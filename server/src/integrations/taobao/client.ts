@@ -24,6 +24,7 @@ export type CreateTaobaoClientConfig = {
   dingdanxiaJdSiteId?: string;
   dingdanxiaJdUnionId?: string;
   dingdanxiaJdAuthKey?: string;
+  dingdanxiaJdSceneId?: string;
   dingdanxiaJdPositionId?: string;
   dingdanxiaJdPid?: string;
   dingdanxiaPddApiUrl?: string;
@@ -56,6 +57,7 @@ export type DingdanxiaClientConfig = {
   jdSiteId?: string;
   jdUnionId?: string;
   jdAuthKey?: string;
+  jdSceneId?: string;
   jdPositionId?: string;
   jdPid?: string;
   pddApiUrl: string;
@@ -177,6 +179,7 @@ export class DingdanxiaClient implements TaobaoClient {
     });
     if (isRealConfigValue(unionId ?? "")) body.set("unionId", unionId!);
     if (isRealConfigValue(this.config.jdAuthKey ?? "")) body.set("key", this.config.jdAuthKey!);
+    if (isRealConfigValue(this.config.jdSceneId ?? "")) body.set("sceneId", this.config.jdSceneId!);
     if (isRealConfigValue(this.config.jdPositionId ?? "")) body.set("positionId", this.config.jdPositionId!);
     if (isRealConfigValue(this.config.jdPid ?? "")) body.set("pid", this.config.jdPid!);
 
@@ -294,6 +297,7 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
       jdSiteId: config.dingdanxiaJdSiteId,
       jdUnionId: config.dingdanxiaJdUnionId,
       jdAuthKey: config.dingdanxiaJdAuthKey,
+      jdSceneId: config.dingdanxiaJdSceneId,
       jdPositionId: config.dingdanxiaJdPositionId,
       jdPid: config.dingdanxiaJdPid,
       pddApiUrl: config.dingdanxiaPddApiUrl ?? "https://api.tbk.dingdanxia.com/pdd/url_convert",
