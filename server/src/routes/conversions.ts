@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { ConversionValidationError, createConversion } from "../domain/conversion.js";
 import type { TaobaoClient } from "../integrations/taobao/client.js";
-import type { Repositories } from "../repositories/memory.js";
+import type { Repositories } from "../repositories/types.js";
 
 export async function registerConversionRoutes(
   app: FastifyInstance,
@@ -31,7 +31,7 @@ export async function registerConversionRoutes(
   app.post<{ Params: { id: string }; Body: { copyType?: "password" | "link" } }>(
     "/api/conversions/:id/copy",
     async (request, reply) => {
-      const conversion = repositories.conversions.findById(request.params.id);
+      const conversion = await repositories.conversions.findById(request.params.id);
       if (!conversion || conversion.userId !== request.userId) {
         return reply.code(404).send({ error: "conversion not found" });
       }
@@ -46,6 +46,6 @@ export async function registerConversionRoutes(
   );
 
   app.get("/api/conversions", async (request) => ({
-    conversions: repositories.conversions.listByUser(request.userId)
+    conversions: await repositories.conversions.listByUser(request.userId)
   }));
 }

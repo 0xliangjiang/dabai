@@ -1,5 +1,5 @@
 import type { TaobaoClient } from "../integrations/taobao/client.js";
-import type { ConversionRecord, Repositories } from "../repositories/memory.js";
+import type { ConversionRecord, Repositories } from "../repositories/types.js";
 
 export type CreateConversionInput = {
   userId: string;

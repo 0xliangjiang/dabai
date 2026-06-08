@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
-import type { Repositories } from "../repositories/memory.js";
+import type { Repositories } from "../repositories/types.js";
 
 export async function registerAdminRoutes(app: FastifyInstance, config: AppConfig, repositories: Repositories) {
   app.addHook("preHandler", async (request, reply) => {
@@ -14,11 +14,11 @@ export async function registerAdminRoutes(app: FastifyInstance, config: AppConfi
   });
 
   app.get("/api/admin/overview", async () => ({
-    metrics: repositories.admin.overview()
+    metrics: await repositories.admin.overview()
   }));
 
   app.get("/api/admin/users", async () => ({
-    users: repositories.users.list()
+    users: await repositories.users.list()
   }));
 
   app.get("/api/admin/config", async () => ({
@@ -30,16 +30,19 @@ export async function registerAdminRoutes(app: FastifyInstance, config: AppConfi
     }
   }));
 
-  app.get("/api/admin/pending-attributions", async (request, reply) => {
+  app.get("/api/admin/pending-attributions", async () => {
     return {
-      items: []
+      items: await repositories.orders.listPendingAttributions()
     };
   });
 
-  app.post<{ Params: { id: string } }>("/api/admin/orders/:id/attribute", async (request, reply) => {
-    return {
-      id: request.params.id,
-      status: "manual_matched"
-    };
-  });
+  app.post<{ Params: { id: string }; Body: { userId?: string } }>(
+    "/api/admin/orders/:id/attribute",
+    async (request) => {
+      return repositories.orders.attributeOrder(request.params.id, {
+        userId: request.body?.userId,
+        reviewedBy: "admin"
+      });
+    }
+  );
 }

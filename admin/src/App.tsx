@@ -1,69 +1,112 @@
-import { Check, RefreshCw, Settings, Users, WalletCards, X } from "lucide-react";
+import { Check, RefreshCw, Settings, Users, WalletCards } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
+import {
+  fetchAdminApi,
+  type AdminConfig,
+  type AdminOverview,
+  type AdminUser,
+  type PendingAttribution
+} from "./lib/api";
 
-type PendingAttribution = {
-  id: string;
-  itemTitle: string;
-  userHint: string;
-  confidence: number;
-  reason: string;
-  commission: string;
+type AdminData = {
+  overview: AdminOverview;
+  users: AdminUser[];
+  config: AdminConfig["config"];
+  pendingAttributions: PendingAttribution[];
 };
 
-const rows: PendingAttribution[] = [
-  {
-    id: "attr-1001",
-    itemTitle: "高佣示例商品",
-    userHint: "用户 user-1",
-    confidence: 0.5,
-    reason: "multiple_candidates_inside_window",
-    commission: "¥6.17"
+const emptyData: AdminData = {
+  overview: {
+    metrics: {
+      userCount: 0,
+      conversionCount: 0,
+      copyEventCount: 0,
+      pendingAttributionCount: 0,
+      orderClaimCount: 0
+    }
   },
-  {
-    id: "attr-1002",
-    itemTitle: "待补充订单商品",
-    userHint: "用户提交后四位 1234",
-    confidence: 0.25,
-    reason: "candidate_outside_window",
-    commission: "¥3.20"
-  }
-];
-
-const users = [
-  {
-    id: "user-1",
-    openid: "mock_openid_demo_001",
-    conversions: 12,
-    estimatedCommission: "¥36.80",
-    status: "活跃"
+  users: [],
+  config: {
+    dingdanxiaPid: "",
+    commissionSharingRatio: 0,
+    attributionWindowHours: 24,
+    highValueReviewThresholdCents: 5000
   },
-  {
-    id: "user-2",
-    openid: "mock_openid_demo_002",
-    conversions: 4,
-    estimatedCommission: "¥8.50",
-    status: "待观察"
-  }
-];
-
-const configItems = [
-  ["订单侠 PID", "mm_xxx_xxx_xxx"],
-  ["用户分佣比例", "50%"],
-  ["自动归因窗口", "复制后 24 小时"],
-  ["高佣复核阈值", "¥50.00"],
-  ["订单同步策略", "10-30 分钟增量，90 天回补"]
-];
+  pendingAttributions: []
+};
 
 export function App() {
+  const [adminToken, setAdminToken] = useState(() => localStorage.getItem("dabai-admin-token") ?? "");
+  const [data, setData] = useState<AdminData>(emptyData);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const configItems = useMemo(
+    () => [
+      ["订单侠 PID", data.config.dingdanxiaPid || "未配置"],
+      ["用户分佣比例", `${Math.round(data.config.commissionSharingRatio * 100)}%`],
+      ["自动归因窗口", `复制后 ${data.config.attributionWindowHours} 小时`],
+      ["高佣复核阈值", formatMoney(data.config.highValueReviewThresholdCents)],
+      ["待补充记录", `${data.overview.metrics.orderClaimCount} 条`]
+    ],
+    [data]
+  );
+
+  async function loadData(token = adminToken) {
+    if (!token.trim()) {
+      setError("请输入管理员 Token");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const [overview, usersResponse, configResponse, pendingResponse] = await Promise.all([
+        fetchAdminApi<AdminOverview>("/api/admin/overview", token),
+        fetchAdminApi<{ users: AdminUser[] }>("/api/admin/users", token),
+        fetchAdminApi<AdminConfig>("/api/admin/config", token),
+        fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token)
+      ]);
+      setData({
+        overview,
+        users: usersResponse.users,
+        config: configResponse.config,
+        pendingAttributions: pendingResponse.items
+      });
+      localStorage.setItem("dabai-admin-token", token);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "后台数据加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveAttribution(id: string, userId: string | null) {
+    await fetchAdminApi(`/api/admin/orders/${id}/attribute`, adminToken, {
+      method: "POST",
+      body: JSON.stringify({ userId })
+    });
+    await loadData();
+  }
+
+  useEffect(() => {
+    if (adminToken) {
+      void loadData(adminToken);
+    }
+  }, []);
+
+  const metrics = data.overview.metrics;
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <div className="grid min-h-screen grid-cols-[240px_1fr]">
         <aside className="border-r border-slate-200 bg-white px-4 py-6">
           <div className="px-3">
-            <div className="text-lg font-semibold">淘宝客后台</div>
-            <div className="mt-1 text-xs text-slate-500">转链、用户、订单和配置</div>
+            <div className="text-lg font-semibold">大白小助手后台</div>
+            <div className="mt-1 text-xs text-slate-500">用户、订单和配置</div>
           </div>
           <nav className="mt-8 flex flex-col gap-1">
             <a className="rounded-md bg-slate-100 px-3 py-2 text-sm font-medium" href="#overview">
@@ -82,54 +125,65 @@ export function App() {
         </aside>
 
         <section className="px-8 py-8">
-          <header className="flex items-center justify-between">
+          <header className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold">运营控制台</h1>
-              <p className="mt-2 text-sm text-slate-500">查看用户、转链规模、待复核订单和核心返佣配置。</p>
+              <p className="mt-2 text-sm text-slate-500">查看用户、推广规模、待复核订单和核心配置。</p>
             </div>
-            <Button variant="outline">
-              <RefreshCw className="h-4 w-4" />
-              刷新
-            </Button>
+            <div className="flex items-center gap-2">
+              <input
+                className="h-10 w-64 rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400"
+                placeholder="管理员 Token"
+                type="password"
+                value={adminToken}
+                onChange={(event) => setAdminToken(event.target.value)}
+              />
+              <Button disabled={loading} variant="outline" onClick={() => void loadData()}>
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                刷新
+              </Button>
+            </div>
           </header>
 
-          <section id="overview" className="mt-6 grid grid-cols-4 gap-4">
-            <MetricCard icon={<Users className="h-4 w-4" />} label="用户数" value="2" note="小程序注册用户" />
-            <MetricCard icon={<WalletCards className="h-4 w-4" />} label="转链数" value="16" note="累计生成推广内容" />
-            <MetricCard label="复制事件" value="11" note="用于订单归因" />
-            <MetricCard label="待复核" value="2" note="需要人工判断" />
+          {error ? <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+
+          <section id="overview" className="mt-6 grid grid-cols-5 gap-4">
+            <MetricCard icon={<Users className="h-4 w-4" />} label="用户数" value={metrics.userCount} note="小程序注册用户" />
+            <MetricCard icon={<WalletCards className="h-4 w-4" />} label="转化数" value={metrics.conversionCount} note="累计生成内容" />
+            <MetricCard label="复制事件" value={metrics.copyEventCount} note="用于订单归因" />
+            <MetricCard label="待复核" value={metrics.pendingAttributionCount} note="需要人工判断" />
+            <MetricCard label="补充记录" value={metrics.orderClaimCount} note="用户提交订单线索" />
           </section>
 
           <section id="users" className="mt-6 rounded-lg border border-slate-200 bg-white">
-            <SectionTitle title="用户" subtitle="普通用户、转链次数和预估收益。" />
+            <SectionTitle title="用户" subtitle="普通用户、转化次数、复制次数和订单补充记录。" />
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>用户 ID</TableHead>
                   <TableHead>OpenID</TableHead>
-                  <TableHead>转链数</TableHead>
-                  <TableHead>预估佣金</TableHead>
-                  <TableHead>状态</TableHead>
+                  <TableHead>转化数</TableHead>
+                  <TableHead>复制数</TableHead>
+                  <TableHead>补充记录</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {data.users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.id}</TableCell>
                     <TableCell>{user.openid}</TableCell>
-                    <TableCell>{user.conversions}</TableCell>
-                    <TableCell>{user.estimatedCommission}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.status === "活跃" ? "secondary" : "warning"}>{user.status}</Badge>
-                    </TableCell>
+                    <TableCell>{user.conversionCount}</TableCell>
+                    <TableCell>{user.copyEventCount}</TableCell>
+                    <TableCell>{user.claimCount}</TableCell>
                   </TableRow>
                 ))}
+                {data.users.length === 0 ? <EmptyRow colSpan={5} text="暂无用户数据" /> : null}
               </TableBody>
             </Table>
           </section>
 
           <section id="attribution" className="mt-6 rounded-lg border border-slate-200 bg-white">
-            <SectionTitle title="订单归因复核" subtitle="处理自动匹配不确定、用户补充和高佣金订单。" />
+            <SectionTitle title="订单归因复核" subtitle="处理自动匹配不确定和未匹配订单。" />
             <Table>
               <TableHeader>
                 <TableRow>
@@ -142,35 +196,32 @@ export function App() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {data.pendingAttributions.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.itemTitle}</TableCell>
-                    <TableCell>{row.userHint}</TableCell>
+                    <TableCell className="font-medium">{row.order.itemTitle}</TableCell>
+                    <TableCell>{row.userId ?? "未匹配"}</TableCell>
                     <TableCell>
                       <Badge variant={row.confidence >= 0.5 ? "warning" : "secondary"}>
                         {(row.confidence * 100).toFixed(0)}%
                       </Badge>
                     </TableCell>
                     <TableCell>{row.reason}</TableCell>
-                    <TableCell>{row.commission}</TableCell>
+                    <TableCell>{formatMoney(row.order.estimatedCommissionCents)}</TableCell>
                     <TableCell className="flex justify-end gap-2">
-                      <Button size="sm" variant="outline">
-                        <X className="h-4 w-4" />
-                        驳回
-                      </Button>
-                      <Button size="sm">
+                      <Button size="sm" disabled={!row.userId} onClick={() => void approveAttribution(row.id, row.userId)}>
                         <Check className="h-4 w-4" />
                         通过
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
+                {data.pendingAttributions.length === 0 ? <EmptyRow colSpan={6} text="暂无待复核订单" /> : null}
               </TableBody>
             </Table>
           </section>
 
           <section id="config" className="mt-6 rounded-lg border border-slate-200 bg-white">
-            <SectionTitle title="系统配置" subtitle="第一版只展示核心运营配置，后续再加编辑和审计。" />
+            <SectionTitle title="系统配置" subtitle="当前生产关键配置只读展示。" />
             <div className="grid grid-cols-2 gap-4 p-4">
               {configItems.map(([label, value]) => (
                 <div key={label} className="rounded-md border border-slate-200 p-4">
@@ -206,7 +257,7 @@ function MetricCard({
 }: {
   icon?: React.ReactNode;
   label: string;
-  value: string;
+  value: number;
   note: string;
 }) {
   return (
@@ -219,4 +270,18 @@ function MetricCard({
       <div className="mt-1 text-xs text-slate-500">{note}</div>
     </div>
   );
+}
+
+function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
+  return (
+    <TableRow>
+      <TableCell className="py-8 text-center text-sm text-slate-500" colSpan={colSpan}>
+        {text}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function formatMoney(amountCents: number) {
+  return `¥${(amountCents / 100).toFixed(2)}`;
 }

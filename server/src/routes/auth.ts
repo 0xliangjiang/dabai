@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
-import type { Repositories } from "../repositories/memory.js";
+import type { Repositories } from "../repositories/types.js";
 
 type WechatCode2SessionResponse = {
   openid?: string;
@@ -23,7 +23,7 @@ export async function registerAuthRoutes(
 
     try {
       const session = await resolveWechatSession(code, config, wechatAuthFetch);
-      const user = repositories.users.findOrCreateByOpenid(session.openid, {
+      const user = await repositories.users.findOrCreateByOpenid(session.openid, {
         unionid: session.unionid
       });
       return {

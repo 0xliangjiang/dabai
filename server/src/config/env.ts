@@ -3,6 +3,7 @@ import "dotenv/config";
 export type AppConfig = {
   nodeEnv: string;
   port: number;
+  databaseUrl: string;
   adminToken: string;
   schedulerToken: string;
   wechatAppId: string;
@@ -13,6 +14,7 @@ export type AppConfig = {
   dingdanxiaPid: string;
   dingdanxiaJdApiUrl: string;
   dingdanxiaJdGoodsApiUrl: string;
+  dingdanxiaJdOrderApiUrl: string;
   dingdanxiaJdSiteId: string;
   dingdanxiaJdUnionId: string;
   dingdanxiaJdAuthKey: string;
@@ -31,6 +33,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     nodeEnv: env.NODE_ENV ?? "development",
     port: Number(env.PORT ?? 3001),
+    databaseUrl: env.DATABASE_URL ?? "",
     adminToken: env.ADMIN_TOKEN ?? "dev-admin-token",
     schedulerToken: env.SCHEDULER_TOKEN ?? "dev-scheduler-token",
     wechatAppId: env.WECHAT_APP_ID ?? "",
@@ -41,6 +44,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dingdanxiaPid: env.DINGDANXIA_PID ?? "",
     dingdanxiaJdApiUrl: env.DINGDANXIA_JD_API_URL ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
     dingdanxiaJdGoodsApiUrl: env.DINGDANXIA_JD_GOODS_API_URL ?? "https://api.tbk.dingdanxia.com/jd/query_goods",
+    dingdanxiaJdOrderApiUrl:
+      env.DINGDANXIA_JD_ORDER_API_URL ?? "https://api.tbk.dingdanxia.com/jd/order_details2",
     dingdanxiaJdSiteId: env.DINGDANXIA_JD_SITE_ID ?? "",
     dingdanxiaJdUnionId: env.DINGDANXIA_JD_UNION_ID ?? env.DINGDANXIA_JD_SITE_ID ?? "",
     dingdanxiaJdAuthKey: env.DINGDANXIA_JD_AUTH_KEY ?? "",
@@ -54,4 +59,49 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dingdanxiaVipChanTag: env.DINGDANXIA_VIP_CHAN_TAG ?? "",
     dingdanxiaVipStatParam: env.DINGDANXIA_VIP_STAT_PARAM ?? ""
   };
+}
+
+export function validateProductionConfig(config: AppConfig): void {
+  if (config.nodeEnv !== "production") {
+    return;
+  }
+
+  const missing = [
+    ["DATABASE_URL", config.databaseUrl],
+    ["ADMIN_TOKEN", config.adminToken],
+    ["SCHEDULER_TOKEN", config.schedulerToken],
+    ["WECHAT_APP_ID", config.wechatAppId],
+    ["WECHAT_APP_SECRET", config.wechatAppSecret],
+    ["DINGDANXIA_API_KEY", config.dingdanxiaApiKey],
+    ["DINGDANXIA_PID", config.dingdanxiaPid],
+    ["DINGDANXIA_JD_SITE_ID", config.dingdanxiaJdSiteId],
+    ["DINGDANXIA_JD_AUTH_KEY", config.dingdanxiaJdAuthKey],
+    ["DINGDANXIA_PDD_PID", config.dingdanxiaPddPid]
+  ].filter(([, value]) => !isRealConfigValue(value));
+
+  if (!Number.isFinite(config.port) || config.port <= 0) {
+    missing.push(["PORT", String(config.port)]);
+  }
+
+  if (
+    !Number.isFinite(config.commissionSharingRatio) ||
+    config.commissionSharingRatio < 0 ||
+    config.commissionSharingRatio > 1
+  ) {
+    missing.push(["COMMISSION_SHARING_RATIO", String(config.commissionSharingRatio)]);
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Production config missing or invalid: ${missing.map(([key]) => key).join(", ")}`);
+  }
+}
+
+function isRealConfigValue(value: string): boolean {
+  const trimmed = value.trim();
+  return (
+    trimmed !== "" &&
+    !trimmed.startsWith("replace-with-") &&
+    !trimmed.startsWith("dev-") &&
+    trimmed.toLowerCase() !== "your-token"
+  );
 }

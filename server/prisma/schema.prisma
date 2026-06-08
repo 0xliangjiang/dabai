@@ -27,11 +27,14 @@ model Conversion {
   id                String   @id @default(cuid())
   userId            String
   rawContent        String
+  platform          String   @default("taobao")
   itemId            String
   itemTitle         String
   itemImageUrl      String?
   itemPriceCents    Int?
   commissionRate    Float?
+  estimatedCommissionCents Int @default(0)
+  estimatedRebateCents     Int @default(0)
   generatedPassword String
   generatedShortUrl String
   generatedClickUrl String
@@ -120,6 +123,7 @@ model CommissionLedger {
 
   @@index([userId, createdAt])
   @@index([tbkOrderId])
+  @@unique([userId, tbkOrderId, ledgerType])
 }
 
 model OrderClaim {

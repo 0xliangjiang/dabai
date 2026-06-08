@@ -1,7 +1,8 @@
 import { createApp } from "./app.js";
-import { loadConfig } from "./config/env.js";
+import { loadConfig, validateProductionConfig } from "./config/env.js";
 
 const config = loadConfig();
+validateProductionConfig(config);
 const app = await createApp();
 
 await app.listen({

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app.js";
-import type { AppConfig } from "../src/config/env.js";
+import { validateProductionConfig, type AppConfig } from "../src/config/env.js";
+import type { DingdanxiaOrderClient } from "../src/integrations/dingdanxia/orders.js";
 import { MockTaobaoClient } from "../src/integrations/taobao/client.js";
 
 describe("server API", () => {
@@ -8,6 +9,7 @@ describe("server API", () => {
   const testConfig: AppConfig = {
     nodeEnv: "test",
     port: 3001,
+    databaseUrl: "",
     adminToken: "dev-admin-token",
     schedulerToken: "dev-scheduler-token",
     wechatAppId: "",
@@ -18,6 +20,7 @@ describe("server API", () => {
     dingdanxiaPid: "",
     dingdanxiaJdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
     dingdanxiaJdGoodsApiUrl: "https://api.tbk.dingdanxia.com/jd/query_goods",
+    dingdanxiaJdOrderApiUrl: "https://api.tbk.dingdanxia.com/jd/order_details2",
     dingdanxiaJdSiteId: "",
     dingdanxiaJdUnionId: "",
     dingdanxiaJdAuthKey: "",
@@ -221,6 +224,98 @@ describe("server API", () => {
     expect(response.json()).toEqual({ orders: [] });
   });
 
+  test("POST /api/orders/claim saves an order supplement record", async () => {
+    const app = await buildTestApp();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/orders/claim",
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { orderSuffix: "123456", notes: "用户补充订单尾号" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: expect.any(String),
+      userId: "user-1",
+      orderSuffix: "123456",
+      status: "pending_review"
+    });
+
+    const overview = await app.inject({
+      method: "GET",
+      url: "/api/admin/overview",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(overview.json().metrics.orderClaimCount).toBe(1);
+  });
+
+  test("POST /api/jobs/sync-tbk-orders stores and attributes JD orders", async () => {
+    const orderClient: DingdanxiaOrderClient = {
+      async fetchJdOrders() {
+        return {
+          hasNext: false,
+          orders: [
+            {
+              tbkOrderId: "jd-row-1",
+              itemId: "mock-item-100",
+              itemTitle: "测试京东商品",
+              payTime: new Date(),
+              payAmountCents: 2390,
+              estimatedCommissionCents: 120,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: { orderId: "jd-row-1" }
+            }
+          ]
+        };
+      }
+    };
+    const app = await createApp({
+      config: testConfig,
+      taobaoClient: new MockTaobaoClient(),
+      orderClient
+    });
+    apps.push(app);
+
+    const conversion = await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/conversions/${conversion.json().id}/copy`,
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { copyType: "link" }
+    });
+
+    const sync = await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-scheduler-token": "dev-scheduler-token" }
+    });
+
+    expect(sync.statusCode).toBe(200);
+    expect(sync.json()).toMatchObject({ ok: true, synced: 1, attributed: 1 });
+
+    const orders = await app.inject({
+      method: "GET",
+      url: "/api/orders/me",
+      headers: { authorization: "Bearer local_user-1" }
+    });
+    expect(orders.json()).toMatchObject({
+      orders: [
+        {
+          itemTitle: "测试京东商品",
+          estimatedCommissionCents: 120,
+          userRebateCents: 60
+        }
+      ]
+    });
+  });
+
   test("GET /api/admin/users lists mini program users", async () => {
     const app = await buildTestApp();
 
@@ -294,8 +389,18 @@ describe("server API", () => {
         userCount: 1,
         conversionCount: 1,
         copyEventCount: 0,
-        pendingAttributionCount: 0
+        pendingAttributionCount: 0,
+        orderClaimCount: 0
       }
     });
+  });
+
+  test("production config validation fails when critical config is missing", () => {
+    expect(() =>
+      validateProductionConfig({
+        ...testConfig,
+        nodeEnv: "production"
+      })
+    ).toThrow(/DATABASE_URL/);
   });
 });
