@@ -6,83 +6,83 @@
   </view>
 
   <view class="content-stack floating-stack">
-  <view class="cu-card glass-card">
-    <view class="quick-steps">
-      <view class="step-pill">
-        <view class="step-index">1</view>
-        <view class="cu-label">粘贴</view>
-        <view class="muted text-sm margin-top-xs">商品内容</view>
-      </view>
-      <view class="step-pill">
-        <view class="step-index">2</view>
-        <view class="cu-label">查询</view>
-        <view class="muted text-sm margin-top-xs">预估优惠</view>
-      </view>
-      <view class="step-pill">
-        <view class="step-index">3</view>
-        <view class="cu-label">复制</view>
-        <view class="muted text-sm margin-top-xs">去下单</view>
-      </view>
-    </view>
-  </view>
-
-  <view class="platform-strip">
-    <view class="platform-strip-label">支持</view>
-    <view class="platform-strip-item">淘宝</view>
-    <view class="platform-strip-item">京东</view>
-    <view class="platform-strip-item">拼多多</view>
-    <view class="platform-strip-item">唯品会</view>
-  </view>
-
-  <view class="cu-card prompt-box flex-direction gap">
-    <view class="section-heading">
-      <view>
-        <view class="section-title">商品内容</view>
-      </view>
-      <view class="flex align-center gap-xs">
-        <view class="cu-tag blue">自动识别</view>
-        <button class="paste-chip" bindtap="pasteFromClipboard">粘贴</button>
-      </view>
-    </view>
-    <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
-    <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">查看预估优惠</button>
-  </view>
-
-  <view wx:if="{{result}}" class="cu-card product-card flex-direction gap">
-    <view class="flex align-start gap">
-      <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" />
-      <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
-      <view class="flex-sub">
-        <view class="flex align-center justify-between gap-sm">
-          <view class="cu-tag green">已识别</view>
-          <view class="cu-tag dark">{{result.platformLabel}}</view>
+    <view class="cu-card glass-card">
+      <view class="quick-steps">
+        <view class="step-pill">
+          <view class="step-index">1</view>
+          <view class="cu-label">粘贴</view>
+          <view class="muted text-sm margin-top-xs">商品内容</view>
         </view>
-        <view class="section-title margin-top-sm text-cut-2">{{result.itemTitle}}</view>
-        <view class="flex align-center gap-sm margin-top-sm">
-          <view class="price">¥{{result.itemPrice}}</view>
+        <view class="step-pill">
+          <view class="step-index">2</view>
+          <view class="cu-label">查询</view>
+          <view class="muted text-sm margin-top-xs">预估优惠</view>
         </view>
-        <view class="rebate-panel margin-top-sm">
-          <view class="rebate-label">预估优惠</view>
-          <view class="rebate-value">¥{{result.estimatedRebate}}</view>
+        <view class="step-pill">
+          <view class="step-index">3</view>
+          <view class="cu-label">复制</view>
+          <view class="muted text-sm margin-top-xs">去下单</view>
         </view>
       </view>
     </view>
 
-    <view class="hint-bar">结果为预估参考，实际优惠和最终金额以订单结算为准。</view>
-    <view class="flex-direction gap">
-      <view wx:if="{{result.hasPassword}}">
-        <view class="cu-label">打开口令</view>
-        <view class="code-box margin-top-xs">{{result.generatedPassword}}</view>
+    <view class="platform-strip">
+      <view class="platform-strip-label">支持</view>
+      <view class="platform-strip-item">淘宝</view>
+      <view class="platform-strip-item">京东</view>
+      <view class="platform-strip-item">拼多多</view>
+      <view class="platform-strip-item">唯品会</view>
+    </view>
+
+    <view class="cu-card prompt-box flex-direction gap">
+      <view class="section-heading">
+        <view>
+          <view class="section-title">商品内容</view>
+        </view>
+        <view class="flex align-center gap-xs">
+          <view class="cu-tag blue">自动识别</view>
+          <button class="paste-chip" bindtap="pasteFromClipboard">粘贴</button>
+        </view>
       </view>
-      <view>
-        <view class="cu-label">打开链接</view>
-        <view class="code-box margin-top-xs">{{result.displayLink}}</view>
+      <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
+      <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">查看预估优惠</button>
+    </view>
+
+    <view wx:if="{{result}}" class="cu-card product-card flex-direction gap">
+      <view class="flex align-start gap">
+        <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" />
+        <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
+        <view class="flex-sub">
+          <view class="flex align-center justify-between gap-sm">
+            <view class="cu-tag green">已识别</view>
+            <view class="cu-tag dark">{{result.platformLabel}}</view>
+          </view>
+          <view class="section-title margin-top-sm text-cut-2">{{result.itemTitle}}</view>
+          <view class="flex align-center gap-sm margin-top-sm">
+            <view class="price">¥{{result.itemPrice}}</view>
+          </view>
+          <view class="rebate-panel margin-top-sm">
+            <view class="rebate-label">预估优惠</view>
+            <view class="rebate-value">¥{{result.estimatedRebate}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="hint-bar">结果为预估参考，实际优惠和最终金额以订单结算为准。</view>
+      <view class="flex-direction gap">
+        <view wx:if="{{result.hasPassword}}">
+          <view class="cu-label">打开口令</view>
+          <view class="code-box margin-top-xs">{{result.generatedPassword}}</view>
+        </view>
+        <view>
+          <view class="cu-label">打开链接</view>
+          <view class="code-box margin-top-xs">{{result.displayLink}}</view>
+        </view>
+      </view>
+      <view class="flex gap-sm">
+        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub" bindtap="copyPassword">复制口令</button>
+        <button class="cu-btn success flex-sub" bindtap="copyLink">复制链接</button>
       </view>
     </view>
-    <view class="flex gap-sm">
-      <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub" bindtap="copyPassword">复制口令</button>
-      <button class="cu-btn success flex-sub" bindtap="copyLink">复制链接</button>
-    </view>
-  </view>
   </view>
 </view>

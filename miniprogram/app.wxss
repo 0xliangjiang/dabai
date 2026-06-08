@@ -1,13 +1,13 @@
 page {
   min-height: 100vh;
-  background: #fffbe6;
-  color: #2b2116;
+  background: linear-gradient(180deg, #fff7c9 0%, #fffaf0 34%, #fffdf7 100%);
+  color: #241c08;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
 
 .cu-page {
   min-height: 100vh;
-  padding: 28rpx 28rpx 180rpx;
+  padding: 28rpx 30rpx 184rpx;
   box-sizing: border-box;
 }
 
@@ -16,12 +16,13 @@ page {
 }
 
 .hero {
-  margin: -28rpx -28rpx 0;
-  padding: 52rpx 36rpx 64rpx;
-  border-bottom-left-radius: 34rpx;
-  border-bottom-right-radius: 34rpx;
-  background: linear-gradient(135deg, #fff27a 0%, #ffd83d 54%, #ffc414 100%);
-  color: #2f2500;
+  margin: -28rpx -30rpx 0;
+  padding: 54rpx 38rpx 66rpx;
+  border-bottom-left-radius: 30rpx;
+  border-bottom-right-radius: 30rpx;
+  background: linear-gradient(135deg, #fff7a8 0%, #ffdd45 56%, #ffc400 100%);
+  color: #2d2300;
+  box-shadow: 0 18rpx 48rpx rgba(172, 126, 0, 0.12);
 }
 
 .eyebrow {
@@ -29,7 +30,7 @@ page {
   min-height: 46rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.44);
   color: #5b4700;
   font-size: 22rpx;
   font-weight: 700;
@@ -38,7 +39,7 @@ page {
 
 .hero-title {
   margin-top: 22rpx;
-  font-size: 48rpx;
+  font-size: 50rpx;
   font-weight: 800;
   line-height: 1.15;
 }
@@ -54,29 +55,29 @@ page {
 .content-stack {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
+  gap: 22rpx;
 }
 
 .floating-stack {
-  margin-top: -34rpx;
+  margin-top: -32rpx;
 }
 
 .cu-card {
-  background: rgba(255, 255, 255, 0.99);
-  border: 1rpx solid rgba(244, 217, 78, 0.42);
-  border-radius: 28rpx;
-  padding: 30rpx;
-  box-shadow: 0 16rpx 42rpx rgba(168, 128, 0, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1rpx solid rgba(237, 205, 73, 0.36);
+  border-radius: 24rpx;
+  padding: 28rpx;
+  box-shadow: 0 14rpx 36rpx rgba(152, 111, 0, 0.075);
   box-sizing: border-box;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.82);
 }
 
 .section-title {
-  color: #2b2116;
+  color: #241c08;
   font-size: 30rpx;
   font-weight: 800;
   line-height: 1.25;
@@ -91,19 +92,19 @@ page {
 
 .section-desc {
   margin-top: 8rpx;
-  color: #7a6724;
+  color: #75622a;
   font-size: 24rpx;
   line-height: 1.5;
 }
 
 .cu-label {
-  color: #4f3f10;
+  color: #443608;
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .muted {
-  color: #7a6724;
+  color: #75622a;
 }
 
 .text-sm {
@@ -135,7 +136,7 @@ page {
 }
 
 .text-grey {
-  color: #7a6724;
+  color: #75622a;
 }
 
 .text-cut-2 {
@@ -220,7 +221,7 @@ page {
 
 .grid-2 {
   display: flex;
-  gap: 18rpx;
+  gap: 16rpx;
 }
 
 .quick-steps {
@@ -232,11 +233,11 @@ page {
   display: flex;
   align-items: center;
   gap: 10rpx;
-  min-height: 58rpx;
-  padding: 10rpx 14rpx;
+  min-height: 56rpx;
+  padding: 9rpx 13rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1rpx solid #f6df69;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1rpx solid rgba(237, 205, 73, 0.46);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -251,7 +252,7 @@ page {
 .platform-strip-item {
   padding: 8rpx 14rpx;
   border-radius: 999rpx;
-  background: #fff4a3;
+  background: #fff2a3;
   color: #6f4d00;
   font-size: 22rpx;
   font-weight: 800;
@@ -263,8 +264,9 @@ page {
   min-width: 0;
   min-height: 108rpx;
   padding: 18rpx 12rpx;
-  border-radius: 22rpx;
-  background: #fffdf0;
+  border: 1rpx solid rgba(237, 205, 73, 0.34);
+  border-radius: 20rpx;
+  background: #fffdf5;
   box-sizing: border-box;
   text-align: center;
 }
@@ -274,7 +276,7 @@ page {
   height: 38rpx;
   margin: 0 auto 10rpx;
   border-radius: 999rpx;
-  background: #ffe875;
+  background: #ffe674;
   color: #6f4d00;
   font-size: 22rpx;
   font-weight: 900;
@@ -285,9 +287,9 @@ page {
   flex: 1;
   min-width: 0;
   padding: 22rpx;
-  border-radius: 22rpx;
-  background: linear-gradient(180deg, #ffffff 0%, #fffdf0 100%);
-  border: 1rpx solid #f5dc5b;
+  border-radius: 20rpx;
+  background: linear-gradient(180deg, #ffffff 0%, #fffaf0 100%);
+  border: 1rpx solid rgba(237, 205, 73, 0.36);
   box-sizing: border-box;
 }
 
@@ -302,10 +304,10 @@ page {
 .cu-textarea {
   width: 100%;
   box-sizing: border-box;
-  border: 1rpx solid #f3da59;
-  border-radius: 22rpx;
-  background: #fffdf0;
-  color: #2b2116;
+  border: 1rpx solid rgba(237, 205, 73, 0.52);
+  border-radius: 20rpx;
+  background: #fffdf7;
+  color: #241c08;
   font-size: 28rpx;
 }
 
@@ -321,7 +323,7 @@ page {
 }
 
 .cu-textarea {
-  min-height: 230rpx;
+  min-height: 226rpx;
   padding: 26rpx;
   line-height: 1.55;
 }
@@ -335,7 +337,7 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 92rpx;
+  height: 90rpx;
   padding: 0;
   border-radius: 18rpx;
   font-size: 30rpx;
@@ -352,27 +354,27 @@ page {
 }
 
 .cu-btn.primary {
-  color: #2f2500;
-  background: linear-gradient(135deg, #ffe24f 0%, #ffc400 100%);
-  box-shadow: 0 14rpx 28rpx rgba(255, 196, 0, 0.28);
+  color: #2d2300;
+  background: linear-gradient(135deg, #ffe86a 0%, #ffc814 100%);
+  box-shadow: 0 14rpx 26rpx rgba(255, 196, 0, 0.22);
 }
 
 .cu-btn.secondary {
   color: #6f4d00;
-  background: #fff8bd;
-  border: 1rpx solid #f2d643;
+  background: #fff8c7;
+  border: 1rpx solid rgba(237, 205, 73, 0.62);
 }
 
 .cu-btn.success {
-  color: #2f2500;
-  background: #ffd21c;
+  color: #2d2300;
+  background: #ffd437;
 }
 
 .cu-tag {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44rpx;
+  min-height: 42rpx;
   padding: 0 16rpx;
   border-radius: 999rpx;
   font-size: 22rpx;
@@ -382,7 +384,7 @@ page {
 
 .cu-tag.blue {
   color: #6f4d00;
-  background: #ffe875;
+  background: #ffe674;
 }
 
 .paste-chip {
@@ -390,15 +392,15 @@ page {
   align-items: center;
   justify-content: center;
   min-width: 92rpx;
-  height: 44rpx;
+  height: 42rpx;
   margin: 0;
   padding: 0 16rpx;
   border-radius: 999rpx;
-  color: #2f2500;
-  background: #ffd21c;
+  color: #2d2300;
+  background: #ffd437;
   font-size: 22rpx;
   font-weight: 800;
-  line-height: 44rpx;
+  line-height: 42rpx;
 }
 
 .paste-chip::after {
@@ -407,17 +409,17 @@ page {
 
 .cu-tag.green {
   color: #6f4d00;
-  background: #fff18b;
+  background: #fff1a1;
 }
 
 .cu-tag.orange {
   color: #6f4d00;
-  background: #fff2a6;
+  background: #fff2ae;
 }
 
 .cu-tag.dark {
-  color: #3b2a16;
-  background: #f7edb0;
+  color: #3a2b06;
+  background: #f6ecbb;
 }
 
 .product-card {
@@ -428,8 +430,8 @@ page {
   width: 156rpx;
   height: 156rpx;
   flex: 0 0 156rpx;
-  border-radius: 22rpx;
-  background: #f7edb0;
+  border-radius: 20rpx;
+  background: #f6ecbb;
 }
 
 .product-thumb.placeholder {
@@ -439,7 +441,7 @@ page {
 }
 
 .price {
-  color: #b06f00;
+  color: #9c6500;
   font-size: 34rpx;
   font-weight: 900;
 }
@@ -447,7 +449,7 @@ page {
 .rate-badge {
   padding: 8rpx 12rpx;
   border-radius: 12rpx;
-  background: #ffe875;
+  background: #ffe674;
   color: #6f4d00;
   font-size: 22rpx;
   font-weight: 800;
@@ -457,10 +459,11 @@ page {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16rpx 18rpx;
+  padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: linear-gradient(135deg, #fff48a, #ffd100);
+  background: linear-gradient(135deg, #fff4a1 0%, #ffd436 100%);
   color: #4f3900;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.55);
 }
 
 .rebate-label {
@@ -469,15 +472,16 @@ page {
 }
 
 .rebate-value {
-  color: #7a4f00;
+  color: #704900;
   font-size: 36rpx;
   font-weight: 900;
 }
 
 .code-box {
   padding: 20rpx;
+  border: 1rpx solid rgba(237, 205, 73, 0.32);
   border-radius: 18rpx;
-  background: #fffdf0;
+  background: #fffdf7;
   color: #4f3f10;
   font-size: 24rpx;
   line-height: 1.55;
@@ -487,7 +491,7 @@ page {
 .hint-bar {
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: #fff8bd;
+  background: #fff8c7;
   color: #6f4d00;
   font-size: 24rpx;
   line-height: 1.45;
@@ -496,8 +500,8 @@ page {
 .soft-panel {
   padding: 20rpx;
   border-radius: 20rpx;
-  background: #fffdf0;
-  border: 1rpx solid #f5dc5b;
+  background: #fffdf7;
+  border: 1rpx solid rgba(237, 205, 73, 0.38);
 }
 
 .cu-empty {
@@ -512,7 +516,7 @@ page {
   height: 92rpx;
   margin: 0 auto 18rpx;
   border-radius: 999rpx;
-  background: #ffe875;
+  background: #ffe674;
   color: #6f4d00;
   font-size: 42rpx;
   font-weight: 900;
@@ -522,14 +526,14 @@ page {
 .cu-list {
   overflow: hidden;
   border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1rpx solid rgba(244, 217, 78, 0.42);
-  box-shadow: 0 18rpx 50rpx rgba(168, 128, 0, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1rpx solid rgba(237, 205, 73, 0.34);
+  box-shadow: 0 14rpx 36rpx rgba(152, 111, 0, 0.07);
 }
 
 .cu-item {
-  min-height: 120rpx;
-  padding: 26rpx 28rpx;
+  min-height: 116rpx;
+  padding: 24rpx 28rpx;
   box-sizing: border-box;
 }
 
@@ -550,7 +554,7 @@ page {
 }
 
 .line {
-  border-bottom: 1rpx solid #f3df6f;
+  border-bottom: 1rpx solid rgba(237, 205, 73, 0.32);
 }
 
 .cu-arrow {
@@ -560,10 +564,10 @@ page {
 
 .cu-upload {
   height: 168rpx;
-  border: 2rpx dashed #e7c91f;
-  border-radius: 22rpx;
+  border: 2rpx dashed rgba(203, 172, 22, 0.62);
+  border-radius: 20rpx;
   color: #7a6724;
-  background: #fffdf0;
+  background: #fffdf7;
   box-sizing: border-box;
 }
 
@@ -582,8 +586,8 @@ page {
   height: 88rpx;
   flex: 0 0 88rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #fff48a, #ffd100);
-  color: #2f2500;
+  background: linear-gradient(135deg, #fff4a1 0%, #ffd436 100%);
+  color: #2d2300;
   font-size: 34rpx;
   font-weight: 900;
   line-height: 88rpx;
@@ -600,8 +604,8 @@ page {
 }
 
 .login-btn {
-  color: #2f2500;
-  background: linear-gradient(135deg, #ffe24f 0%, #ffc400 100%);
+  color: #2d2300;
+  background: linear-gradient(135deg, #ffe86a 0%, #ffc814 100%);
 }
 
 .article-card {
@@ -610,7 +614,7 @@ page {
 
 .article-text {
   margin-top: 14rpx;
-  color: #5f4a00;
+  color: #5b4a16;
   font-size: 26rpx;
   line-height: 1.7;
 }
