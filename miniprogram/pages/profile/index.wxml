@@ -75,10 +75,23 @@
         </view>
         <view class="cu-arrow">›</view>
       </navigator>
-      <view class="cu-item flex align-center justify-between">
+      <button
+        class="cu-item contact-item flex align-center justify-between"
+        open-type="contact"
+        show-message-card="true"
+        send-message-title="大白小助手客服"
+        send-message-path="/pages/home/index"
+      >
         <view>
           <view class="cu-label">客服入口</view>
-          <view class="section-desc">联系平台客服</view>
+          <view class="section-desc">咨询订单、优惠和使用问题</view>
+        </view>
+        <view class="cu-arrow">›</view>
+      </button>
+      <view class="cu-item flex align-center justify-between">
+        <view>
+          <view class="cu-label">服务时间</view>
+          <view class="section-desc">工作日 09:00-18:00，非工作时间请留言</view>
         </view>
       </view>
     </view>

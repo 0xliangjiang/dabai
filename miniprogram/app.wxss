@@ -533,6 +533,22 @@ page {
   box-sizing: border-box;
 }
 
+.contact-item {
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+
+.contact-item::after {
+  border: 0;
+}
+
 .line {
   border-bottom: 1rpx solid #f3df6f;
 }
