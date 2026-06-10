@@ -86,6 +86,33 @@ page {
   border-color: rgba(255, 255, 255, 0.92);
 }
 
+/* 白色卡片上的签到按钮变体 */
+.checkin-pill.on-card {
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
+  border-color: transparent;
+  box-shadow: 0 10rpx 20rpx rgba(13, 157, 108, 0.24);
+}
+
+.checkin-pill.on-card .checkin-pill-icon {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a8a5e;
+}
+
+.checkin-pill.on-card.checked {
+  background: #e9f6f0;
+  box-shadow: none;
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+.checkin-pill.on-card.checked .checkin-pill-icon {
+  background: #0d9d6c;
+  color: #ffffff;
+}
+
+.checkin-pill.on-card.checked .checkin-pill-text {
+  color: #0a7a52;
+}
+
 .checkin-pill.checked .checkin-pill-icon {
   background: #0d9d6c;
   color: #ffffff;
