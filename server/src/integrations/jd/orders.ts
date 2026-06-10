@@ -1,29 +1,46 @@
 import type { AppConfig } from "../../config/env.js";
-import {
-  createDingdanxiaOrderClient,
-  type DingdanxiaOrder,
-  type DingdanxiaOrderClient
-} from "../dingdanxia/orders.js";
 import { createJdUnionClient, isJdUnionConfigured, type JdUnionClient } from "./union.js";
 
-// 京东订单同步：联盟官方 API 优先（免费），未配置时回落订单侠
-export function createJdOrderClient(
-  config: AppConfig,
-  requestFetch: typeof fetch = fetch
-): DingdanxiaOrderClient {
+export type JdOrder = {
+  tbkOrderId: string;
+  itemId: string;
+  itemTitle: string;
+  payTime: Date;
+  payAmountCents: number;
+  estimatedCommissionCents: number;
+  settledCommissionCents: number | null;
+  orderStatus: string;
+  rawPayload: unknown;
+};
+
+export type JdOrderClient = {
+  fetchJdOrders(input: { startTime: Date; endTime: Date; pageIndex?: number; pageSize?: number }): Promise<{
+    orders: JdOrder[];
+    hasNext: boolean;
+  }>;
+};
+
+// 京东订单同步：联盟官方 API（未配置时返回空结果，不阻塞定时任务）
+export function createJdOrderClient(config: AppConfig, requestFetch: typeof fetch = fetch): JdOrderClient {
   const unionConfig = {
     appKey: config.jdUnionAppKey,
     appSecret: config.jdUnionAppSecret,
     siteId: config.jdUnionSiteId,
     positionId: config.jdUnionPositionId
   };
-  if (isJdUnionConfigured(unionConfig)) {
-    return createUnionOrderClient(createJdUnionClient(unionConfig, requestFetch));
+
+  if (!isJdUnionConfigured(unionConfig)) {
+    return {
+      async fetchJdOrders() {
+        return { orders: [], hasNext: false };
+      }
+    };
   }
-  return createDingdanxiaOrderClient(config, requestFetch);
+
+  return createUnionOrderClient(createJdUnionClient(unionConfig, requestFetch));
 }
 
-function createUnionOrderClient(union: JdUnionClient): DingdanxiaOrderClient {
+function createUnionOrderClient(union: JdUnionClient): JdOrderClient {
   return {
     async fetchJdOrders(input) {
       const { rows, hasMore } = await union.orderRowQuery({
@@ -33,14 +50,14 @@ function createUnionOrderClient(union: JdUnionClient): DingdanxiaOrderClient {
         pageSize: input.pageSize ?? 100
       });
       return {
-        orders: rows.map(normalizeUnionOrder).filter((order): order is DingdanxiaOrder => Boolean(order)),
+        orders: rows.map(normalizeUnionOrder).filter((order): order is JdOrder => Boolean(order)),
         hasNext: hasMore
       };
     }
   };
 }
 
-function normalizeUnionOrder(row: Record<string, unknown>): DingdanxiaOrder | null {
+function normalizeUnionOrder(row: Record<string, unknown>): JdOrder | null {
   const tbkOrderId = String(row.id ?? row.orderId ?? "").trim();
   const itemId = String(row.skuId ?? "").trim();
   if (!tbkOrderId || !itemId) {
@@ -64,7 +81,7 @@ function normalizeUnionOrder(row: Record<string, unknown>): DingdanxiaOrder | nu
   };
 }
 
-// 京东 validCode：15 待付款 16 已付款 17 已完成 18 已结算 24 等；与订单侠路径保持同一映射
+// 京东 validCode：15 待付款 16 已付款 17 已完成 18 已结算
 function mapJdValidCode(validCode: number): string {
   if (validCode === 17 || validCode === 18) return "settled";
   if (validCode === 16 || validCode === 15 || validCode === 24) return "paid";
@@ -78,7 +95,7 @@ function yuanToCents(value: unknown): number {
   return Math.round(numeric * 100);
 }
 
-// 官方接口 orderTime 可能是毫秒时间戳或 "yyyy-MM-dd HH:mm:ss"
+// orderTime 可能是毫秒时间戳或 "yyyy-MM-dd HH:mm:ss"
 function parseJdTime(value: unknown): Date | null {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number" || /^\d{12,}$/.test(String(value))) {

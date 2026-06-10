@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { ConversionValidationError, createConversion } from "../domain/conversion.js";
-import type { TaobaoClient } from "../integrations/taobao/client.js";
+import { UnsupportedPlatformError, type TaobaoClient } from "../integrations/taobao/client.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerConversionRoutes(
@@ -21,7 +21,7 @@ export async function registerConversionRoutes(
         { commissionSharingRatio }
       );
     } catch (error) {
-      if (error instanceof ConversionValidationError) {
+      if (error instanceof ConversionValidationError || error instanceof UnsupportedPlatformError) {
         return reply.code(400).send({ error: error.message });
       }
       throw error;

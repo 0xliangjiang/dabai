@@ -49,7 +49,7 @@ const emptyData: AdminData = {
   },
   users: [],
   config: {
-    dingdanxiaPid: "",
+    zhetaokePid: "",
     commissionSharingRatio: 0,
     attributionWindowHours: 24,
     highValueReviewThresholdCents: 5000
@@ -77,7 +77,7 @@ export function App() {
 
   const configItems = useMemo(
     () => [
-      ["订单侠 PID", data.config.dingdanxiaPid || "未配置"],
+      ["淘宝推广位 PID", data.config.zhetaokePid || "未配置"],
       ["用户分成比例", `${Math.round(data.config.commissionSharingRatio * 100)}%`],
       ["自动归因窗口", `复制后 ${data.config.attributionWindowHours} 小时`],
       ["高额复核阈值", formatMoney(data.config.highValueReviewThresholdCents)],

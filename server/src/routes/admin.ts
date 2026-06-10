@@ -32,7 +32,7 @@ export async function registerAdminRoutes(
 
   app.get("/api/admin/config", async () => ({
     config: {
-      dingdanxiaPid: config.dingdanxiaPid,
+      zhetaokePid: config.zhetaokePid,
       commissionSharingRatio: config.commissionSharingRatio,
       attributionWindowHours: 24,
       highValueReviewThresholdCents: 5000

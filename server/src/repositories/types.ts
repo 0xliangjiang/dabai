@@ -136,7 +136,7 @@ export type AdminUserRecord = UserRecord & {
 };
 
 export type AdminConfigRecord = {
-  dingdanxiaPid: string;
+  zhetaokePid: string;
   commissionSharingRatio: number;
   attributionWindowHours: number;
   highValueReviewThresholdCents: number;

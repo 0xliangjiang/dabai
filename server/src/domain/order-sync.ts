@@ -1,6 +1,6 @@
 import { matchOrderAttribution } from "./attribution.js";
 import { buildCommissionLedgerEntry, type OrderCommissionStatus } from "./commission.js";
-import type { DingdanxiaOrderClient } from "../integrations/dingdanxia/orders.js";
+import type { JdOrderClient } from "../integrations/jd/orders.js";
 import type { Repositories } from "../repositories/types.js";
 
 export type SyncOrdersOptions = {
@@ -13,7 +13,7 @@ export type SyncOrdersOptions = {
 
 export async function syncJdOrders(
   repositories: Repositories,
-  orderClient: DingdanxiaOrderClient,
+  orderClient: JdOrderClient,
   options: SyncOrdersOptions
 ) {
   const endTime = options.endTime ?? new Date();

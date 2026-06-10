@@ -54,7 +54,7 @@ export type AdminClaim = {
 
 export type AdminConfig = {
   config: {
-    dingdanxiaPid: string;
+    zhetaokePid: string;
     commissionSharingRatio: number;
     attributionWindowHours: number;
     highValueReviewThresholdCents: number;

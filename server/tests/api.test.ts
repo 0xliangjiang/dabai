@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app.js";
 import { validateProductionConfig, type AppConfig } from "../src/config/env.js";
-import type { DingdanxiaOrderClient } from "../src/integrations/dingdanxia/orders.js";
+import type { JdOrderClient } from "../src/integrations/jd/orders.js";
 import { MockTaobaoClient } from "../src/integrations/taobao/client.js";
 
 describe("server API", () => {
@@ -18,28 +18,16 @@ describe("server API", () => {
     wechatAppSecret: "",
     wechatDealTemplateId: "",
     commissionSharingRatio: 0.5,
-    jdUnionAppKey: "",
+    zhetaokeApiUrl: "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
+  zhetaokeAppKey: "",
+  zhetaokeSid: "",
+  zhetaokePid: "",
+  jdUnionAppKey: "",
   jdUnionAppSecret: "",
   jdUnionSiteId: "",
   jdUnionPositionId: "",
-  dingdanxiaApiKey: "",
-    dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
-    dingdanxiaPid: "",
-    dingdanxiaJdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
-    dingdanxiaJdGoodsApiUrl: "https://api.tbk.dingdanxia.com/jd/query_goods",
-    dingdanxiaJdOrderApiUrl: "https://api.tbk.dingdanxia.com/jd/order_details2",
-    dingdanxiaJdSiteId: "",
-    dingdanxiaJdUnionId: "",
-    dingdanxiaJdAuthKey: "",
-    dingdanxiaJdSceneId: "",
-    dingdanxiaJdPositionId: "",
-    dingdanxiaJdPid: "",
-    dingdanxiaPddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",
-    dingdanxiaPddPid: "",
-    dingdanxiaPddCustomParameters: "{\"uid\":\"default\"}",
-    dingdanxiaVipApiUrl: "https://api.tbk.dingdanxia.com/vip/url_privilege",
-    dingdanxiaVipChanTag: "",
-    dingdanxiaVipStatParam: ""
+
+
   };
 
   async function buildTestApp() {
@@ -258,7 +246,7 @@ describe("server API", () => {
   });
 
   test("POST /api/jobs/sync-tbk-orders stores and attributes JD orders", async () => {
-    const orderClient: DingdanxiaOrderClient = {
+    const orderClient: JdOrderClient = {
       async fetchJdOrders() {
         return {
           hasNext: false,
@@ -361,7 +349,7 @@ describe("server API", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       config: {
-        dingdanxiaPid: "",
+        zhetaokePid: "",
         commissionSharingRatio: 0.5,
         attributionWindowHours: 24,
         highValueReviewThresholdCents: 5000
