@@ -20,6 +20,7 @@ export type AppConfig = {
   jdUnionAppSecret: string;
   jdUnionSiteId: string;
   jdUnionPositionId: string;
+  jdUnionSceneId: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -47,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     jdUnionAppSecret: env.JD_UNION_APP_SECRET ?? "",
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
     jdUnionPositionId: env.JD_UNION_POSITION_ID ?? "",
+    jdUnionSceneId: env.JD_UNION_SCENE_ID ?? "",
   };
 }
 

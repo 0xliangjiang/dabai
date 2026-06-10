@@ -26,6 +26,7 @@ describe("server API", () => {
   jdUnionAppSecret: "",
   jdUnionSiteId: "",
   jdUnionPositionId: "",
+  jdUnionSceneId: "",
 
 
   };

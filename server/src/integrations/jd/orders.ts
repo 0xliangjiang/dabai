@@ -26,7 +26,8 @@ export function createJdOrderClient(config: AppConfig, requestFetch: typeof fetc
     appKey: config.jdUnionAppKey,
     appSecret: config.jdUnionAppSecret,
     siteId: config.jdUnionSiteId,
-    positionId: config.jdUnionPositionId
+    positionId: config.jdUnionPositionId,
+    sceneId: config.jdUnionSceneId
   };
 
   if (!isJdUnionConfigured(unionConfig)) {
