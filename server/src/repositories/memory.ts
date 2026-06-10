@@ -42,6 +42,8 @@ export function createRepositories(): Repositories {
           id,
           openid,
           unionid: input.unionid ?? null,
+          nickname: null,
+          avatarUrl: null,
           status: "active",
           createdAt: new Date()
         };
@@ -58,6 +60,15 @@ export function createRepositories(): Repositories {
           throw new Error(`user not found: ${id}`);
         }
         user.status = status;
+        return user;
+      },
+      async updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }) {
+        const user = users.get(id);
+        if (!user) {
+          throw new Error(`user not found: ${id}`);
+        }
+        if (input.nickname !== undefined) user.nickname = input.nickname;
+        if (input.avatarUrl !== undefined) user.avatarUrl = input.avatarUrl;
         return user;
       },
       async list(): Promise<AdminUserRecord[]> {

@@ -6,6 +6,8 @@ export type UserRecord = {
   id: string;
   openid: string;
   unionid: string | null;
+  nickname: string | null;
+  avatarUrl: string | null;
   status: string;
   createdAt: Date;
 };
@@ -140,6 +142,7 @@ export type Repositories = {
     findOrCreateByOpenid(openid: string, input?: { unionid?: string | null }): Promise<UserRecord>;
     findById(id: string): Promise<UserRecord | undefined>;
     updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
+    updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }): Promise<UserRecord>;
     list(): Promise<AdminUserRecord[]>;
   };
   conversions: {

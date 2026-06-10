@@ -564,6 +564,44 @@ page {
   text-align: center;
 }
 
+.profile-avatar-img {
+  width: 88rpx;
+  height: 88rpx;
+  flex: 0 0 88rpx;
+  border-radius: 999rpx;
+  background: #e6f0ea;
+}
+
+.avatar-picker {
+  width: 132rpx;
+  height: 132rpx;
+  flex: 0 0 132rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 999rpx;
+  background: #f4faf7;
+  border: 2rpx dashed rgba(16, 185, 129, 0.4);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-picker::after {
+  border: 0;
+}
+
+.avatar-picker-img {
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-picker-empty {
+  color: #0a7a52;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
 .login-btn,
 .mini-btn {
   width: 164rpx;

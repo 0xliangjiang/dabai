@@ -12,6 +12,8 @@ export type AdminUser = {
   id: string;
   openid: string;
   unionid: string | null;
+  nickname: string | null;
+  avatarUrl: string | null;
   status: string;
   conversionCount: number;
   copyEventCount: number;

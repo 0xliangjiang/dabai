@@ -32,6 +32,16 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
         const user = await prisma.user.update({ where: { id }, data: { status } });
         return mapUser(user);
       },
+      async updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }) {
+        const user = await prisma.user.update({
+          where: { id },
+          data: {
+            ...(input.nickname !== undefined ? { nickname: input.nickname } : {}),
+            ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {})
+          }
+        });
+        return mapUser(user);
+      },
       async list(): Promise<AdminUserRecord[]> {
         const users = await prisma.user.findMany({
           orderBy: { createdAt: "desc" },
@@ -305,6 +315,8 @@ function mapUser(user: {
   id: string;
   openid: string;
   unionid: string | null;
+  nickname: string | null;
+  avatarUrl: string | null;
   status: string;
   createdAt: Date;
 }): UserRecord {
@@ -312,6 +324,8 @@ function mapUser(user: {
     id: user.id,
     openid: user.openid,
     unionid: user.unionid,
+    nickname: user.nickname,
+    avatarUrl: user.avatarUrl,
     status: user.status,
     createdAt: user.createdAt
   };

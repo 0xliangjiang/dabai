@@ -18,6 +18,7 @@ import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerJobRoutes } from "./routes/jobs.js";
 import { registerOrderRoutes } from "./routes/orders.js";
 import { registerUploadRoutes } from "./routes/uploads.js";
+import { registerUserRoutes } from "./routes/users.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -120,6 +121,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
   await registerOrderRoutes(app, repositories);
   await registerUploadRoutes(app, uploadDir);
+  await registerUserRoutes(app, repositories);
   await registerJobRoutes(app, config, repositories, orderClient);
   await registerAdminRoutes(app, config, repositories);
 

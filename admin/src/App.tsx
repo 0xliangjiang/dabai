@@ -186,6 +186,7 @@ export function App() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>昵称</TableHead>
                   <TableHead>用户 ID</TableHead>
                   <TableHead>OpenID</TableHead>
                   <TableHead>转化数</TableHead>
@@ -198,7 +199,19 @@ export function App() {
               <TableBody>
                 {data.users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.id}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="flex items-center gap-2">
+                        {user.avatarUrl ? (
+                          <img
+                            alt=""
+                            className="h-7 w-7 rounded-full object-cover"
+                            src={user.avatarUrl.startsWith("/") ? `${apiBaseUrl}${user.avatarUrl}` : user.avatarUrl}
+                          />
+                        ) : null}
+                        {user.nickname || "未设置"}
+                      </span>
+                    </TableCell>
+                    <TableCell>{user.id}</TableCell>
                     <TableCell>{user.openid}</TableCell>
                     <TableCell>{user.conversionCount}</TableCell>
                     <TableCell>{user.copyEventCount}</TableCell>
@@ -221,7 +234,7 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.users.length === 0 ? <EmptyRow colSpan={7} text="暂无用户数据" /> : null}
+                {data.users.length === 0 ? <EmptyRow colSpan={8} text="暂无用户数据" /> : null}
               </TableBody>
             </Table>
           </section>

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 const ALLOWED_MIME_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -11,24 +11,27 @@ const ALLOWED_MIME_EXTENSIONS: Record<string, string> = {
 };
 
 export async function registerUploadRoutes(app: FastifyInstance, uploadDir: string) {
-  app.post("/api/uploads/claim-screenshot", async (request, reply) => {
-    const file = await request.file();
-    if (!file) {
-      return reply.code(400).send({ error: "缺少文件" });
-    }
+  app.post("/api/uploads/claim-screenshot", (request, reply) => handleImageUpload(request, reply, uploadDir));
+  app.post("/api/uploads/avatar", (request, reply) => handleImageUpload(request, reply, uploadDir));
+}
 
-    const extension = ALLOWED_MIME_EXTENSIONS[file.mimetype];
-    if (!extension) {
-      return reply.code(400).send({ error: "仅支持 JPG、PNG、WebP 图片" });
-    }
+async function handleImageUpload(request: FastifyRequest, reply: FastifyReply, uploadDir: string) {
+  const file = await request.file();
+  if (!file) {
+    return reply.code(400).send({ error: "缺少文件" });
+  }
 
-    const filename = `${randomUUID()}.${extension}`;
-    await pipeline(file.file, createWriteStream(path.join(uploadDir, filename)));
+  const extension = ALLOWED_MIME_EXTENSIONS[file.mimetype];
+  if (!extension) {
+    return reply.code(400).send({ error: "仅支持 JPG、PNG、WebP 图片" });
+  }
 
-    if (file.file.truncated) {
-      return reply.code(400).send({ error: "图片不能超过 5MB" });
-    }
+  const filename = `${randomUUID()}.${extension}`;
+  await pipeline(file.file, createWriteStream(path.join(uploadDir, filename)));
 
-    return { url: `/uploads/${filename}` };
-  });
+  if (file.file.truncated) {
+    return reply.code(400).send({ error: "图片不能超过 5MB" });
+  }
+
+  return { url: `/uploads/${filename}` };
 }

@@ -151,6 +151,58 @@ describe("user management and claim review", () => {
     expect((pendingAfter.json() as { claims: unknown[] }).claims).toHaveLength(0);
   });
 
+  test("user can update nickname and avatar, visible to admin", async () => {
+    const app = await buildApp();
+    const { token } = await loginUser(app);
+
+    const updateResponse = await app.inject({
+      method: "POST",
+      url: "/api/users/me/profile",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { nickname: "大白测试", avatarUrl: "/uploads/avatar.png" }
+    });
+    expect(updateResponse.statusCode).toBe(200);
+    expect(updateResponse.json()).toMatchObject({
+      user: { nickname: "大白测试", avatarUrl: "/uploads/avatar.png" }
+    });
+
+    const meResponse = await app.inject({
+      method: "GET",
+      url: "/api/users/me",
+      headers: { authorization: `Bearer ${token}` }
+    });
+    expect(meResponse.json()).toMatchObject({ user: { nickname: "大白测试" } });
+
+    const adminUsers = await app.inject({
+      method: "GET",
+      url: "/api/admin/users",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    const { users } = adminUsers.json() as { users: Array<{ nickname: string | null }> };
+    expect(users[0].nickname).toBe("大白测试");
+  });
+
+  test("profile update rejects bad avatar urls and empty payloads", async () => {
+    const app = await buildApp();
+    const { token } = await loginUser(app);
+
+    const badUrl = await app.inject({
+      method: "POST",
+      url: "/api/users/me/profile",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { avatarUrl: "http://evil.example.com/a.png" }
+    });
+    expect(badUrl.statusCode).toBe(400);
+
+    const empty = await app.inject({
+      method: "POST",
+      url: "/api/users/me/profile",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {}
+    });
+    expect(empty.statusCode).toBe(400);
+  });
+
   test("claim rejects http screenshot urls outside uploads", async () => {
     const app = await buildApp();
     const { token } = await loginUser(app);

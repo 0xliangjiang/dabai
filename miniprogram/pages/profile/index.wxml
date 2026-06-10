@@ -7,7 +7,8 @@
   <view class="content-stack floating-stack">
     <view class="cu-card profile-card flex align-center justify-between gap anim-up delay-1">
       <view class="flex align-center gap-sm flex-sub">
-        <view class="profile-avatar">白</view>
+        <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" />
+        <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '白'}}</view>
         <view class="flex-sub">
           <view class="section-title">{{loginTitle}}</view>
           <view class="section-desc">{{loginDesc}}</view>
@@ -15,6 +16,32 @@
       </view>
       <button wx:if="{{!isLoggedIn}}" class="cu-btn login-btn pressable" hover-class="pressed" disabled="{{loggingIn}}" loading="{{loggingIn}}" bindtap="login">微信登录</button>
       <button wx:else class="cu-btn secondary mini-btn pressable" hover-class="pressed" bindtap="logout">退出</button>
+    </view>
+
+    <view wx:if="{{isLoggedIn && !editingProfile}}" class="cu-card flex align-start justify-between gap-sm anim-up delay-1">
+      <view class="flex-sub">
+        <view class="section-title">完善资料</view>
+        <view class="section-desc">{{nickname ? '修改头像和昵称' : '设置头像和昵称，方便客服核对订单'}}</view>
+      </view>
+      <view class="mini-link" bindtap="startEditProfile">去设置</view>
+    </view>
+
+    <view wx:if="{{isLoggedIn && editingProfile}}" class="cu-card cu-form anim-up">
+      <view class="section-title">编辑资料</view>
+      <view class="flex align-center gap">
+        <button class="avatar-picker pressable" hover-class="pressed" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image wx:if="{{draftAvatarTemp || displayAvatar}}" class="avatar-picker-img" src="{{draftAvatarTemp || displayAvatar}}" mode="aspectFill" />
+          <view wx:else class="avatar-picker-empty">选头像</view>
+        </button>
+        <view class="flex-sub">
+          <view class="cu-label margin-bottom-sm">昵称</view>
+          <input class="cu-input" type="nickname" value="{{draftNickname}}" placeholder="请输入昵称" bindinput="onNicknameInput" />
+        </view>
+      </view>
+      <view class="flex gap-sm">
+        <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="cancelEditProfile">取消</button>
+        <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{savingProfile}}" disabled="{{savingProfile}}" bindtap="saveProfile">{{savingProfile ? '保存中…' : '保存'}}</button>
+      </view>
     </view>
 
     <view class="cu-card glass-card grid-2 anim-up delay-2">
