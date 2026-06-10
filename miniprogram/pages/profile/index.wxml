@@ -50,8 +50,8 @@
         <view class="metric-value">{{identityText}}</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">积分</view>
-        <view class="metric-value">预估</view>
+        <view class="muted text-sm">签到积分</view>
+        <view class="metric-value">{{isLoggedIn ? totalPoints : '—'}}</view>
       </view>
     </view>
 

@@ -75,6 +75,14 @@ export type CommissionLedgerRecord = {
   createdAt: Date;
 };
 
+export type CheckInRecord = {
+  id: string;
+  userId: string;
+  checkInDate: string;
+  points: number;
+  createdAt: Date;
+};
+
 export type OrderClaimRecord = {
   id: string;
   userId: string;
@@ -172,6 +180,12 @@ export type Repositories = {
   };
   commissionLedger: {
     upsert(input: CreateCommissionLedgerInput): Promise<CommissionLedgerRecord>;
+  };
+  checkIns: {
+    findByUserAndDate(userId: string, checkInDate: string): Promise<CheckInRecord | undefined>;
+    create(input: { userId: string; checkInDate: string; points: number }): Promise<CheckInRecord>;
+    listRecentDates(userId: string, limit: number): Promise<string[]>;
+    totalPoints(userId: string): Promise<number>;
   };
   admin: {
     overview(): Promise<{

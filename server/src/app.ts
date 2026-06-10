@@ -14,6 +14,7 @@ import { createPrismaRepositories } from "./repositories/prisma.js";
 import type { Repositories } from "./repositories/types.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerCheckInRoutes } from "./routes/checkins.js";
 import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerJobRoutes } from "./routes/jobs.js";
 import { registerOrderRoutes } from "./routes/orders.js";
@@ -122,6 +123,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerOrderRoutes(app, repositories);
   await registerUploadRoutes(app, uploadDir);
   await registerUserRoutes(app, repositories);
+  await registerCheckInRoutes(app, repositories);
   await registerJobRoutes(app, config, repositories, orderClient);
   await registerAdminRoutes(app, config, repositories);
 

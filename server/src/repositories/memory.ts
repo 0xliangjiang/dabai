@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   AdminUserRecord,
   AttributionRecord,
+  CheckInRecord,
   CommissionLedgerRecord,
   ConversionRecord,
   CopyEventRecord,
@@ -24,6 +25,7 @@ export function createRepositories(): Repositories {
   const attributionsByTbkOrderId = new Map<string, string>();
   const ledger = new Map<string, CommissionLedgerRecord>();
   const claims = new Map<string, OrderClaimRecord>();
+  const checkIns = new Map<string, CheckInRecord>();
 
   return {
     users: {
@@ -239,6 +241,35 @@ export function createRepositories(): Repositories {
         };
         ledger.set(record.id, record);
         return record;
+      }
+    },
+    checkIns: {
+      async findByUserAndDate(userId: string, checkInDate: string) {
+        return [...checkIns.values()].find(
+          (record) => record.userId === userId && record.checkInDate === checkInDate
+        );
+      },
+      async create(input: { userId: string; checkInDate: string; points: number }) {
+        const record: CheckInRecord = {
+          id: randomUUID(),
+          createdAt: new Date(),
+          ...input
+        };
+        checkIns.set(record.id, record);
+        return record;
+      },
+      async listRecentDates(userId: string, limit: number) {
+        return [...checkIns.values()]
+          .filter((record) => record.userId === userId)
+          .map((record) => record.checkInDate)
+          .sort()
+          .reverse()
+          .slice(0, limit);
+      },
+      async totalPoints(userId: string) {
+        return [...checkIns.values()]
+          .filter((record) => record.userId === userId)
+          .reduce((total, record) => total + record.points, 0);
       }
     },
     admin: {

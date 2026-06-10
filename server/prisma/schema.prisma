@@ -22,6 +22,20 @@ model User {
   orderAttributions OrderAttribution[]
   commissionLedger  CommissionLedger[]
   orderClaims       OrderClaim[]
+  checkIns          CheckIn[]
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  userId      String
+  checkInDate String
+  points      Int
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, checkInDate])
+  @@index([userId, createdAt])
 }
 
 model Conversion {

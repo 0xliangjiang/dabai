@@ -25,6 +25,7 @@ Page({
     loggingIn: false,
     showPrivacy: false,
     showMoreLinks: false,
+    totalPoints: 0,
     nickname: "",
     avatarUrl: "",
     editingProfile: false,
@@ -43,11 +44,15 @@ Page({
   async syncUserFromServer() {
     if (!getCurrentUser()) return;
     try {
-      const { user } = await request("/api/users/me");
+      const [{ user }, checkin] = await Promise.all([
+        request("/api/users/me"),
+        request("/api/checkins/me")
+      ]);
       if (user) {
         wx.setStorageSync("user", user);
         this.refreshUser();
       }
+      this.setData({ totalPoints: checkin.totalPoints || 0 });
     } catch (_error) {
       // 静默失败，下次进入再同步
     }

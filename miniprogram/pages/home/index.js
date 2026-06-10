@@ -22,7 +22,9 @@ Page({
     result: null,
     errorMsg: "",
     copied: "",
-    showPrivacy: false
+    showPrivacy: false,
+    checkin: { todayChecked: false, streak: 0, totalPoints: 0 },
+    checkinLoading: false
   },
 
   async onLoad() {
@@ -37,6 +39,46 @@ Page({
     syncTabBar(this);
     if (hasConsent()) {
       this.autoPasteFromClipboard();
+      this.refreshCheckin();
+    }
+  },
+
+  async refreshCheckin() {
+    try {
+      await ensureLogin();
+      const checkin = await request("/api/checkins/me");
+      this.setData({ checkin });
+    } catch (_error) {
+      // 静默失败
+    }
+  },
+
+  async checkIn() {
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
+    if (this.data.checkin.todayChecked || this.data.checkinLoading) return;
+
+    this.setData({ checkinLoading: true });
+    try {
+      await ensureLogin();
+      const result = await request("/api/checkins", { method: "POST" });
+      this.setData({
+        checkin: {
+          todayChecked: true,
+          streak: result.streak,
+          totalPoints: result.totalPoints
+        }
+      });
+      wx.showToast({ title: `签到成功 +${result.pointsAwarded}积分`, icon: "none" });
+    } catch (error) {
+      if (error && error.error === "今日已签到") {
+        this.setData({ "checkin.todayChecked": true });
+      }
+      wx.showToast({ title: error.error || "签到失败，请重试", icon: "none" });
+    } finally {
+      this.setData({ checkinLoading: false });
     }
   },
 
@@ -46,6 +88,7 @@ Page({
     this.setData({ showPrivacy: false });
     await this.loginQuietly();
     this.autoPasteFromClipboard();
+    this.refreshCheckin();
   },
 
   onPrivacyReject() {

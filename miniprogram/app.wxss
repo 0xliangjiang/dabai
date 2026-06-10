@@ -48,6 +48,43 @@ page {
   margin-top: 0;
 }
 
+.checkin-chip {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+  min-width: 128rpx;
+  height: 104rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.92);
+  line-height: 1.2;
+}
+
+.checkin-chip::after {
+  border: 0;
+}
+
+.checkin-chip[disabled] {
+  background: rgba(255, 255, 255, 0.92);
+  color: inherit;
+}
+
+.checkin-chip-title {
+  color: #0a7a52;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.checkin-chip-sub {
+  color: #66796d;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
 .hero-tags {
   display: flex;
   gap: 12rpx;

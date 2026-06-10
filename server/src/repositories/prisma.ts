@@ -283,6 +283,33 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
         return mapLedger(record);
       }
     },
+    checkIns: {
+      async findByUserAndDate(userId: string, checkInDate: string) {
+        const record = await prisma.checkIn.findUnique({
+          where: { userId_checkInDate: { userId, checkInDate } }
+        });
+        return record ?? undefined;
+      },
+      async create(input: { userId: string; checkInDate: string; points: number }) {
+        return prisma.checkIn.create({ data: input });
+      },
+      async listRecentDates(userId: string, limit: number) {
+        const records = await prisma.checkIn.findMany({
+          where: { userId },
+          orderBy: { checkInDate: "desc" },
+          take: limit,
+          select: { checkInDate: true }
+        });
+        return records.map((record) => record.checkInDate);
+      },
+      async totalPoints(userId: string) {
+        const result = await prisma.checkIn.aggregate({
+          where: { userId },
+          _sum: { points: true }
+        });
+        return result._sum.points ?? 0;
+      }
+    },
     admin: {
       async overview() {
         const [
