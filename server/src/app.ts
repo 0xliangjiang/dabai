@@ -17,6 +17,9 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCheckInRoutes } from "./routes/checkins.js";
 import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerDealRoutes } from "./routes/deals.js";
+import { createDealPublishedNotifier } from "./domain/deal-notify.js";
+import { createSubscribeMessageSender } from "./integrations/wechat/subscribe.js";
+import { registerSubscriptionRoutes } from "./routes/subscriptions.js";
 import { registerJobRoutes } from "./routes/jobs.js";
 import { registerOrderRoutes } from "./routes/orders.js";
 import { registerUploadRoutes } from "./routes/uploads.js";
@@ -127,8 +130,15 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerUserRoutes(app, repositories);
   await registerCheckInRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
+  await registerSubscriptionRoutes(app, config, repositories);
   await registerJobRoutes(app, config, repositories, orderClient);
-  await registerAdminRoutes(app, config, repositories, uploadDir);
+  const dealNotifier = createDealPublishedNotifier(
+    config,
+    repositories,
+    createSubscribeMessageSender(config),
+    app.log
+  );
+  await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier);
 
   return app;
 }

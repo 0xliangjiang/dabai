@@ -8,6 +8,23 @@
   margin-top: 4rpx;
 }
 
+.subscribe-btn {
+  width: 152rpx;
+  height: 76rpx;
+  flex: 0 0 auto;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
+  box-shadow: 0 8rpx 18rpx rgba(13, 157, 108, 0.22);
+}
+
+.subscribe-btn.subscribed {
+  color: #0a7a52;
+  background: #e9f6f0;
+  box-shadow: none;
+}
+
 .pin-tag {
   flex: 0 0 auto;
   padding: 4rpx 12rpx;

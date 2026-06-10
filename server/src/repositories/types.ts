@@ -209,6 +209,12 @@ export type Repositories = {
   commissionLedger: {
     upsert(input: CreateCommissionLedgerInput): Promise<CommissionLedgerRecord>;
   };
+  subscriptions: {
+    addGrant(userId: string, templateId: string): Promise<void>;
+    countUnused(userId: string, templateId: string): Promise<number>;
+    listUnusedWithOpenid(templateId: string): Promise<Array<{ grantId: string; userId: string; openid: string }>>;
+    markUsed(grantIds: string[]): Promise<void>;
+  };
   deals: {
     list(publishedOnly: boolean): Promise<DealPostRecord[]>;
     findById(id: string): Promise<DealPostRecord | undefined>;

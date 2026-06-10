@@ -2,6 +2,14 @@
   <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
+    <view wx:if="{{subscribeTemplateId}}" class="cu-card subscribe-card flex align-center justify-between gap anim-up">
+      <view class="flex-sub">
+        <view class="section-title">新线报提醒</view>
+        <view class="section-desc">{{subscribeRemaining > 0 ? '已订阅，下条线报发布时通知你' : '订阅后第一时间收到通知'}}</view>
+      </view>
+      <button class="cu-btn subscribe-btn pressable {{subscribeRemaining > 0 ? 'subscribed' : ''}}" hover-class="pressed" bindtap="subscribe">{{subscribeRemaining > 0 ? '加一条提醒' : '订阅'}}</button>
+    </view>
+
     <block wx:if="{{loading}}">
       <view wx:for="{{[1, 2, 3]}}" wx:key="*this" class="cu-card flex-direction gap-sm anim-up delay-{{index + 1}}">
         <view class="skeleton-block skeleton-line"></view>

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import type { Repositories } from "../repositories/types.js";
 
 const mediaUrl = z
@@ -50,7 +51,11 @@ export async function registerDealRoutes(app: FastifyInstance, repositories: Rep
   });
 }
 
-export async function registerAdminDealRoutes(app: FastifyInstance, repositories: Repositories) {
+export async function registerAdminDealRoutes(
+  app: FastifyInstance,
+  repositories: Repositories,
+  notifyDealPublished?: DealPublishedNotifier
+) {
   app.get("/api/admin/deals", async () => ({
     deals: await repositories.deals.list(false)
   }));
@@ -60,7 +65,11 @@ export async function registerAdminDealRoutes(app: FastifyInstance, repositories
     if (!parsed.success) {
       return reply.code(400).send({ error: "线报内容不完整或格式不正确" });
     }
-    return repositories.deals.create(parsed.data);
+    const deal = await repositories.deals.create(parsed.data);
+    if (deal.status === "published" && notifyDealPublished) {
+      await notifyDealPublished(deal);
+    }
+    return deal;
   });
 
   app.put<{ Params: { id: string } }>("/api/admin/deals/:id", async (request, reply) => {
@@ -68,7 +77,13 @@ export async function registerAdminDealRoutes(app: FastifyInstance, repositories
     if (!parsed.success) {
       return reply.code(400).send({ error: "线报内容不完整或格式不正确" });
     }
-    return repositories.deals.update(request.params.id, parsed.data);
+    const before = await repositories.deals.findById(request.params.id);
+    const deal = await repositories.deals.update(request.params.id, parsed.data);
+    // 仅在状态从非发布变为发布时通知，避免编辑已发布内容重复打扰
+    if (deal.status === "published" && before?.status !== "published" && notifyDealPublished) {
+      await notifyDealPublished(deal);
+    }
+    return deal;
   });
 
   app.delete<{ Params: { id: string } }>("/api/admin/deals/:id", async (request) => {

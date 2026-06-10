@@ -29,6 +29,10 @@ export function createRepositories(): Repositories {
   const claims = new Map<string, OrderClaimRecord>();
   const checkIns = new Map<string, CheckInRecord>();
   const deals = new Map<string, DealPostRecord>();
+  const subscribeGrants = new Map<
+    string,
+    { id: string; userId: string; templateId: string; used: boolean }
+  >();
 
   return {
     users: {
@@ -244,6 +248,35 @@ export function createRepositories(): Repositories {
         };
         ledger.set(record.id, record);
         return record;
+      }
+    },
+    subscriptions: {
+      async addGrant(userId: string, templateId: string) {
+        const id = randomUUID();
+        subscribeGrants.set(id, { id, userId, templateId, used: false });
+      },
+      async countUnused(userId: string, templateId: string) {
+        return [...subscribeGrants.values()].filter(
+          (grant) => grant.userId === userId && grant.templateId === templateId && !grant.used
+        ).length;
+      },
+      async listUnusedWithOpenid(templateId: string) {
+        const seen = new Set<string>();
+        const result: Array<{ grantId: string; userId: string; openid: string }> = [];
+        for (const grant of subscribeGrants.values()) {
+          if (grant.templateId !== templateId || grant.used || seen.has(grant.userId)) continue;
+          const user = users.get(grant.userId);
+          if (!user) continue;
+          seen.add(grant.userId);
+          result.push({ grantId: grant.id, userId: grant.userId, openid: user.openid });
+        }
+        return result;
+      },
+      async markUsed(grantIds: string[]) {
+        for (const id of grantIds) {
+          const grant = subscribeGrants.get(id);
+          if (grant) grant.used = true;
+        }
       }
     },
     deals: {

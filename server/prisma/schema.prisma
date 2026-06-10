@@ -23,6 +23,7 @@ model User {
   commissionLedger  CommissionLedger[]
   orderClaims       OrderClaim[]
   checkIns          CheckIn[]
+  subscribeGrants   SubscribeGrant[]
 }
 
 model CheckIn {
@@ -171,6 +172,20 @@ model DealPost {
   updatedAt   DateTime  @updatedAt
 
   @@index([status, pinned, publishedAt])
+}
+
+model SubscribeGrant {
+  id         String    @id @default(cuid())
+  userId     String
+  templateId String
+  used       Boolean   @default(false)
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([templateId, used])
+  @@index([userId, used])
 }
 
 model SystemConfig {

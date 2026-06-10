@@ -16,6 +16,7 @@ describe("server API", () => {
     corsOrigins: ["http://localhost:5173"],
     wechatAppId: "",
     wechatAppSecret: "",
+    wechatDealTemplateId: "",
     commissionSharingRatio: 0.5,
     dingdanxiaApiKey: "",
     dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",

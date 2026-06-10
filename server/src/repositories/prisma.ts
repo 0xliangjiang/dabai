@@ -284,6 +284,37 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
         return mapLedger(record);
       }
     },
+    subscriptions: {
+      async addGrant(userId: string, templateId: string) {
+        await prisma.subscribeGrant.create({ data: { userId, templateId } });
+      },
+      async countUnused(userId: string, templateId: string) {
+        return prisma.subscribeGrant.count({ where: { userId, templateId, used: false } });
+      },
+      async listUnusedWithOpenid(templateId: string) {
+        const grants = await prisma.subscribeGrant.findMany({
+          where: { templateId, used: false },
+          orderBy: { createdAt: "asc" },
+          include: { user: { select: { openid: true } } }
+        });
+        // 每个用户只取一条额度
+        const seen = new Set<string>();
+        return grants
+          .filter((grant) => {
+            if (seen.has(grant.userId)) return false;
+            seen.add(grant.userId);
+            return true;
+          })
+          .map((grant) => ({ grantId: grant.id, userId: grant.userId, openid: grant.user.openid }));
+      },
+      async markUsed(grantIds: string[]) {
+        if (grantIds.length === 0) return;
+        await prisma.subscribeGrant.updateMany({
+          where: { id: { in: grantIds } },
+          data: { used: true, usedAt: new Date() }
+        });
+      }
+    },
     deals: {
       async list(publishedOnly: boolean) {
         const records = await prisma.dealPost.findMany({

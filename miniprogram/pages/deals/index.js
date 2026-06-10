@@ -18,12 +18,54 @@ Page({
   data: {
     deals: [],
     loading: true,
-    showEmpty: false
+    showEmpty: false,
+    subscribeTemplateId: "",
+    subscribeRemaining: 0
   },
 
   async onShow() {
     syncTabBar(this);
     await this.fetchDeals();
+    this.refreshSubscription();
+  },
+
+  async refreshSubscription() {
+    try {
+      await ensureLogin();
+      const { templateId, remaining } = await request("/api/subscriptions/me");
+      this.setData({ subscribeTemplateId: templateId, subscribeRemaining: remaining });
+    } catch (_error) {
+      // 静默失败
+    }
+  },
+
+  async subscribe() {
+    const templateId = this.data.subscribeTemplateId;
+    if (!templateId) {
+      wx.showToast({ title: "订阅暂未开放", icon: "none" });
+      return;
+    }
+
+    wx.requestSubscribeMessage({
+      tmplIds: [templateId],
+      success: async (result) => {
+        if (result[templateId] !== "accept") {
+          wx.showToast({ title: "已取消订阅", icon: "none" });
+          return;
+        }
+        try {
+          await ensureLogin();
+          const { remaining } = await request("/api/subscriptions", { method: "POST" });
+          this.setData({ subscribeRemaining: remaining });
+          wx.showToast({ title: "订阅成功，新线报会通知你", icon: "none" });
+        } catch (error) {
+          wx.showToast({ title: error.error || "订阅失败，请重试", icon: "none" });
+        }
+      },
+      fail: () => {
+        wx.showToast({ title: "订阅失败，请重试", icon: "none" });
+      }
+    });
   },
 
   async onPullDownRefresh() {
