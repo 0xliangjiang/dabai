@@ -53,12 +53,11 @@ page {
   padding-bottom: 46rpx;
 }
 
-.hero-platforms {
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 26rpx;
-  font-weight: 700;
+.hero-greet {
+  color: #ffffff;
+  font-size: 34rpx;
+  font-weight: 800;
   letter-spacing: 2rpx;
-  text-shadow: 0 1rpx 4rpx rgba(5, 90, 60, 0.2);
 }
 
 .checkin-pill {
