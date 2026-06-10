@@ -1,5 +1,7 @@
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
+import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
 import { createDingdanxiaOrderClient, type DingdanxiaOrderClient } from "./integrations/dingdanxia/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
@@ -27,13 +29,32 @@ export type CreateAppOptions = {
 };
 
 export async function createApp(options: CreateAppOptions = {}) {
-  const app = Fastify({ logger: false });
   const config = options.config ?? loadConfig();
+  const app = Fastify({
+    logger:
+      config.nodeEnv === "test"
+        ? false
+        : {
+            level: config.nodeEnv === "production" ? "info" : "debug",
+            redact: [
+              "req.headers.authorization",
+              "req.headers['x-admin-token']",
+              "req.headers['x-scheduler-token']"
+            ]
+          }
+  });
   const repositories = options.repositories ?? createDefaultRepositories(config);
   const taobaoClient = options.taobaoClient ?? createTaobaoClient(config);
   const orderClient = options.orderClient ?? createDingdanxiaOrderClient(config);
 
-  await app.register(cors, { origin: true });
+  // 小程序 wx.request 不带 Origin，不受 CORS 影响；白名单只为管理后台浏览器访问
+  await app.register(cors, { origin: config.corsOrigins });
+
+  await app.register(rateLimit, {
+    max: 120,
+    timeWindow: "1 minute",
+    allowList: () => config.nodeEnv === "test"
+  });
 
   app.decorateRequest("userId", "");
 
@@ -47,11 +68,17 @@ export async function createApp(options: CreateAppOptions = {}) {
     }
 
     const authorization = request.headers.authorization;
-    if (!authorization?.startsWith("Bearer local_")) {
+    if (!authorization?.startsWith("Bearer ")) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
-    request.userId = authorization.replace("Bearer local_", "");
+    const token = authorization.slice("Bearer ".length).trim();
+    const userId = resolveUserId(token, config);
+    if (!userId) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+
+    request.userId = userId;
   });
 
   app.get("/health", async () => ({ ok: true }));
@@ -63,6 +90,14 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerAdminRoutes(app, config, repositories);
 
   return app;
+}
+
+function resolveUserId(token: string, config: AppConfig): string | null {
+  // 测试夹具仍使用 local_ 前缀的明文 token，仅限测试环境
+  if (config.nodeEnv === "test" && token.startsWith("local_")) {
+    return token.slice("local_".length);
+  }
+  return verifyUserToken(token, config.authTokenSecret);
 }
 
 function createDefaultRepositories(config: AppConfig): Repositories {

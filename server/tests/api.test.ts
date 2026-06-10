@@ -12,6 +12,8 @@ describe("server API", () => {
     databaseUrl: "",
     adminToken: "dev-admin-token",
     schedulerToken: "dev-scheduler-token",
+    authTokenSecret: "test-auth-token-secret",
+    corsOrigins: ["http://localhost:5173"],
     wechatAppId: "",
     wechatAppSecret: "",
     commissionSharingRatio: 0.5,
@@ -68,7 +70,7 @@ describe("server API", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      token: expect.stringContaining("local_"),
+      token: expect.stringMatching(/^v1\./),
       user: {
         id: expect.any(String),
         openid: "mock_openid_mock-login-code"
@@ -109,7 +111,7 @@ describe("server API", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      token: "local_user-1",
+      token: expect.stringMatching(/^v1\./),
       user: {
         id: "user-1",
         openid: "real-openid-1",

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { signUserToken } from "../auth/token.js";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 
@@ -27,7 +28,7 @@ export async function registerAuthRoutes(
         unionid: session.unionid
       });
       return {
-        token: `local_${user.id}`,
+        token: signUserToken(user.id, config.authTokenSecret),
         user
       };
     } catch (error) {

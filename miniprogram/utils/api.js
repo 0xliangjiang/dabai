@@ -8,7 +8,7 @@ function getCurrentUser() {
   return wx.getStorageSync("user") || null;
 }
 
-function request(path, options = {}) {
+function rawRequest(path, options = {}) {
   const token = getToken();
   return new Promise((resolve, reject) => {
     wx.request({
@@ -25,11 +25,26 @@ function request(path, options = {}) {
           resolve(res.data);
           return;
         }
-        reject(res.data || { error: "request failed" });
+        reject({ statusCode: res.statusCode, ...(res.data || { error: "request failed" }) });
       },
       fail: reject
     });
   });
+}
+
+async function request(path, options = {}) {
+  try {
+    return await rawRequest(path, options);
+  } catch (error) {
+    // 登录态过期：清除本地凭证，静默重新登录后重试一次
+    const isLoginCall = path === "/api/auth/wechat-login";
+    if (error && error.statusCode === 401 && !isLoginCall && !options._retried) {
+      logout();
+      await loginWithWechat();
+      return request(path, { ...options, _retried: true });
+    }
+    throw error;
+  }
 }
 
 function wxLogin() {

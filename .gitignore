@@ -7,3 +7,4 @@ dist/
 project.private.config.json
 miniprogram/project.private.config.json
 miniprogram/miniprogram_npm/
+server/prisma/dev.db

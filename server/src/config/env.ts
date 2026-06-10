@@ -6,6 +6,8 @@ export type AppConfig = {
   databaseUrl: string;
   adminToken: string;
   schedulerToken: string;
+  authTokenSecret: string;
+  corsOrigins: string[];
   wechatAppId: string;
   wechatAppSecret: string;
   commissionSharingRatio: number;
@@ -36,6 +38,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     databaseUrl: env.DATABASE_URL ?? "",
     adminToken: env.ADMIN_TOKEN ?? "dev-admin-token",
     schedulerToken: env.SCHEDULER_TOKEN ?? "dev-scheduler-token",
+    authTokenSecret: env.AUTH_TOKEN_SECRET ?? "dev-auth-token-secret",
+    corsOrigins: (env.CORS_ORIGINS ?? "http://localhost:5173")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     wechatAppId: env.WECHAT_APP_ID ?? "",
     wechatAppSecret: env.WECHAT_APP_SECRET ?? "",
     commissionSharingRatio: Number(env.COMMISSION_SHARING_RATIO ?? 0.5),
@@ -70,6 +77,7 @@ export function validateProductionConfig(config: AppConfig): void {
     ["DATABASE_URL", config.databaseUrl],
     ["ADMIN_TOKEN", config.adminToken],
     ["SCHEDULER_TOKEN", config.schedulerToken],
+    ["AUTH_TOKEN_SECRET", config.authTokenSecret],
     ["WECHAT_APP_ID", config.wechatAppId],
     ["WECHAT_APP_SECRET", config.wechatAppSecret],
     ["DINGDANXIA_API_KEY", config.dingdanxiaApiKey],
