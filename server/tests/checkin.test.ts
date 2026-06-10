@@ -20,6 +20,7 @@ const testConfig: AppConfig = {
   zhetaokeAppKey: "",
   zhetaokeSid: "",
   zhetaokePid: "",
+  zhetaokeRelationId: "",
   zhetaokeJdApiUrl: "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
   zhetaokeJdUnionId: "",
   zhetaokeJdPositionId: "",

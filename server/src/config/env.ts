@@ -16,6 +16,7 @@ export type AppConfig = {
   zhetaokeAppKey: string;
   zhetaokeSid: string;
   zhetaokePid: string;
+  zhetaokeRelationId: string;
   zhetaokeJdApiUrl: string;
   zhetaokeJdUnionId: string;
   zhetaokeJdPositionId: string;
@@ -47,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     zhetaokeAppKey: env.ZTK_APP_KEY ?? "",
     zhetaokeSid: env.ZTK_SID ?? "",
     zhetaokePid: env.ZTK_PID ?? "",
+    zhetaokeRelationId: env.ZTK_RELATION_ID ?? "",
     zhetaokeJdApiUrl:
       env.ZTK_JD_API_URL ?? "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
     zhetaokeJdUnionId: env.ZTK_JD_UNION_ID ?? "",
