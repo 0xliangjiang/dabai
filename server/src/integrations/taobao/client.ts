@@ -102,6 +102,12 @@ export class ZhetaokeClient implements TaobaoClient {
       return await this.convertTaobaoByTkl(rawContent);
     } catch (error) {
       if (!(error instanceof ConversionApiError)) throw error;
+      // 新版轻口令（e.tb.cn + tk=）暂无服务商支持解析，给出明确引导
+      if (/e\.tb\.cn\/[^\s]+/.test(rawContent) && /[?&]tk=/.test(rawContent)) {
+        throw new UnsupportedPlatformError(
+          '暂不支持这种分享格式，请在淘宝分享时选择「复制口令」（￥￥格式）后再粘贴'
+        );
+      }
       const itemId = await this.resolveTaobaoItemId(rawContent);
       if (!itemId) throw error;
       return this.convertTaobaoByItemId(itemId);
