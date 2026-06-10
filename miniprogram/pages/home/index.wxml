@@ -1,8 +1,13 @@
 <view class="cu-page page-shell">
   <view class="hero anim-up">
-    <view class="eyebrow">大白小助手</view>
-    <view class="hero-title">粘贴商品 查预估优惠</view>
-    <view class="hero-desc">支持淘宝、京东、拼多多、唯品会，展示结果仅供参考，以实际订单结算为准。</view>
+    <view class="hero-title">大白小助手</view>
+    <view class="hero-desc">粘贴链接或口令，优惠一查便知</view>
+    <view class="hero-tags">
+      <view class="hero-tag">淘宝</view>
+      <view class="hero-tag">京东</view>
+      <view class="hero-tag">拼多多</view>
+      <view class="hero-tag">唯品会</view>
+    </view>
   </view>
 
   <view class="content-stack floating-stack">

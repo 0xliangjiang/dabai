@@ -44,6 +44,25 @@ page {
   line-height: 1.15;
 }
 
+.hero-title:first-child {
+  margin-top: 0;
+}
+
+.hero-tags {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.hero-tag {
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
 .hero-desc {
   margin-top: 14rpx;
   max-width: 620rpx;
