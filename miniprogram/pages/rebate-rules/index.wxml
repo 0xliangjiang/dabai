@@ -1,9 +1,5 @@
 <view class="cu-page page-shell">
-  <view class="hero anim-up">
-    <view class="eyebrow">说明</view>
-    <view class="hero-title">积分说明</view>
-    <view class="hero-desc">页面展示积分为预估参考，实际结果以各平台订单状态为准。</view>
-  </view>
+  <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
     <view class="anim-up delay-1 cu-card article-card">

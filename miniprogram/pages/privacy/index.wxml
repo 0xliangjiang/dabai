@@ -1,9 +1,5 @@
 <view class="cu-page page-shell">
-  <view class="hero anim-up">
-    <view class="eyebrow">隐私</view>
-    <view class="hero-title">隐私政策</view>
-    <view class="hero-desc">我们仅在提供商品识别、优惠查询、订单匹配和账号服务时使用必要信息。</view>
-  </view>
+  <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
     <view class="anim-up delay-1 cu-card article-card">

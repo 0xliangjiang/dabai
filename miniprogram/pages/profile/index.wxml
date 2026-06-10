@@ -1,10 +1,6 @@
 <view class="cu-page page-shell">
-  <view class="hero anim-up">
-    <view class="flex align-center justify-between gap">
-      <view>
-        <view class="eyebrow">我的</view>
-        <view class="hero-title">账户中心</view>
-      </view>
+  <view class="hero hero-slim anim-up">
+    <view class="flex align-center justify-end gap">
       <button class="checkin-pill {{checkin.todayChecked ? 'checked' : ''}}" hover-class="checkin-pill-pressed" bindtap="checkIn" disabled="{{checkinLoading}}">
         <view class="checkin-pill-icon">{{checkin.todayChecked ? '✓' : '+'}}</view>
         <view class="checkin-pill-text">{{checkin.todayChecked ? (checkin.streak > 1 ? '连签 ' + checkin.streak + ' 天' : '已签到') : '签到领积分'}}</view>

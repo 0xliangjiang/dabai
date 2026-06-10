@@ -1,8 +1,5 @@
 <view class="cu-page page-shell">
-  <view class="hero anim-up">
-    <view class="eyebrow">优惠订单</view>
-    <view class="hero-title">我的订单进度</view>
-  </view>
+  <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
     <view class="cu-card glass-card grid-2 anim-up delay-1">
