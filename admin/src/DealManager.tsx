@@ -4,6 +4,7 @@ import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import { fetchAdminApi, mediaUrl, uploadAdminFile, type AdminDeal, type AdminDealStep } from "./lib/api";
+import { toast } from "./lib/toast";
 
 const emptyStep: AdminDealStep = { content: "", copyType: null, copyValue: "", images: [], videoUrl: "" };
 
@@ -115,6 +116,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         });
       }
       setDraft(null);
+      toast(draft.id ? "线报已更新" : "线报已创建");
       await loadDeals();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "保存失败");
@@ -133,6 +135,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         steps: deal.steps
       })
     });
+    toast(deal.status === "published" ? "已下线" : "已发布");
     await loadDeals();
   }
 
@@ -154,15 +157,16 @@ export function DealManager({ adminToken }: { adminToken: string }) {
   async function removeDeal(id: string) {
     if (!window.confirm("确定删除这条线报吗？")) return;
     await fetchAdminApi(`/api/admin/deals/${id}`, adminToken, { method: "DELETE" });
+    toast("线报已删除");
     await loadDeals();
   }
 
   return (
-    <section id="deals" className="mt-6 rounded-lg border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+    <section id="deals" className="mt-5 scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
           <h2 className="font-semibold">线报管理</h2>
-          <p className="mt-1 text-sm text-slate-500">发布带步骤指引的线报，用户端按步骤展示并支持一键复制。</p>
+          <p className="mt-0.5 text-sm text-slate-400">发布带步骤指引的线报，用户端按步骤展示并支持一键复制</p>
         </div>
         <Button size="sm" onClick={startCreate}>
           <Plus className="h-4 w-4" />
@@ -173,7 +177,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
       {error ? <div className="mx-4 mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
 
       {draft ? (
-        <div className="m-4 rounded-lg border border-slate-300 bg-slate-50 p-4">
+        <div className="m-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
               标题
