@@ -42,7 +42,10 @@ step "构建镜像${FRESH:+（无缓存）}"
 $DC build $FRESH
 
 step "移除旧容器"
-$DC down --remove-orphans
+$DC down --remove-orphans || true
+# 兜底强制清理（docker-compose v1 与新版引擎的 ContainerConfig bug 会卡在 recreate）
+PROJECT=$(basename "$PWD")
+docker ps -aq --filter "name=${PROJECT}" | xargs -r docker rm -f
 
 step "启动服务"
 $DC up -d
