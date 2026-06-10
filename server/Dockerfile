@@ -8,6 +8,9 @@ COPY admin/package.json admin/
 RUN npm ci --workspace=server
 
 COPY server/prisma server/prisma
+# 防御：剔除缺少 migration.sql 的残留目录（空目录不进 git，但可能存在于构建机）
+RUN find server/prisma/migrations -mindepth 1 -maxdepth 1 -type d \
+  -exec sh -c '[ -f "$1/migration.sql" ] || rm -rf "$1"' _ {} \;
 RUN npx prisma generate --schema server/prisma/schema.prisma
 
 COPY server/tsconfig.json server/tsconfig.build.json server/
@@ -25,7 +28,9 @@ COPY admin/package.json admin/
 RUN npm ci --workspace=server --omit=dev
 
 COPY server/prisma server/prisma
-RUN npx prisma generate --schema server/prisma/schema.prisma
+RUN find server/prisma/migrations -mindepth 1 -maxdepth 1 -type d \
+  -exec sh -c '[ -f "$1/migration.sql" ] || rm -rf "$1"' _ {} \; \
+  && npx prisma generate --schema server/prisma/schema.prisma
 
 COPY --from=build /app/server/dist server/dist
 COPY server/docker-entrypoint.sh server/docker-entrypoint.sh
