@@ -41,6 +41,9 @@ echo "当前版本：$(git log --oneline -1)"
 step "构建镜像${FRESH:+（无缓存）}"
 $DC build $FRESH
 
+step "移除旧容器"
+$DC down --remove-orphans
+
 step "启动服务"
 $DC up -d
 
