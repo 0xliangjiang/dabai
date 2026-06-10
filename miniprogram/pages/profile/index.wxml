@@ -1,0 +1,90 @@
+<view class="cu-page page-shell">
+  <view class="hero hero-slim anim-up"></view>
+
+  <view class="content-stack floating-stack">
+    <view class="cu-card profile-card flex align-center justify-between gap anim-up delay-1">
+      <view class="flex align-center gap-sm flex-sub">
+        <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" />
+        <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '白'}}</view>
+        <view class="flex-sub">
+          <view class="section-title">{{loginTitle}}</view>
+          <view wx:if="{{loginDesc}}" class="section-desc">{{loginDesc}}</view>
+        </view>
+      </view>
+      <button wx:if="{{!isLoggedIn}}" class="cu-btn login-btn pressable" hover-class="pressed" disabled="{{loggingIn}}" loading="{{loggingIn}}" bindtap="login">微信登录</button>
+      <view wx:else class="mini-link" bindtap="startEditProfile">编辑</view>
+    </view>
+
+    <view wx:if="{{isLoggedIn && editingProfile}}" class="cu-card cu-form anim-up">
+      <view class="section-title">编辑资料</view>
+      <view class="flex align-center gap">
+        <button class="avatar-picker pressable" hover-class="pressed" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image wx:if="{{draftAvatarTemp || displayAvatar}}" class="avatar-picker-img" src="{{draftAvatarTemp || displayAvatar}}" mode="aspectFill" />
+          <view wx:else class="avatar-picker-empty">选头像</view>
+        </button>
+        <view class="flex-sub">
+          <view class="cu-label margin-bottom-sm">昵称</view>
+          <input class="cu-input" type="nickname" value="{{draftNickname}}" placeholder="请输入昵称" bindinput="onNicknameInput" />
+        </view>
+      </view>
+      <view class="flex gap-sm">
+        <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="cancelEditProfile">取消</button>
+        <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{savingProfile}}" disabled="{{savingProfile}}" bindtap="saveProfile">{{savingProfile ? '保存中…' : '保存'}}</button>
+      </view>
+    </view>
+
+    <view class="cu-card points-card flex align-center justify-between anim-up delay-2">
+      <view>
+        <view class="muted text-sm">签到积分</view>
+        <view class="points-value">{{isLoggedIn ? totalPoints : '—'}}</view>
+        <view class="points-sub">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
+      </view>
+      <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
+    </view>
+
+    <view class="cu-list anim-up delay-3">
+      <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/claim/index">
+<view class="cu-label">订单补充</view>
+        <view class="cu-arrow">›</view>
+      </navigator>
+      <view class="cu-item flex align-center justify-between line" hover-class="item-pressed" bindtap="toggleMoreLinks">
+<view class="cu-label">更多说明</view>
+        <view class="cu-arrow more-arrow {{showMoreLinks ? 'expanded' : ''}}">›</view>
+      </view>
+      <block wx:if="{{showMoreLinks}}">
+        <navigator class="cu-item sub-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/rebate-rules/index">
+          <view class="cu-label">积分说明</view>
+          <view class="cu-arrow">›</view>
+        </navigator>
+        <navigator class="cu-item sub-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/privacy/index">
+          <view class="cu-label">隐私政策</view>
+          <view class="cu-arrow">›</view>
+        </navigator>
+        <navigator class="cu-item sub-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/agreement/index">
+          <view class="cu-label">用户协议</view>
+          <view class="cu-arrow">›</view>
+        </navigator>
+      </block>
+      <button
+        class="cu-item contact-item flex align-center justify-between" hover-class="item-pressed"
+        open-type="contact"
+        show-message-card="true"
+        send-message-title="大白小助手客服"
+        send-message-path="/pages/home/index"
+      >
+<view class="cu-label">客服入口</view>
+        <view class="cu-arrow">›</view>
+      </button>
+      <view class="cu-item flex align-center justify-between">
+<view>
+          <view class="cu-label">服务时间</view>
+          <view class="section-desc">工作日 09:00-18:00</view>
+        </view>
+      </view>
+    </view>
+
+    <button wx:if="{{isLoggedIn}}" class="logout-btn anim-up delay-4" hover-class="logout-btn-pressed" bindtap="logout">退出登录</button>
+  </view>
+
+  <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
+</view>

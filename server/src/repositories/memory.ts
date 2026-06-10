@@ -1,0 +1,381 @@
+import { randomUUID } from "node:crypto";
+import type {
+  AdminUserRecord,
+  AttributionRecord,
+  CheckInRecord,
+  DealPostInput,
+  DealPostRecord,
+  CommissionLedgerRecord,
+  ConversionRecord,
+  CopyEventRecord,
+  OrderClaimRecord,
+  OrderRecord,
+  Repositories,
+  UpsertAttributionInput,
+  UpsertOrderInput,
+  UserRecord
+} from "./types.js";
+
+export function createRepositories(): Repositories {
+  const users = new Map<string, UserRecord>();
+  const usersByOpenid = new Map<string, string>();
+  const conversions = new Map<string, ConversionRecord>();
+  const copyEvents = new Map<string, CopyEventRecord>();
+  const orders = new Map<string, OrderRecord>();
+  const ordersByTbkOrderId = new Map<string, string>();
+  const attributions = new Map<string, AttributionRecord>();
+  const attributionsByTbkOrderId = new Map<string, string>();
+  const ledger = new Map<string, CommissionLedgerRecord>();
+  const claims = new Map<string, OrderClaimRecord>();
+  const checkIns = new Map<string, CheckInRecord>();
+  const deals = new Map<string, DealPostRecord>();
+  const subscribeGrants = new Map<
+    string,
+    { id: string; userId: string; templateId: string; used: boolean }
+  >();
+
+  return {
+    users: {
+      async findOrCreateByOpenid(openid: string, input: { unionid?: string | null } = {}) {
+        const existingId = usersByOpenid.get(openid);
+        if (existingId) {
+          const existing = users.get(existingId)!;
+          if (!existing.unionid && input.unionid) {
+            existing.unionid = input.unionid;
+          }
+          return existing;
+        }
+
+        const id = `user-${users.size + 1}`;
+        const user: UserRecord = {
+          id,
+          openid,
+          unionid: input.unionid ?? null,
+          nickname: null,
+          avatarUrl: null,
+          status: "active",
+          createdAt: new Date()
+        };
+        users.set(id, user);
+        usersByOpenid.set(openid, id);
+        return user;
+      },
+      async findById(id: string) {
+        return users.get(id);
+      },
+      async updateStatus(id: string, status) {
+        const user = users.get(id);
+        if (!user) {
+          throw new Error(`user not found: ${id}`);
+        }
+        user.status = status;
+        return user;
+      },
+      async updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }) {
+        const user = users.get(id);
+        if (!user) {
+          throw new Error(`user not found: ${id}`);
+        }
+        if (input.nickname !== undefined) user.nickname = input.nickname;
+        if (input.avatarUrl !== undefined) user.avatarUrl = input.avatarUrl;
+        return user;
+      },
+      async list(): Promise<AdminUserRecord[]> {
+        return [...users.values()].map((user) => ({
+          ...user,
+          conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
+          copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
+          claimCount: [...claims.values()].filter((record) => record.userId === user.id).length
+        }));
+      }
+    },
+    conversions: {
+      async create(input: Omit<ConversionRecord, "id" | "createdAt">) {
+        const record: ConversionRecord = {
+          id: randomUUID(),
+          createdAt: new Date(),
+          ...input
+        };
+        conversions.set(record.id, record);
+        return record;
+      },
+      async findById(id: string) {
+        return conversions.get(id);
+      },
+      async listByUser(userId: string) {
+        return [...conversions.values()].filter((record) => record.userId === userId);
+      }
+    },
+    copyEvents: {
+      async create(input: Omit<CopyEventRecord, "id" | "copiedAt">) {
+        const record: CopyEventRecord = {
+          id: randomUUID(),
+          copiedAt: new Date(),
+          ...input
+        };
+        copyEvents.set(record.id, record);
+        return record;
+      },
+      async count() {
+        return copyEvents.size;
+      },
+      async listByItem(itemId: string) {
+        return [...copyEvents.values()].filter((record) => record.itemId === itemId);
+      }
+    },
+    orders: {
+      async listByUser(userId: string) {
+        return [...attributions.values()]
+          .filter((attribution) => attribution.userId === userId)
+          .map((attribution) => {
+            const order = orders.get(attribution.tbkOrderId)!;
+            const userLedger = [...ledger.values()]
+              .filter((entry) => entry.userId === userId && entry.tbkOrderId === order.id)
+              .reduce((total, entry) => total + entry.amountCents, 0);
+            return {
+              id: order.id,
+              itemTitle: order.itemTitle,
+              status: order.orderStatus,
+              estimatedCommissionCents: order.estimatedCommissionCents,
+              userRebateCents: userLedger
+            };
+          });
+      },
+      async upsert(input: UpsertOrderInput) {
+        const existingId = ordersByTbkOrderId.get(input.tbkOrderId);
+        const record: OrderRecord = {
+          id: existingId ?? randomUUID(),
+          ...input
+        };
+        orders.set(record.id, record);
+        ordersByTbkOrderId.set(input.tbkOrderId, record.id);
+        return record;
+      },
+      async upsertAttribution(input: UpsertAttributionInput) {
+        const orderId = ordersByTbkOrderId.get(input.tbkOrderId);
+        if (!orderId) {
+          throw new Error(`order not found: ${input.tbkOrderId}`);
+        }
+        const existingId = attributionsByTbkOrderId.get(orderId);
+        const record: AttributionRecord = {
+          id: existingId ?? randomUUID(),
+          tbkOrderId: orderId,
+          userId: input.userId ?? null,
+          conversionId: input.conversionId ?? null,
+          copyEventId: input.copyEventId ?? null,
+          status: input.status,
+          confidence: input.confidence,
+          reason: input.reason,
+          createdAt: existingId ? attributions.get(existingId)!.createdAt : new Date()
+        };
+        attributions.set(record.id, record);
+        attributionsByTbkOrderId.set(orderId, record.id);
+        return record;
+      },
+      async listPendingAttributions() {
+        return [...attributions.values()]
+          .filter((record) => record.status === "pending_review" || record.status === "unmatched")
+          .map((record) => ({ ...record, order: orders.get(record.tbkOrderId)! }));
+      },
+      async attributeOrder(id: string, input: { userId?: string | null; reviewedBy?: string }) {
+        const existing = attributions.get(id);
+        if (!existing) {
+          throw new Error(`attribution not found: ${id}`);
+        }
+        const updated: AttributionRecord = {
+          ...existing,
+          userId: input.userId ?? existing.userId,
+          status: "manual_matched",
+          reason: `manual_review:${input.reviewedBy ?? "admin"}`
+        };
+        attributions.set(id, updated);
+        return updated;
+      },
+      async createClaim(input: {
+        userId: string;
+        orderSuffix: string;
+        screenshotUrl?: string | null;
+        notes?: string | null;
+      }) {
+        const record: OrderClaimRecord = {
+          id: randomUUID(),
+          userId: input.userId,
+          orderSuffix: input.orderSuffix,
+          screenshotUrl: input.screenshotUrl ?? null,
+          notes: input.notes ?? null,
+          status: "pending_review",
+          createdAt: new Date()
+        };
+        claims.set(record.id, record);
+        return record;
+      },
+      async listClaims(status?: string) {
+        return [...claims.values()]
+          .filter((claim) => !status || claim.status === status)
+          .map((claim) => ({
+            ...claim,
+            userOpenid: users.get(claim.userId)?.openid ?? ""
+          }));
+      },
+      async reviewClaim(id: string, input: { status: "approved" | "rejected"; reviewedBy?: string }) {
+        const claim = claims.get(id);
+        if (!claim) {
+          throw new Error(`claim not found: ${id}`);
+        }
+        claim.status = input.status;
+        claims.set(id, claim);
+        return claim;
+      }
+    },
+    commissionLedger: {
+      async upsert(input) {
+        const existing = [...ledger.values()].find(
+          (entry) =>
+            entry.userId === input.userId &&
+            entry.tbkOrderId === input.tbkOrderId &&
+            entry.ledgerType === input.ledgerType
+        );
+        if (existing) {
+          const updated = { ...existing, ...input };
+          ledger.set(existing.id, updated);
+          return updated;
+        }
+
+        const record: CommissionLedgerRecord = {
+          id: randomUUID(),
+          createdAt: new Date(),
+          ...input
+        };
+        ledger.set(record.id, record);
+        return record;
+      }
+    },
+    subscriptions: {
+      async addGrant(userId: string, templateId: string) {
+        const id = randomUUID();
+        subscribeGrants.set(id, { id, userId, templateId, used: false });
+      },
+      async countUnused(userId: string, templateId: string) {
+        return [...subscribeGrants.values()].filter(
+          (grant) => grant.userId === userId && grant.templateId === templateId && !grant.used
+        ).length;
+      },
+      async listUnusedWithOpenid(templateId: string) {
+        const seen = new Set<string>();
+        const result: Array<{ grantId: string; userId: string; openid: string }> = [];
+        for (const grant of subscribeGrants.values()) {
+          if (grant.templateId !== templateId || grant.used || seen.has(grant.userId)) continue;
+          const user = users.get(grant.userId);
+          if (!user) continue;
+          seen.add(grant.userId);
+          result.push({ grantId: grant.id, userId: grant.userId, openid: user.openid });
+        }
+        return result;
+      },
+      async markUsed(grantIds: string[]) {
+        for (const id of grantIds) {
+          const grant = subscribeGrants.get(id);
+          if (grant) grant.used = true;
+        }
+      }
+    },
+    deals: {
+      async list(publishedOnly: boolean) {
+        // 带插入序号做时间相同时的次级排序（同一毫秒创建时保证后创建的在前）
+        return [...deals.values()]
+          .map((deal, index) => ({ deal, index }))
+          .filter(({ deal }) => !publishedOnly || deal.status === "published")
+          .sort((a, b) => {
+            if (a.deal.pinned !== b.deal.pinned) return a.deal.pinned ? -1 : 1;
+            const aTime = (a.deal.publishedAt ?? a.deal.createdAt).getTime();
+            const bTime = (b.deal.publishedAt ?? b.deal.createdAt).getTime();
+            if (bTime !== aTime) return bTime - aTime;
+            return b.index - a.index;
+          })
+          .map(({ deal }) => deal);
+      },
+      async findById(id: string) {
+        return deals.get(id);
+      },
+      async create(input: DealPostInput) {
+        const record: DealPostRecord = {
+          id: randomUUID(),
+          title: input.title,
+          summary: input.summary ?? null,
+          status: input.status,
+          pinned: input.pinned ?? false,
+          steps: input.steps,
+          publishedAt: input.status === "published" ? new Date() : null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        deals.set(record.id, record);
+        return record;
+      },
+      async update(id: string, input: DealPostInput) {
+        const existing = deals.get(id);
+        if (!existing) {
+          throw new Error(`deal not found: ${id}`);
+        }
+        const updated: DealPostRecord = {
+          ...existing,
+          title: input.title,
+          summary: input.summary ?? null,
+          status: input.status,
+          pinned: input.pinned ?? existing.pinned,
+          steps: input.steps,
+          publishedAt:
+            input.status === "published" && !existing.publishedAt ? new Date() : existing.publishedAt,
+          updatedAt: new Date()
+        };
+        deals.set(id, updated);
+        return updated;
+      },
+      async remove(id: string) {
+        deals.delete(id);
+      }
+    },
+    checkIns: {
+      async findByUserAndDate(userId: string, checkInDate: string) {
+        return [...checkIns.values()].find(
+          (record) => record.userId === userId && record.checkInDate === checkInDate
+        );
+      },
+      async create(input: { userId: string; checkInDate: string; points: number }) {
+        const record: CheckInRecord = {
+          id: randomUUID(),
+          createdAt: new Date(),
+          ...input
+        };
+        checkIns.set(record.id, record);
+        return record;
+      },
+      async listRecentDates(userId: string, limit: number) {
+        return [...checkIns.values()]
+          .filter((record) => record.userId === userId)
+          .map((record) => record.checkInDate)
+          .sort()
+          .reverse()
+          .slice(0, limit);
+      },
+      async totalPoints(userId: string) {
+        return [...checkIns.values()]
+          .filter((record) => record.userId === userId)
+          .reduce((total, record) => total + record.points, 0);
+      }
+    },
+    admin: {
+      async overview() {
+        return {
+          userCount: users.size,
+          conversionCount: conversions.size,
+          copyEventCount: copyEvents.size,
+          pendingAttributionCount: [...attributions.values()].filter(
+            (record) => record.status === "pending_review" || record.status === "unmatched"
+          ).length,
+          orderClaimCount: claims.size
+        };
+      }
+    }
+  };
+}

@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - server/.env.production
+    environment:
+      - NODE_ENV=production
+      - UPLOAD_DIR=/app/server/uploads
+    volumes:
+      - ./deploy-data/uploads:/app/server/uploads

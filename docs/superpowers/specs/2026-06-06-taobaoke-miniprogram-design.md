@@ -21,7 +21,7 @@ The MVP includes:
 The MVP does not include:
 
 - Per-user `relation_id`.
-- Per-user `adzone_id`.
+- Per-user promotion positions.
 - Fully automated guaranteed attribution.
 - Multi-level agent hierarchy.
 - Wallet withdrawal and payout automation.
@@ -36,7 +36,7 @@ Use the standard MVP path:
 - Scheduled order sync from Taobaoke APIs.
 - Hybrid attribution: automatic matching first, user/admin confirmation when confidence is low.
 
-This avoids exposing `appSecret`, `adzone_id`, or `pid` in the mini program and gives the business a usable first version without depending on `relation_id`.
+This avoids exposing third-party API keys or PID configuration in the mini program and gives the business a usable first version without depending on `relation_id`.
 
 ## Architecture
 
@@ -151,7 +151,7 @@ All Taobao Open Platform calls happen on the server.
 The conversion service uses the Taobaoke password/link conversion API, including:
 
 - The raw user input as password or link content.
-- The operator's `adzone_id`.
+- The operator's Dingdanxia API key and PID configuration.
 - Other operator-level promotion configuration.
 
 The server stores operator credentials and promotion settings in environment variables or encrypted configuration. The mini program never receives `appSecret` or other signing secrets.
@@ -385,7 +385,7 @@ Attribution errors:
 Security requirements:
 
 - Store Taobao API credentials only on the server.
-- Do not expose `appSecret`, `adzone_id`, or signing logic to the mini program.
+- Do not expose Dingdanxia API keys, PID configuration, or conversion provider credentials to the mini program.
 - Protect job and admin endpoints.
 - Authenticate all user APIs.
 - Validate uploaded claim screenshots.
@@ -419,7 +419,8 @@ Mini program tests or manual checks:
 
 These should be configurable without code changes:
 
-- Operator `adzone_id`.
+- Dingdanxia API key.
+- Dingdanxia PID.
 - Commission sharing ratio.
 - Attribution time window.
 - High-value review threshold.

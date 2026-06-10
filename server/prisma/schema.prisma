@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  openid      String   @unique
+  unionid     String?
+  nickname    String?
+  avatarUrl   String?  @db.VarChar(512)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  conversions       Conversion[]
+  copyEvents        CopyEvent[]
+  orderAttributions OrderAttribution[]
+  commissionLedger  CommissionLedger[]
+  orderClaims       OrderClaim[]
+  checkIns          CheckIn[]
+  subscribeGrants   SubscribeGrant[]
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  userId      String
+  checkInDate String
+  points      Int
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, checkInDate])
+  @@index([userId, createdAt])
+}
+
+model Conversion {
+  id                String   @id @default(cuid())
+  userId            String
+  rawContent        String  @db.Text
+  platform          String   @default("taobao")
+  itemId            String
+  itemTitle         String  @db.VarChar(512)
+  itemImageUrl      String? @db.VarChar(1024)
+  itemPriceCents    Int?
+  commissionRate    Float?
+  estimatedCommissionCents Int @default(0)
+  estimatedRebateCents     Int @default(0)
+  generatedPassword String  @db.VarChar(512)
+  generatedShortUrl String  @db.VarChar(1024)
+  generatedClickUrl String  @db.Text
+  createdAt         DateTime @default(now())
+
+  user              User               @relation(fields: [userId], references: [id])
+  copyEvents        CopyEvent[]
+  orderAttributions OrderAttribution[]
+
+  @@index([userId, createdAt])
+  @@index([itemId, createdAt])
+}
+
+model CopyEvent {
+  id           String   @id @default(cuid())
+  conversionId String
+  userId       String
+  itemId       String
+  copyType     String
+  copiedAt     DateTime @default(now())
+
+  conversion       Conversion         @relation(fields: [conversionId], references: [id])
+  user             User               @relation(fields: [userId], references: [id])
+  orderAttributions OrderAttribution[]
+
+  @@index([userId, copiedAt])
+  @@index([itemId, copiedAt])
+}
+
+model TbkOrder {
+  id                       String   @id @default(cuid())
+  tbkOrderId               String   @unique
+  itemId                   String
+  itemTitle                String   @db.VarChar(512)
+  payTime                  DateTime
+  payAmountCents           Int
+  estimatedCommissionCents Int
+  settledCommissionCents   Int?
+  orderStatus              String
+  rawPayload               Json
+  syncedAt                 DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  attribution      OrderAttribution?
+  commissionLedger CommissionLedger[]
+
+  @@index([itemId, payTime])
+  @@index([orderStatus, syncedAt])
+}
+
+model OrderAttribution {
+  id           String   @id @default(cuid())
+  tbkOrderId   String   @unique
+  userId       String?
+  conversionId String?
+  copyEventId  String?
+  status       String
+  confidence   Float
+  reason       String   @db.VarChar(512)
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tbkOrder   TbkOrder    @relation(fields: [tbkOrderId], references: [id])
+  user       User?       @relation(fields: [userId], references: [id])
+  conversion Conversion? @relation(fields: [conversionId], references: [id])
+  copyEvent  CopyEvent?  @relation(fields: [copyEventId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model CommissionLedger {
+  id         String   @id @default(cuid())
+  userId     String
+  tbkOrderId String
+  amountCents Int
+  ledgerType String
+  status     String
+  reason     String   @db.VarChar(512)
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id])
+  tbkOrder TbkOrder @relation(fields: [tbkOrderId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([tbkOrderId])
+  @@unique([userId, tbkOrderId, ledgerType])
+}
+
+model OrderClaim {
+  id            String   @id @default(cuid())
+  userId        String
+  orderSuffix   String
+  screenshotUrl String? @db.VarChar(1024)
+  notes         String? @db.VarChar(1024)
+  status        String
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model DealPost {
+  id          String    @id @default(cuid())
+  title       String
+  summary     String?   @db.VarChar(512)
+  status      String    @default("draft")
+  pinned      Boolean   @default(false)
+  steps       Json
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, pinned, publishedAt])
+}
+
+model SubscribeGrant {
+  id         String    @id @default(cuid())
+  userId     String
+  templateId String
+  used       Boolean   @default(false)
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([templateId, used])
+  @@index([userId, used])
+}
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

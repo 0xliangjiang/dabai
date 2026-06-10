@@ -1,0 +1,3 @@
+.result-code {
+  word-break: break-all;
+}

@@ -1,0 +1,83 @@
+.privacy-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 44rpx;
+  box-sizing: border-box;
+  background: rgba(13, 31, 23, 0.55);
+}
+
+.privacy-card {
+  width: 100%;
+  max-width: 620rpx;
+  box-sizing: border-box;
+  padding: 44rpx 36rpx 36rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  animation: privacy-pop 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes privacy-pop {
+  from {
+    transform: translateY(24rpx) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.privacy-title {
+  color: #18241d;
+  font-size: 34rpx;
+  font-weight: 800;
+  text-align: center;
+}
+
+.privacy-text {
+  margin-top: 18rpx;
+  color: #4b5d53;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.privacy-link {
+  color: #0a7a52;
+  font-weight: 700;
+}
+
+.privacy-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 36rpx;
+}
+
+.privacy-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 18rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.privacy-btn::after {
+  border: 0;
+}
+
+.privacy-btn.reject {
+  color: #66796d;
+  background: #eef3f0;
+}
+
+.privacy-btn.agree {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
+}

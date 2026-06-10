@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "大白小助手",
+  "usingComponents": {
+    "privacy-consent": "/components/privacy-consent/index"
+  }
+}

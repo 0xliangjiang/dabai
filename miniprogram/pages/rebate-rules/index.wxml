@@ -1,0 +1,20 @@
+<view class="cu-page page-shell">
+  <view class="hero hero-slim anim-up"></view>
+
+  <view class="content-stack floating-stack">
+    <view class="anim-up delay-1 cu-card article-card">
+      <view class="section-title">服务用途</view>
+      <view class="article-text">大白小助手用于识别用户粘贴的商品内容，查询可参考的优惠信息，并生成对应的打开内容，方便用户前往对应平台查看商品。</view>
+    </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">积分预估</view>
+      <view class="article-text">预估积分受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终到账积分不同。取消、退款、风控、跨店活动变化等情况可能导致积分无法到账或数量调整。</view>
+    </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">订单展示</view>
+      <view class="article-text">订单数据存在同步延迟，页面展示的订单状态仅作进度参考。最终积分以相关平台和合作服务方返回的结算数据为准。积分权益与使用方式可联系客服了解。</view>
+    </view>
+  </view>
+</view>

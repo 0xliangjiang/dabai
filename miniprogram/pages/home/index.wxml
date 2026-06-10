@@ -1,0 +1,97 @@
+<view class="cu-page page-shell">
+  <view class="hero hero-slim anim-up"></view>
+
+  <view class="content-stack floating-stack">
+    <view class="cu-card glass-card anim-up delay-1">
+      <view class="quick-steps">
+        <view class="step-pill">
+          <view class="step-index">1</view>
+          <view class="cu-label">粘贴</view>
+          <view class="muted text-sm margin-top-xs">商品内容</view>
+        </view>
+        <view class="step-pill">
+          <view class="step-index">2</view>
+          <view class="cu-label">查询</view>
+          <view class="muted text-sm margin-top-xs">预估优惠</view>
+        </view>
+        <view class="step-pill">
+          <view class="step-index">3</view>
+          <view class="cu-label">复制</view>
+          <view class="muted text-sm margin-top-xs">去下单</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="cu-card prompt-box flex-direction gap anim-up delay-2">
+      <view class="section-heading">
+        <view>
+          <view class="section-title">商品内容</view>
+        </view>
+        <view class="flex align-center gap-xs">
+          <view class="cu-tag blue">自动识别</view>
+          <button class="paste-chip pressable" hover-class="pressed" bindtap="pasteFromClipboard">粘贴</button>
+        </view>
+      </view>
+      <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
+      <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{loading}}" disabled="{{loading}}" bindtap="convert">{{loading ? '正在查询…' : '查看预估优惠'}}</button>
+    </view>
+
+    <view wx:if="{{loading}}" class="cu-card flex-direction gap anim-up">
+      <view class="flex align-start gap">
+        <view class="skeleton-block skeleton-thumb"></view>
+        <view class="flex-sub flex-direction gap-sm">
+          <view class="skeleton-block skeleton-line short"></view>
+          <view class="skeleton-block skeleton-line"></view>
+          <view class="skeleton-block skeleton-line half"></view>
+        </view>
+      </view>
+      <view class="skeleton-block skeleton-line tall"></view>
+    </view>
+
+    <view wx:elif="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
+      <view class="error-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <view class="section-desc">请检查粘贴的内容是否完整，或换一个商品试试。</view>
+      <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="convert">重新查询</button>
+    </view>
+
+    <view wx:elif="{{result}}" class="cu-card product-card flex-direction gap anim-pop">
+      <view class="flex align-start gap">
+        <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" />
+        <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
+        <view class="flex-sub">
+          <view class="flex align-center justify-between gap-sm">
+            <view class="cu-tag green">已识别</view>
+            <view class="cu-tag dark">{{result.platformLabel}}</view>
+          </view>
+          <view class="section-title margin-top-sm text-cut-2">{{result.itemTitle}}</view>
+          <view class="flex align-center gap-sm margin-top-sm">
+            <view class="price">¥{{result.itemPrice}}</view>
+          </view>
+          <view class="rebate-panel margin-top-sm">
+            <view class="rebate-label">预估积分</view>
+            <view class="rebate-value">{{result.estimatedPoints}}<text class="rebate-unit"> 积分</text></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="hint-bar">积分为预估参考，订单确认后到账，可联系客服了解积分权益。</view>
+      <view class="flex-direction gap">
+        <view wx:if="{{result.hasPassword}}">
+          <view class="cu-label">打开口令</view>
+          <view class="code-box margin-top-xs">{{result.generatedPassword}}</view>
+        </view>
+        <view>
+          <view class="cu-label">打开链接</view>
+          <view class="code-box margin-top-xs">{{result.displayLink}}</view>
+        </view>
+      </view>
+      <view class="flex gap-sm">
+        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制 ✓' : '复制口令'}}</button>
+        <button class="cu-btn success flex-sub pressable {{copied === 'link' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyLink">{{copied === 'link' ? '已复制 ✓' : '复制链接'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
+</view>

@@ -1,0 +1,70 @@
+Component({
+  data: {
+    selected: 0,
+    list: [
+      {
+        pagePath: "/pages/home/index",
+        label: "优惠",
+        mark: "惠",
+        activeClass: "active"
+      },
+      {
+        pagePath: "/pages/deals/index",
+        label: "线报",
+        mark: "报",
+        activeClass: ""
+      },
+      {
+        pagePath: "/pages/orders/index",
+        label: "订单",
+        mark: "单",
+        activeClass: ""
+      },
+      {
+        pagePath: "/pages/profile/index",
+        label: "我的",
+        mark: "我",
+        activeClass: ""
+      }
+    ]
+  },
+
+  lifetimes: {
+    attached() {
+      this.syncSelected();
+    }
+  },
+
+  pageLifetimes: {
+    show() {
+      this.syncSelected();
+    }
+  },
+
+  methods: {
+    switchTab(event) {
+      const index = Number(event.currentTarget.dataset.index);
+      const item = this.data.list[index];
+      if (!item || index === this.data.selected) return;
+      wx.switchTab({ url: item.pagePath });
+    },
+
+    syncSelected() {
+      const pages = getCurrentPages();
+      const current = pages[pages.length - 1];
+      if (!current) return;
+
+      const route = `/${current.route}`;
+      const selected = this.data.list.findIndex((item) => item.pagePath === route);
+      if (selected >= 0 && selected !== this.data.selected) {
+        this.setData({
+          selected,
+          list: this.data.list.map((item, index) => ({
+            ...item,
+            activeClass: index === selected ? "active" : ""
+          }))
+        });
+      }
+    }
+  }
+});

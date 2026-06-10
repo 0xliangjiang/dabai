@@ -1,0 +1,47 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/deals/index",
+    "pages/orders/index",
+    "pages/claim/index",
+    "pages/rebate-rules/index",
+    "pages/privacy/index",
+    "pages/agreement/index",
+    "pages/profile/index",
+    "pages/deal-detail/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "大白小助手",
+    "navigationBarBackgroundColor": "#3ddc97",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#e9f5ee"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#66796d",
+    "selectedColor": "#0a7a52",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "优惠"
+      },
+      {
+        "pagePath": "pages/deals/index",
+        "text": "线报"
+      },
+      {
+        "pagePath": "pages/orders/index",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "__usePrivacyCheck__": true,
+  "sitemapLocation": "sitemap.json"
+}
