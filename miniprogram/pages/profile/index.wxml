@@ -11,18 +11,8 @@
           <view wx:if="{{loginDesc}}" class="section-desc">{{loginDesc}}</view>
         </view>
       </view>
-      <view class="flex-direction gap-sm">
-        <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到 ✓' : '签到 +5'}}</button>
-        <button wx:if="{{!isLoggedIn}}" class="cu-btn login-btn pressable" hover-class="pressed" disabled="{{loggingIn}}" loading="{{loggingIn}}" bindtap="login">微信登录</button>
-        <button wx:else class="cu-btn secondary mini-btn pressable" hover-class="pressed" bindtap="logout">退出</button>
-      </view>
-    </view>
-
-    <view wx:if="{{isLoggedIn && !editingProfile}}" class="cu-card flex align-start justify-between gap-sm anim-up delay-1">
-      <view class="flex-sub">
-        <view class="section-title">完善资料</view>
-      </view>
-      <view class="mini-link" bindtap="startEditProfile">去设置</view>
+      <button wx:if="{{!isLoggedIn}}" class="cu-btn login-btn pressable" hover-class="pressed" disabled="{{loggingIn}}" loading="{{loggingIn}}" bindtap="login">微信登录</button>
+      <view wx:else class="mini-link" bindtap="startEditProfile">编辑</view>
     </view>
 
     <view wx:if="{{isLoggedIn && editingProfile}}" class="cu-card cu-form anim-up">
@@ -43,15 +33,13 @@
       </view>
     </view>
 
-    <view class="cu-card glass-card grid-2 anim-up delay-2">
-      <view class="metric">
-        <view class="muted text-sm">身份</view>
-        <view class="metric-value">{{identityText}}</view>
-      </view>
-      <view class="metric">
+    <view class="cu-card points-card flex align-center justify-between anim-up delay-2">
+      <view>
         <view class="muted text-sm">签到积分</view>
-        <view class="metric-value">{{isLoggedIn ? totalPoints : '—'}}</view>
+        <view class="points-value">{{isLoggedIn ? totalPoints : '—'}}</view>
+        <view class="points-sub">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
       </view>
+      <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
     </view>
 
     <view class="cu-list anim-up delay-3">
@@ -94,6 +82,8 @@
         </view>
       </view>
     </view>
+
+    <button wx:if="{{isLoggedIn}}" class="logout-btn anim-up delay-4" hover-class="logout-btn-pressed" bindtap="logout">退出登录</button>
   </view>
 
   <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
