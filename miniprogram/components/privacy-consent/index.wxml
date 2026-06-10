@@ -7,7 +7,7 @@
     <view class="privacy-text">· 使用微信登录仅用于关联你的订单与优惠记录。</view>
     <view class="privacy-actions">
       <button class="privacy-btn reject" bindtap="onReject">不同意</button>
-      <button class="privacy-btn agree" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgree">同意并继续</button>
+      <button class="privacy-btn agree" open-type="agreePrivacyAuthorization" bindagreeprivacyauthorization="onAgree" bindtap="onAgree">同意并继续</button>
     </view>
   </view>
 </view>
