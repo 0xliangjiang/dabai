@@ -96,4 +96,6 @@
       </view>
     </view>
   </view>
+
+  <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
 </view>

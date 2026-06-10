@@ -1,4 +1,5 @@
 const { ensureLogin, request } = require("../../utils/api");
+const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 
 Page({
@@ -7,16 +8,37 @@ Page({
     loading: false,
     result: null,
     errorMsg: "",
-    copied: ""
+    copied: "",
+    showPrivacy: false
   },
 
   async onLoad() {
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
     await this.loginQuietly();
   },
 
   onShow() {
     syncTabBar(this);
+    if (hasConsent()) {
+      this.autoPasteFromClipboard();
+    }
+  },
+
+  async onPrivacyAgree() {
+    setConsent();
+    getApp().resolvePrivacy(true);
+    this.setData({ showPrivacy: false });
+    await this.loginQuietly();
     this.autoPasteFromClipboard();
+  },
+
+  onPrivacyReject() {
+    getApp().resolvePrivacy(false);
+    this.setData({ showPrivacy: false });
+    wx.showToast({ title: "同意后才能使用查询功能", icon: "none" });
   },
 
   onInput(event) {
@@ -24,6 +46,10 @@ Page({
   },
 
   async pasteFromClipboard() {
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
     const content = await this.readClipboard();
     if (!content) {
       wx.showToast({ title: "剪贴板为空", icon: "none" });
@@ -43,6 +69,10 @@ Page({
   },
 
   async convert() {
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
     if (!this.data.rawContent.trim()) {
       wx.showToast({ title: "请先粘贴内容", icon: "none" });
       return;

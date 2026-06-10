@@ -1,4 +1,5 @@
 const { getCurrentUser, loginWithWechat, logout } = require("../../utils/api");
+const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 
 Page({
@@ -8,7 +9,8 @@ Page({
     identityText: "未登录",
     loginTitle: "登录后查看优惠",
     loginDesc: "使用微信登录，订单和优惠记录会跟随你的账号。",
-    loggingIn: false
+    loggingIn: false,
+    showPrivacy: false
   },
 
   onShow() {
@@ -27,7 +29,24 @@ Page({
     });
   },
 
+  async onPrivacyAgree() {
+    setConsent();
+    getApp().resolvePrivacy(true);
+    this.setData({ showPrivacy: false });
+    await this.login();
+  },
+
+  onPrivacyReject() {
+    getApp().resolvePrivacy(false);
+    this.setData({ showPrivacy: false });
+    wx.showToast({ title: "同意后才能登录", icon: "none" });
+  },
+
   async login() {
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
     this.setData({ loggingIn: true });
     try {
       await loginWithWechat();
