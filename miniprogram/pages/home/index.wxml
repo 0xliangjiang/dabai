@@ -26,15 +26,7 @@
       </view>
     </view>
 
-    <view class="platform-strip anim-up delay-2">
-      <view class="platform-strip-label">支持</view>
-      <view class="platform-strip-item">淘宝</view>
-      <view class="platform-strip-item">京东</view>
-      <view class="platform-strip-item">拼多多</view>
-      <view class="platform-strip-item">唯品会</view>
-    </view>
-
-    <view class="cu-card prompt-box flex-direction gap anim-up delay-3">
+    <view class="cu-card prompt-box flex-direction gap anim-up delay-2">
       <view class="section-heading">
         <view>
           <view class="section-title">商品内容</view>
