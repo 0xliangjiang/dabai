@@ -3,6 +3,8 @@ import type {
   AdminUserRecord,
   AttributionRecord,
   CheckInRecord,
+  DealPostInput,
+  DealPostRecord,
   CommissionLedgerRecord,
   ConversionRecord,
   CopyEventRecord,
@@ -26,6 +28,7 @@ export function createRepositories(): Repositories {
   const ledger = new Map<string, CommissionLedgerRecord>();
   const claims = new Map<string, OrderClaimRecord>();
   const checkIns = new Map<string, CheckInRecord>();
+  const deals = new Map<string, DealPostRecord>();
 
   return {
     users: {
@@ -241,6 +244,48 @@ export function createRepositories(): Repositories {
         };
         ledger.set(record.id, record);
         return record;
+      }
+    },
+    deals: {
+      async list(publishedOnly: boolean) {
+        return [...deals.values()]
+          .filter((deal) => !publishedOnly || deal.status === "published")
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+      async findById(id: string) {
+        return deals.get(id);
+      },
+      async create(input: DealPostInput) {
+        const record: DealPostRecord = {
+          id: randomUUID(),
+          title: input.title,
+          summary: input.summary ?? null,
+          status: input.status,
+          steps: input.steps,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        deals.set(record.id, record);
+        return record;
+      },
+      async update(id: string, input: DealPostInput) {
+        const existing = deals.get(id);
+        if (!existing) {
+          throw new Error(`deal not found: ${id}`);
+        }
+        const updated: DealPostRecord = {
+          ...existing,
+          title: input.title,
+          summary: input.summary ?? null,
+          status: input.status,
+          steps: input.steps,
+          updatedAt: new Date()
+        };
+        deals.set(id, updated);
+        return updated;
+      },
+      async remove(id: string) {
+        deals.delete(id);
       }
     },
     checkIns: {

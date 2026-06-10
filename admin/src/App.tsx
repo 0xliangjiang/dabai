@@ -1,6 +1,7 @@
 import { Check, RefreshCw, Settings, Users, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "./components/ui/badge";
+import { DealManager } from "./DealManager";
 import { Button } from "./components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import {
@@ -143,6 +144,9 @@ export function App() {
             </a>
             <a className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" href="#claims">
               申诉审核
+            </a>
+            <a className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" href="#deals">
+              线报管理
             </a>
             <a className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" href="#config">
               配置
@@ -338,6 +342,8 @@ export function App() {
               </TableBody>
             </Table>
           </section>
+
+          <DealManager adminToken={adminToken} />
 
           <section id="config" className="mt-6 rounded-lg border border-slate-200 bg-white">
             <SectionTitle title="系统配置" subtitle="当前生产关键配置只读展示。" />

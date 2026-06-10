@@ -1,0 +1,291 @@
+import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Badge } from "./components/ui/badge";
+import { Button } from "./components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
+import { fetchAdminApi, type AdminDeal, type AdminDealStep } from "./lib/api";
+
+const emptyStep: AdminDealStep = { content: "", copyType: null, copyValue: "" };
+
+type DraftDeal = {
+  id: string | null;
+  title: string;
+  summary: string;
+  status: "draft" | "published";
+  steps: AdminDealStep[];
+};
+
+const emptyDraft: DraftDeal = {
+  id: null,
+  title: "",
+  summary: "",
+  status: "published",
+  steps: [{ ...emptyStep }]
+};
+
+export function DealManager({ adminToken }: { adminToken: string }) {
+  const [deals, setDeals] = useState<AdminDeal[]>([]);
+  const [draft, setDraft] = useState<DraftDeal | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadDeals = useCallback(async () => {
+    if (!adminToken) return;
+    try {
+      const response = await fetchAdminApi<{ deals: AdminDeal[] }>("/api/admin/deals", adminToken);
+      setDeals(response.deals);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "线报加载失败");
+    }
+  }, [adminToken]);
+
+  useEffect(() => {
+    void loadDeals();
+  }, [loadDeals]);
+
+  function startCreate() {
+    setDraft({ ...emptyDraft, steps: [{ ...emptyStep }] });
+  }
+
+  function startEdit(deal: AdminDeal) {
+    setDraft({
+      id: deal.id,
+      title: deal.title,
+      summary: deal.summary ?? "",
+      status: deal.status === "published" ? "published" : "draft",
+      steps: deal.steps.length > 0 ? deal.steps.map((step) => ({ ...step })) : [{ ...emptyStep }]
+    });
+  }
+
+  function updateStep(index: number, patch: Partial<AdminDealStep>) {
+    if (!draft) return;
+    setDraft({
+      ...draft,
+      steps: draft.steps.map((step, i) => (i === index ? { ...step, ...patch } : step))
+    });
+  }
+
+  function moveStep(index: number, delta: number) {
+    if (!draft) return;
+    const target = index + delta;
+    if (target < 0 || target >= draft.steps.length) return;
+    const steps = [...draft.steps];
+    [steps[index], steps[target]] = [steps[target], steps[index]];
+    setDraft({ ...draft, steps });
+  }
+
+  async function saveDraft() {
+    if (!draft) return;
+    if (!draft.title.trim()) {
+      setError("请填写线报标题");
+      return;
+    }
+    if (draft.steps.some((step) => !step.content.trim())) {
+      setError("每个步骤都需要填写说明");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        title: draft.title.trim(),
+        summary: draft.summary.trim() || null,
+        status: draft.status,
+        steps: draft.steps.map((step) => ({
+          content: step.content.trim(),
+          copyType: step.copyValue?.trim() ? step.copyType || "link" : null,
+          copyValue: step.copyValue?.trim() || null
+        }))
+      };
+      if (draft.id) {
+        await fetchAdminApi(`/api/admin/deals/${draft.id}`, adminToken, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+      } else {
+        await fetchAdminApi("/api/admin/deals", adminToken, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+      }
+      setDraft(null);
+      await loadDeals();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function togglePublish(deal: AdminDeal) {
+    await fetchAdminApi(`/api/admin/deals/${deal.id}`, adminToken, {
+      method: "PUT",
+      body: JSON.stringify({
+        title: deal.title,
+        summary: deal.summary,
+        status: deal.status === "published" ? "draft" : "published",
+        steps: deal.steps
+      })
+    });
+    await loadDeals();
+  }
+
+  async function removeDeal(id: string) {
+    if (!window.confirm("确定删除这条线报吗？")) return;
+    await fetchAdminApi(`/api/admin/deals/${id}`, adminToken, { method: "DELETE" });
+    await loadDeals();
+  }
+
+  return (
+    <section id="deals" className="mt-6 rounded-lg border border-slate-200 bg-white">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+        <div>
+          <h2 className="font-semibold">线报管理</h2>
+          <p className="mt-1 text-sm text-slate-500">发布带步骤指引的线报，用户端按步骤展示并支持一键复制。</p>
+        </div>
+        <Button size="sm" onClick={startCreate}>
+          <Plus className="h-4 w-4" />
+          新建线报
+        </Button>
+      </div>
+
+      {error ? <div className="mx-4 mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
+
+      {draft ? (
+        <div className="m-4 rounded-lg border border-slate-300 bg-slate-50 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm">
+              标题
+              <input
+                className="mt-1 h-9 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
+                value={draft.title}
+                onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+              />
+            </label>
+            <label className="text-sm">
+              摘要（列表页展示，可空）
+              <input
+                className="mt-1 h-9 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
+                value={draft.summary}
+                onChange={(event) => setDraft({ ...draft, summary: event.target.value })}
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {draft.steps.map((step, index) => (
+              <div key={index} className="rounded-md border border-slate-200 bg-white p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">步骤 {index + 1}</span>
+                  <span className="flex gap-1">
+                    <Button size="sm" variant="outline" disabled={index === 0} onClick={() => moveStep(index, -1)}>↑</Button>
+                    <Button size="sm" variant="outline" disabled={index === draft.steps.length - 1} onClick={() => moveStep(index, 1)}>↓</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={draft.steps.length === 1}
+                      onClick={() => setDraft({ ...draft, steps: draft.steps.filter((_, i) => i !== index) })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </span>
+                </div>
+                <textarea
+                  className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
+                  placeholder="这一步用户要做什么"
+                  rows={2}
+                  value={step.content}
+                  onChange={(event) => updateStep(index, { content: event.target.value })}
+                />
+                <div className="mt-2 flex gap-2">
+                  <select
+                    className="h-9 rounded-md border border-slate-200 px-2 text-sm"
+                    value={step.copyType ?? "link"}
+                    onChange={(event) => updateStep(index, { copyType: event.target.value as "link" | "password" })}
+                  >
+                    <option value="link">链接</option>
+                    <option value="password">淘口令</option>
+                  </select>
+                  <input
+                    className="h-9 flex-1 rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-slate-400"
+                    placeholder="可复制内容（链接或口令，留空则该步骤无复制按钮）"
+                    value={step.copyValue ?? ""}
+                    onChange={(event) => updateStep(index, { copyValue: event.target.value })}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <Button size="sm" variant="outline" onClick={() => setDraft({ ...draft, steps: [...draft.steps, { ...emptyStep }] })}>
+              <Plus className="h-4 w-4" />
+              添加步骤
+            </Button>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  checked={draft.status === "published"}
+                  type="checkbox"
+                  onChange={(event) => setDraft({ ...draft, status: event.target.checked ? "published" : "draft" })}
+                />
+                立即发布
+              </label>
+              <Button size="sm" variant="outline" onClick={() => setDraft(null)}>取消</Button>
+              <Button size="sm" disabled={saving} onClick={() => void saveDraft()}>
+                <Check className="h-4 w-4" />
+                {saving ? "保存中…" : "保存"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>标题</TableHead>
+            <TableHead>步骤数</TableHead>
+            <TableHead>状态</TableHead>
+            <TableHead>更新时间</TableHead>
+            <TableHead className="text-right">操作</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {deals.map((deal) => (
+            <TableRow key={deal.id}>
+              <TableCell className="font-medium">{deal.title}</TableCell>
+              <TableCell>{deal.steps.length}</TableCell>
+              <TableCell>
+                <Badge variant={deal.status === "published" ? "secondary" : "warning"}>
+                  {deal.status === "published" ? "已发布" : "草稿"}
+                </Badge>
+              </TableCell>
+              <TableCell>{new Date(deal.updatedAt).toLocaleString("zh-CN")}</TableCell>
+              <TableCell className="flex justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => startEdit(deal)}>
+                  <Pencil className="h-4 w-4" />
+                  编辑
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void togglePublish(deal)}>
+                  {deal.status === "published" ? "下线" : "发布"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void removeDeal(deal.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+          {deals.length === 0 ? (
+            <TableRow>
+              <TableCell className="py-8 text-center text-sm text-slate-500" colSpan={5}>
+                暂无线报，点击右上角「新建线报」开始
+              </TableCell>
+            </TableRow>
+          ) : null}
+        </TableBody>
+      </Table>
+    </section>
+  );
+}

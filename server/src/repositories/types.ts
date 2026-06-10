@@ -83,6 +83,29 @@ export type CheckInRecord = {
   createdAt: Date;
 };
 
+export type DealStep = {
+  content: string;
+  copyType?: "link" | "password" | null;
+  copyValue?: string | null;
+};
+
+export type DealPostRecord = {
+  id: string;
+  title: string;
+  summary: string | null;
+  status: string;
+  steps: DealStep[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type DealPostInput = {
+  title: string;
+  summary?: string | null;
+  status: "draft" | "published";
+  steps: DealStep[];
+};
+
 export type OrderClaimRecord = {
   id: string;
   userId: string;
@@ -180,6 +203,13 @@ export type Repositories = {
   };
   commissionLedger: {
     upsert(input: CreateCommissionLedgerInput): Promise<CommissionLedgerRecord>;
+  };
+  deals: {
+    list(publishedOnly: boolean): Promise<DealPostRecord[]>;
+    findById(id: string): Promise<DealPostRecord | undefined>;
+    create(input: DealPostInput): Promise<DealPostRecord>;
+    update(id: string, input: DealPostInput): Promise<DealPostRecord>;
+    remove(id: string): Promise<void>;
   };
   checkIns: {
     findByUserAndDate(userId: string, checkInDate: string): Promise<CheckInRecord | undefined>;

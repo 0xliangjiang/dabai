@@ -21,6 +21,22 @@ export type AdminUser = {
   createdAt: string;
 };
 
+export type AdminDealStep = {
+  content: string;
+  copyType?: "link" | "password" | null;
+  copyValue?: string | null;
+};
+
+export type AdminDeal = {
+  id: string;
+  title: string;
+  summary: string | null;
+  status: string;
+  steps: AdminDealStep[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminClaim = {
   id: string;
   userId: string;

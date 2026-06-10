@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
+import { registerAdminDealRoutes } from "./deals.js";
 
 export async function registerAdminRoutes(app: FastifyInstance, config: AppConfig, repositories: Repositories) {
   app.addHook("preHandler", async (request, reply) => {
@@ -60,6 +61,8 @@ export async function registerAdminRoutes(app: FastifyInstance, config: AppConfi
   app.get<{ Querystring: { status?: string } }>("/api/admin/claims", async (request) => ({
     claims: await repositories.orders.listClaims(request.query.status)
   }));
+
+  await registerAdminDealRoutes(app, repositories);
 
   app.post<{ Params: { id: string }; Body: { status?: string } }>(
     "/api/admin/claims/:id/review",

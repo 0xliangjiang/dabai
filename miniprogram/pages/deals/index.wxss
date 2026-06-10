@@ -1,0 +1,9 @@
+.deal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.deal-meta {
+  margin-top: 4rpx;
+}

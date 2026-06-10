@@ -2,6 +2,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import type {
   AdminUserRecord,
   AttributionRecord,
+  DealPostRecord,
   CommissionLedgerRecord,
   ConversionRecord,
   CopyEventRecord,
@@ -283,6 +284,45 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
         return mapLedger(record);
       }
     },
+    deals: {
+      async list(publishedOnly: boolean) {
+        const records = await prisma.dealPost.findMany({
+          where: publishedOnly ? { status: "published" } : undefined,
+          orderBy: { createdAt: "desc" }
+        });
+        return records.map(mapDeal);
+      },
+      async findById(id: string) {
+        const record = await prisma.dealPost.findUnique({ where: { id } });
+        return record ? mapDeal(record) : undefined;
+      },
+      async create(input) {
+        const record = await prisma.dealPost.create({
+          data: {
+            title: input.title,
+            summary: input.summary ?? null,
+            status: input.status,
+            steps: toJsonValue(input.steps)
+          }
+        });
+        return mapDeal(record);
+      },
+      async update(id, input) {
+        const record = await prisma.dealPost.update({
+          where: { id },
+          data: {
+            title: input.title,
+            summary: input.summary ?? null,
+            status: input.status,
+            steps: toJsonValue(input.steps)
+          }
+        });
+        return mapDeal(record);
+      },
+      async remove(id) {
+        await prisma.dealPost.delete({ where: { id } });
+      }
+    },
     checkIns: {
       async findByUserAndDate(userId: string, checkInDate: string) {
         const record = await prisma.checkIn.findUnique({
@@ -450,6 +490,21 @@ function mapClaim(record: {
   createdAt: Date;
 }): OrderClaimRecord {
   return record;
+}
+
+function mapDeal(record: {
+  id: string;
+  title: string;
+  summary: string | null;
+  status: string;
+  steps: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}): DealPostRecord {
+  return {
+    ...record,
+    steps: Array.isArray(record.steps) ? (record.steps as DealPostRecord["steps"]) : []
+  };
 }
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {

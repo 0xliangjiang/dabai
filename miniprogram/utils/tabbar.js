@@ -1,7 +1,8 @@
 const tabBarMap = {
   "/pages/home/index": 0,
-  "/pages/orders/index": 1,
-  "/pages/profile/index": 2
+  "/pages/deals/index": 1,
+  "/pages/orders/index": 2,
+  "/pages/profile/index": 3
 };
 
 function syncTabBar(page) {

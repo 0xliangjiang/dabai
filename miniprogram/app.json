@@ -1,12 +1,14 @@
 {
   "pages": [
     "pages/home/index",
+    "pages/deals/index",
     "pages/orders/index",
     "pages/claim/index",
     "pages/rebate-rules/index",
     "pages/privacy/index",
     "pages/agreement/index",
-    "pages/profile/index"
+    "pages/profile/index",
+    "pages/deal-detail/index"
   ],
   "window": {
     "navigationBarTitleText": "大白小助手",
@@ -24,6 +26,10 @@
       {
         "pagePath": "pages/home/index",
         "text": "优惠"
+      },
+      {
+        "pagePath": "pages/deals/index",
+        "text": "线报"
       },
       {
         "pagePath": "pages/orders/index",
