@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "prisma": "prisma"
@@ -19,11 +19,11 @@
     "@prisma/client": "^6.19.3",
     "dotenv": "^16.6.1",
     "fastify": "^5.2.1",
+    "prisma": "^6.19.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "prisma": "^6.1.0",
     "tsx": "4.16.5",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

@@ -9,3 +9,5 @@ miniprogram/project.private.config.json
 miniprogram/miniprogram_npm/
 server/prisma/dev.db
 server/uploads/
+deploy-data/
+.env.production
