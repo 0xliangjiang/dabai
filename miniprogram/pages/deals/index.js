@@ -38,7 +38,7 @@ Page({
       this.setData({
         deals: data.deals.map((deal) => ({
           ...deal,
-          dateText: formatDate(deal.createdAt)
+          dateText: formatDate(deal.publishedAt)
         })),
         loading: false,
         showEmpty: data.deals.length === 0

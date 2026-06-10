@@ -21,6 +21,7 @@ const dealSchema = z.object({
   title: z.string().trim().min(1).max(100),
   summary: z.string().trim().max(200).nullish(),
   status: z.enum(["draft", "published"]),
+  pinned: z.boolean().optional(),
   steps: z.array(stepSchema).min(1).max(30)
 });
 
@@ -33,8 +34,9 @@ export async function registerDealRoutes(app: FastifyInstance, repositories: Rep
         id: deal.id,
         title: deal.title,
         summary: deal.summary,
+        pinned: deal.pinned,
         stepCount: deal.steps.length,
-        createdAt: deal.createdAt
+        publishedAt: deal.publishedAt ?? deal.createdAt
       }))
     };
   });

@@ -96,7 +96,9 @@ export type DealPostRecord = {
   title: string;
   summary: string | null;
   status: string;
+  pinned: boolean;
   steps: DealStep[];
+  publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -105,6 +107,7 @@ export type DealPostInput = {
   title: string;
   summary?: string | null;
   status: "draft" | "published";
+  pinned?: boolean;
   steps: DealStep[];
 };
 

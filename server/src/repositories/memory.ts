@@ -248,9 +248,18 @@ export function createRepositories(): Repositories {
     },
     deals: {
       async list(publishedOnly: boolean) {
+        // 带插入序号做时间相同时的次级排序（同一毫秒创建时保证后创建的在前）
         return [...deals.values()]
-          .filter((deal) => !publishedOnly || deal.status === "published")
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          .map((deal, index) => ({ deal, index }))
+          .filter(({ deal }) => !publishedOnly || deal.status === "published")
+          .sort((a, b) => {
+            if (a.deal.pinned !== b.deal.pinned) return a.deal.pinned ? -1 : 1;
+            const aTime = (a.deal.publishedAt ?? a.deal.createdAt).getTime();
+            const bTime = (b.deal.publishedAt ?? b.deal.createdAt).getTime();
+            if (bTime !== aTime) return bTime - aTime;
+            return b.index - a.index;
+          })
+          .map(({ deal }) => deal);
       },
       async findById(id: string) {
         return deals.get(id);
@@ -261,7 +270,9 @@ export function createRepositories(): Repositories {
           title: input.title,
           summary: input.summary ?? null,
           status: input.status,
+          pinned: input.pinned ?? false,
           steps: input.steps,
+          publishedAt: input.status === "published" ? new Date() : null,
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -278,7 +289,10 @@ export function createRepositories(): Repositories {
           title: input.title,
           summary: input.summary ?? null,
           status: input.status,
+          pinned: input.pinned ?? existing.pinned,
           steps: input.steps,
+          publishedAt:
+            input.status === "published" && !existing.publishedAt ? new Date() : existing.publishedAt,
           updatedAt: new Date()
         };
         deals.set(id, updated);

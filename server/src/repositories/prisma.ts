@@ -288,7 +288,7 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
       async list(publishedOnly: boolean) {
         const records = await prisma.dealPost.findMany({
           where: publishedOnly ? { status: "published" } : undefined,
-          orderBy: { createdAt: "desc" }
+          orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }]
         });
         return records.map(mapDeal);
       },
@@ -302,19 +302,25 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
             title: input.title,
             summary: input.summary ?? null,
             status: input.status,
-            steps: toJsonValue(input.steps)
+            pinned: input.pinned ?? false,
+            steps: toJsonValue(input.steps),
+            publishedAt: input.status === "published" ? new Date() : null
           }
         });
         return mapDeal(record);
       },
       async update(id, input) {
+        const existing = await prisma.dealPost.findUniqueOrThrow({ where: { id } });
         const record = await prisma.dealPost.update({
           where: { id },
           data: {
             title: input.title,
             summary: input.summary ?? null,
             status: input.status,
-            steps: toJsonValue(input.steps)
+            pinned: input.pinned ?? existing.pinned,
+            steps: toJsonValue(input.steps),
+            publishedAt:
+              input.status === "published" && !existing.publishedAt ? new Date() : existing.publishedAt
           }
         });
         return mapDeal(record);
@@ -497,7 +503,9 @@ function mapDeal(record: {
   title: string;
   summary: string | null;
   status: string;
+  pinned: boolean;
   steps: unknown;
+  publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): DealPostRecord {

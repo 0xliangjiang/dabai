@@ -25,7 +25,10 @@
         data-id="{{item.id}}"
       >
         <view class="flex align-start justify-between gap-sm">
-          <view class="section-title flex-sub text-cut-2">{{item.title}}</view>
+          <view class="flex align-center gap-xs flex-sub">
+            <view wx:if="{{item.pinned}}" class="pin-tag">置顶</view>
+            <view class="section-title flex-sub text-cut-2">{{item.title}}</view>
+          </view>
           <view class="cu-arrow">›</view>
         </view>
         <view wx:if="{{item.summary}}" class="section-desc text-cut-2">{{item.summary}}</view>

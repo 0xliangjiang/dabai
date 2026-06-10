@@ -34,7 +34,9 @@ export type AdminDeal = {
   title: string;
   summary: string | null;
   status: string;
+  pinned: boolean;
   steps: AdminDealStep[];
+  publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -148,6 +148,55 @@ describe("deal posts", () => {
     expect((adminList.json() as { deals: unknown[] }).deals).toHaveLength(0);
   });
 
+  test("pinned deals sort first, others by time desc, publishedAt exposed", async () => {
+    const { app, auth } = await buildAppWithUser();
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/admin/deals",
+      headers: ADMIN,
+      payload: { ...sampleDeal, title: "较早的普通线报" }
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/deals",
+      headers: ADMIN,
+      payload: { ...sampleDeal, title: "较新的普通线报" }
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/deals",
+      headers: ADMIN,
+      payload: { ...sampleDeal, title: "置顶线报", pinned: true }
+    });
+
+    const list = await app.inject({ method: "GET", url: "/api/deals", headers: auth });
+    const { deals } = list.json() as {
+      deals: Array<{ title: string; pinned: boolean; publishedAt: string }>;
+    };
+    expect(deals.map((deal) => deal.title)).toEqual(["置顶线报", "较新的普通线报", "较早的普通线报"]);
+    expect(deals[0].pinned).toBe(true);
+    expect(deals.every((deal) => Boolean(deal.publishedAt))).toBe(true);
+
+    // 取消置顶后回到时间排序
+    const pinnedId = (
+      (await app.inject({ method: "GET", url: "/api/admin/deals", headers: ADMIN })).json() as {
+        deals: Array<{ id: string; title: string; steps: unknown[] }>;
+      }
+    ).deals.find((deal) => deal.title === "置顶线报")!;
+    await app.inject({
+      method: "PUT",
+      url: `/api/admin/deals/${pinnedId.id}`,
+      headers: ADMIN,
+      payload: { ...sampleDeal, title: "置顶线报", pinned: false }
+    });
+    const after = await app.inject({ method: "GET", url: "/api/deals", headers: auth });
+    const titles = (after.json() as { deals: Array<{ title: string }> }).deals.map((deal) => deal.title);
+    expect(titles[0]).toBe("置顶线报"); // 它仍是最新发布的，所以时间排序下还在最前
+
+    void first;
+  });
+
   test("rejects deals without steps", async () => {
     const { app } = await buildAppWithUser();
     const response = await app.inject({

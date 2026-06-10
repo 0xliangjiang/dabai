@@ -13,6 +13,7 @@ type DraftDeal = {
   title: string;
   summary: string;
   status: "draft" | "published";
+  pinned: boolean;
   steps: AdminDealStep[];
 };
 
@@ -21,6 +22,7 @@ const emptyDraft: DraftDeal = {
   title: "",
   summary: "",
   status: "published",
+  pinned: false,
   steps: [{ ...emptyStep }]
 };
 
@@ -54,6 +56,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
       title: deal.title,
       summary: deal.summary ?? "",
       status: deal.status === "published" ? "published" : "draft",
+      pinned: deal.pinned,
       steps:
         deal.steps.length > 0
           ? deal.steps.map((step) => ({ ...emptyStep, ...step, images: step.images ?? [] }))
@@ -96,6 +99,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         title: draft.title.trim(),
         summary: draft.summary.trim() || null,
         status: draft.status,
+        pinned: draft.pinned,
         steps: draft.steps.map((step) => ({
           content: step.content.trim(),
           copyType: step.copyValue?.trim() ? step.copyType || "link" : null,
@@ -132,10 +136,26 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         title: deal.title,
         summary: deal.summary,
         status: deal.status === "published" ? "draft" : "published",
+        pinned: deal.pinned,
         steps: deal.steps
       })
     });
     toast(deal.status === "published" ? "已下线" : "已发布");
+    await loadDeals();
+  }
+
+  async function togglePin(deal: AdminDeal) {
+    await fetchAdminApi(`/api/admin/deals/${deal.id}`, adminToken, {
+      method: "PUT",
+      body: JSON.stringify({
+        title: deal.title,
+        summary: deal.summary,
+        status: deal.status,
+        pinned: !deal.pinned,
+        steps: deal.steps
+      })
+    });
+    toast(deal.pinned ? "已取消置顶" : "已置顶");
     await loadDeals();
   }
 
@@ -302,6 +322,14 @@ export function DealManager({ adminToken }: { adminToken: string }) {
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-sm">
                 <input
+                  checked={draft.pinned}
+                  type="checkbox"
+                  onChange={(event) => setDraft({ ...draft, pinned: event.target.checked })}
+                />
+                置顶
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
                   checked={draft.status === "published"}
                   type="checkbox"
                   onChange={(event) => setDraft({ ...draft, status: event.target.checked ? "published" : "draft" })}
@@ -324,25 +352,35 @@ export function DealManager({ adminToken }: { adminToken: string }) {
             <TableHead>标题</TableHead>
             <TableHead>步骤数</TableHead>
             <TableHead>状态</TableHead>
-            <TableHead>更新时间</TableHead>
+            <TableHead>发布时间</TableHead>
             <TableHead className="text-right">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {deals.map((deal) => (
             <TableRow key={deal.id}>
-              <TableCell className="font-medium">{deal.title}</TableCell>
+              <TableCell className="font-medium">
+                <span className="flex items-center gap-2">
+                  {deal.pinned ? <Badge variant="danger">置顶</Badge> : null}
+                  {deal.title}
+                </span>
+              </TableCell>
               <TableCell>{deal.steps.length}</TableCell>
               <TableCell>
                 <Badge variant={deal.status === "published" ? "secondary" : "warning"}>
                   {deal.status === "published" ? "已发布" : "草稿"}
                 </Badge>
               </TableCell>
-              <TableCell>{new Date(deal.updatedAt).toLocaleString("zh-CN")}</TableCell>
+              <TableCell className="text-slate-500">
+                {deal.publishedAt ? new Date(deal.publishedAt).toLocaleString("zh-CN") : "未发布"}
+              </TableCell>
               <TableCell className="flex justify-end gap-2">
                 <Button size="sm" variant="outline" onClick={() => startEdit(deal)}>
                   <Pencil className="h-4 w-4" />
                   编辑
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void togglePin(deal)}>
+                  {deal.pinned ? "取消置顶" : "置顶"}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => void togglePublish(deal)}>
                   {deal.status === "published" ? "下线" : "发布"}

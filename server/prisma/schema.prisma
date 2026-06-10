@@ -160,15 +160,17 @@ model OrderClaim {
 }
 
 model DealPost {
-  id        String   @id @default(cuid())
-  title     String
-  summary   String?
-  status    String   @default("draft")
-  steps     Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  title       String
+  summary     String?
+  status      String    @default("draft")
+  pinned      Boolean   @default(false)
+  steps       Json
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@index([status, createdAt])
+  @@index([status, pinned, publishedAt])
 }
 
 model SystemConfig {

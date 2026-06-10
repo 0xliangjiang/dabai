@@ -7,3 +7,13 @@
 .deal-meta {
   margin-top: 4rpx;
 }
+
+.pin-tag {
+  flex: 0 0 auto;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: #ffece8;
+  color: #d4380d;
+  font-size: 20rpx;
+  font-weight: 800;
+}
