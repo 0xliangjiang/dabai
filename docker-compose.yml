@@ -10,8 +10,6 @@ services:
       - server/.env.production
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/server/data/prod.db
       - UPLOAD_DIR=/app/server/uploads
     volumes:
-      - ./deploy-data/db:/app/server/data
       - ./deploy-data/uploads:/app/server/uploads

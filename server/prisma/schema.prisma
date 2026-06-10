@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,7 +12,7 @@ model User {
   openid      String   @unique
   unionid     String?
   nickname    String?
-  avatarUrl   String?
+  avatarUrl   String?  @db.VarChar(512)
   status      String   @default("active")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -42,18 +42,18 @@ model CheckIn {
 model Conversion {
   id                String   @id @default(cuid())
   userId            String
-  rawContent        String
+  rawContent        String  @db.Text
   platform          String   @default("taobao")
   itemId            String
-  itemTitle         String
-  itemImageUrl      String?
+  itemTitle         String  @db.VarChar(512)
+  itemImageUrl      String? @db.VarChar(1024)
   itemPriceCents    Int?
   commissionRate    Float?
   estimatedCommissionCents Int @default(0)
   estimatedRebateCents     Int @default(0)
-  generatedPassword String
-  generatedShortUrl String
-  generatedClickUrl String
+  generatedPassword String  @db.VarChar(512)
+  generatedShortUrl String  @db.VarChar(1024)
+  generatedClickUrl String  @db.Text
   createdAt         DateTime @default(now())
 
   user              User               @relation(fields: [userId], references: [id])
@@ -84,7 +84,7 @@ model TbkOrder {
   id                       String   @id @default(cuid())
   tbkOrderId               String   @unique
   itemId                   String
-  itemTitle                String
+  itemTitle                String   @db.VarChar(512)
   payTime                  DateTime
   payAmountCents           Int
   estimatedCommissionCents Int
@@ -109,7 +109,7 @@ model OrderAttribution {
   copyEventId  String?
   status       String
   confidence   Float
-  reason       String
+  reason       String   @db.VarChar(512)
   reviewedBy   String?
   reviewedAt   DateTime?
   createdAt    DateTime @default(now())
@@ -131,7 +131,7 @@ model CommissionLedger {
   amountCents Int
   ledgerType String
   status     String
-  reason     String
+  reason     String   @db.VarChar(512)
   createdAt  DateTime @default(now())
 
   user     User     @relation(fields: [userId], references: [id])
@@ -146,8 +146,8 @@ model OrderClaim {
   id            String   @id @default(cuid())
   userId        String
   orderSuffix   String
-  screenshotUrl String?
-  notes         String?
+  screenshotUrl String? @db.VarChar(1024)
+  notes         String? @db.VarChar(1024)
   status        String
   reviewedBy    String?
   reviewedAt    DateTime?
@@ -163,7 +163,7 @@ model OrderClaim {
 model DealPost {
   id          String    @id @default(cuid())
   title       String
-  summary     String?
+  summary     String?   @db.VarChar(512)
   status      String    @default("draft")
   pinned      Boolean   @default(false)
   steps       Json
