@@ -16,6 +16,9 @@ export type AppConfig = {
   zhetaokeAppKey: string;
   zhetaokeSid: string;
   zhetaokePid: string;
+  zhetaokeJdApiUrl: string;
+  zhetaokeJdUnionId: string;
+  zhetaokeJdPositionId: string;
   jdUnionAppKey: string;
   jdUnionAppSecret: string;
   jdUnionSiteId: string;
@@ -44,6 +47,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     zhetaokeAppKey: env.ZTK_APP_KEY ?? "",
     zhetaokeSid: env.ZTK_SID ?? "",
     zhetaokePid: env.ZTK_PID ?? "",
+    zhetaokeJdApiUrl:
+      env.ZTK_JD_API_URL ?? "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
+    zhetaokeJdUnionId: env.ZTK_JD_UNION_ID ?? "",
+    zhetaokeJdPositionId: env.ZTK_JD_POSITION_ID ?? "",
     jdUnionAppKey: env.JD_UNION_APP_KEY ?? "",
     jdUnionAppSecret: env.JD_UNION_APP_SECRET ?? "",
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
@@ -81,9 +88,7 @@ export function validateProductionConfig(config: AppConfig): void {
     ["ZTK_APP_KEY", config.zhetaokeAppKey],
     ["ZTK_SID", config.zhetaokeSid],
     ["ZTK_PID", config.zhetaokePid],
-    ["JD_UNION_APP_KEY", config.jdUnionAppKey],
-    ["JD_UNION_APP_SECRET", config.jdUnionAppSecret],
-    ["JD_UNION_SITE_ID", config.jdUnionSiteId]
+    ["ZTK_JD_UNION_ID", config.zhetaokeJdUnionId]
   ].filter(([, value]) => !isRealConfigValue(value));
 
   if (!Number.isFinite(config.port) || config.port <= 0) {

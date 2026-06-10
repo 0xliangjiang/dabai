@@ -42,6 +42,9 @@ export type CreateTaobaoClientConfig = {
   zhetaokeAppKey?: string;
   zhetaokeSid?: string;
   zhetaokePid?: string;
+  zhetaokeJdApiUrl?: string;
+  zhetaokeJdUnionId?: string;
+  zhetaokeJdPositionId?: string;
   jdUnionAppKey?: string;
   jdUnionAppSecret?: string;
   jdUnionSiteId?: string;
@@ -54,6 +57,9 @@ type ZhetaokeClientConfig = {
   appKey: string;
   sid: string;
   pid: string;
+  jdApiUrl: string;
+  jdUnionId: string;
+  jdPositionId: string;
 };
 
 type ClientDependencies = {
@@ -76,7 +82,9 @@ export class ZhetaokeClient implements TaobaoClient {
 
   async convert(rawContent: string): Promise<TaobaoConversionResult> {
     const platform = detectPlatform(rawContent);
-    if (platform === "jd") return this.convertJd(rawContent);
+    if (platform === "jd") {
+      return isRealConfigValue(this.config.jdUnionId) ? this.convertJdViaZhetaoke(rawContent) : this.convertJd(rawContent);
+    }
     if (platform === "pdd") {
       throw new UnsupportedPlatformError("拼多多转链暂未开通，敬请期待");
     }
@@ -156,6 +164,76 @@ export class ZhetaokeClient implements TaobaoClient {
     return current;
   }
 
+  // 折淘客代理的京东转链（佣金归 unionId 对应的联盟账号）
+  private async convertJdViaZhetaoke(rawContent: string): Promise<TaobaoConversionResult> {
+    const materialUrl = extractJdMaterialId(rawContent);
+    const body = new URLSearchParams({
+      appkey: this.config.appKey,
+      materialId: materialUrl,
+      unionId: this.config.jdUnionId,
+      chainType: "2"
+    });
+    if (isRealConfigValue(this.config.jdPositionId)) {
+      body.set("positionId", this.config.jdPositionId);
+    }
+
+    const response = await this.fetch(this.config.jdApiUrl, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded;charset=utf-8" },
+      body
+    });
+    if (!response.ok) {
+      throw new ConversionApiError(`Zhetaoke JD HTTP ${response.status}`);
+    }
+
+    // 返回可能是折淘客包装 {status,content}，也可能直接透传京东 {jd_union_..._response:{getResult}}
+    const payload = (await response.json()) as Record<string, unknown>;
+    const data = extractZhetaokeJdData(payload);
+    const clickUrl = pickString(data, ["clickURL", "clickUrl", "url"]);
+    const shortUrl = pickString(data, ["shortURL", "shortUrl"]) || clickUrl;
+    if (!clickUrl && !shortUrl) {
+      const message = typeof payload.content === "string" ? payload.content : "京东转链失败";
+      throw new ConversionApiError(message);
+    }
+
+    // 商品信息补全：优先折淘客响应自带，缺失且配置了官方密钥时再查官方
+    let skuId = pickString(data, ["skuId", "sku_id"]) || extractJdSkuId(rawContent);
+    if (!skuId && materialUrl) {
+      skuId = extractJdSkuId(await this.resolveRedirect(materialUrl));
+    }
+    let goods: Record<string, unknown> = asRecord(pickValue(data, ["goodsInfo", "skuInfo"])) ?? {};
+    if (Object.keys(goods).length === 0 && this.jdUnion && skuId) {
+      goods = (await this.jdUnion.goodsQueryBySku(skuId)) ?? {};
+    }
+    const commissionInfo = asRecord(pickValue(goods, ["commissionInfo"])) ?? {};
+    const priceInfo = asRecord(pickValue(goods, ["priceInfo"])) ?? {};
+    const itemPriceCents = parseMoneyToCents(
+      pickValue(priceInfo, ["lowestCouponPrice", "lowestPrice", "price"]) ??
+        pickValue(goods, ["price", "lowestPrice"])
+    );
+    const commissionRate = parsePercentRate(
+      pickValue(commissionInfo, ["commissionShare", "plusCommissionShare"]) ??
+        pickValue(goods, ["commissionShare", "commission_rate"])
+    );
+    const estimatedCommissionCents =
+      parseMoneyToCents(pickValue(commissionInfo, ["couponCommission", "commission"])) ||
+      estimateCommissionCents(itemPriceCents, commissionRate);
+
+    return {
+      platform: "jd",
+      itemId: skuId || materialUrl,
+      itemTitle:
+        pickString(goods, ["skuName", "goodsName", "title"]) || pickString(data, ["skuName", "goodsName"]) || "京东商品",
+      itemImageUrl: pickJdImage(goods) || pickString(data, ["imageUrl", "imgUrl"]),
+      itemPriceCents,
+      commissionRate,
+      estimatedCommissionCents,
+      generatedPassword: "",
+      generatedShortUrl: shortUrl,
+      generatedClickUrl: clickUrl || shortUrl
+    };
+  }
+
   // 京东联盟官方 API 转链（免费）
   private async convertJd(rawContent: string): Promise<TaobaoConversionResult> {
     if (!this.jdUnion) {
@@ -214,7 +292,12 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
         apiUrl: config.zhetaokeApiUrl ?? "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
         appKey: config.zhetaokeAppKey!,
         sid: config.zhetaokeSid ?? "",
-        pid: config.zhetaokePid ?? ""
+        pid: config.zhetaokePid ?? "",
+        jdApiUrl:
+          config.zhetaokeJdApiUrl ??
+          "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
+        jdUnionId: config.zhetaokeJdUnionId ?? "",
+        jdPositionId: config.zhetaokeJdPositionId ?? ""
       },
       { jdUnion }
     );
@@ -238,6 +321,29 @@ export class MockTaobaoClient implements TaobaoClient {
       generatedClickUrl: "https://uland.taobao.com/mock"
     };
   }
+}
+
+// 折淘客京东接口响应解包：{status,content} 或透传的 jd_union_*_response.getResult
+function extractZhetaokeJdData(payload: Record<string, unknown>): Record<string, unknown> {
+  const direct = asRecord(payload.content) ?? asRecord(payload.data);
+  if (direct) {
+    return asRecord(direct.data) ?? direct;
+  }
+  for (const value of Object.values(payload)) {
+    const wrapper = asRecord(value);
+    if (!wrapper) continue;
+    for (const [key, inner] of Object.entries(wrapper)) {
+      if (key.toLowerCase().endsWith("result") && typeof inner === "string") {
+        try {
+          const parsed = JSON.parse(inner) as Record<string, unknown>;
+          return asRecord(parsed.data) ?? parsed;
+        } catch {
+          continue;
+        }
+      }
+    }
+  }
+  return {};
 }
 
 function detectPlatform(rawContent: string): ConversionPlatform {
