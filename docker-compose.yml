@@ -5,7 +5,7 @@ services:
       dockerfile: server/Dockerfile
     restart: unless-stopped
     ports:
-      - "3456:3001"
+      - "6543:3001"
     env_file:
       - server/.env.production
     environment:
@@ -20,7 +20,7 @@ services:
       dockerfile: admin/Dockerfile
       args:
         # 管理后台访问的 API 地址（构建时注入），生产填 https://api.你的域名
-        VITE_API_BASE_URL: ${ADMIN_API_BASE_URL:-http://localhost:3456}
+        VITE_API_BASE_URL: ${ADMIN_API_BASE_URL:-http://localhost:6543}
     restart: unless-stopped
     ports:
       - "3666:80"
