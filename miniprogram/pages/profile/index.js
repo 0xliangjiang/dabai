@@ -1,4 +1,4 @@
-const { getCurrentUser, loginWithWechat, logout, request, uploadFile } = require("../../utils/api");
+const { ensureLogin, getCurrentUser, loginWithWechat, logout, request, uploadFile } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 
@@ -26,6 +26,8 @@ Page({
     showPrivacy: false,
     showMoreLinks: false,
     totalPoints: 0,
+    checkin: { todayChecked: false, streak: 0 },
+    checkinLoading: false,
     nickname: "",
     avatarUrl: "",
     editingProfile: false,
@@ -52,7 +54,10 @@ Page({
         wx.setStorageSync("user", user);
         this.refreshUser();
       }
-      this.setData({ totalPoints: checkin.totalPoints || 0 });
+      this.setData({
+        totalPoints: checkin.totalPoints || 0,
+        checkin: { todayChecked: checkin.todayChecked, streak: checkin.streak }
+      });
     } catch (_error) {
       // 静默失败，下次进入再同步
     }
@@ -158,6 +163,33 @@ Page({
       wx.showToast({ title: "登录失败，请重试", icon: "none" });
     } finally {
       this.setData({ loggingIn: false });
+    }
+  },
+
+  async checkIn() {
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
+    if (this.data.checkin.todayChecked || this.data.checkinLoading) return;
+
+    this.setData({ checkinLoading: true });
+    try {
+      await ensureLogin();
+      const result = await request("/api/checkins", { method: "POST" });
+      this.setData({
+        checkin: { todayChecked: true, streak: result.streak },
+        totalPoints: result.totalPoints
+      });
+      this.refreshUser();
+      wx.showToast({ title: `签到成功 +${result.pointsAwarded}积分`, icon: "none" });
+    } catch (error) {
+      if (error && error.error === "今日已签到") {
+        this.setData({ "checkin.todayChecked": true });
+      }
+      wx.showToast({ title: error.error || "签到失败，请重试", icon: "none" });
+    } finally {
+      this.setData({ checkinLoading: false });
     }
   },
 
