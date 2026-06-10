@@ -1,7 +1,7 @@
 page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #fff7c9 0%, #fffaf0 34%, #fffdf7 100%);
-  color: #241c08;
+  background: linear-gradient(180deg, #e9f5ee 0%, #f7fbf8 34%, #fcfdfc 100%);
+  color: #18241d;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
 }
 
@@ -20,9 +20,9 @@ page {
   padding: 54rpx 38rpx 66rpx;
   border-bottom-left-radius: 30rpx;
   border-bottom-right-radius: 30rpx;
-  background: linear-gradient(135deg, #fff7a8 0%, #ffdd45 56%, #ffc400 100%);
-  color: #2d2300;
-  box-shadow: 0 18rpx 48rpx rgba(172, 126, 0, 0.12);
+  background: linear-gradient(135deg, #3ddc97 0%, #14b87d 56%, #0a9a68 100%);
+  color: #ffffff;
+  box-shadow: 0 18rpx 48rpx rgba(10, 122, 82, 0.22);
 }
 
 .eyebrow {
@@ -31,7 +31,7 @@ page {
   padding: 0 18rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.44);
-  color: #5b4700;
+  color: #065f46;
   font-size: 22rpx;
   font-weight: 700;
   line-height: 46rpx;
@@ -47,7 +47,7 @@ page {
 .hero-desc {
   margin-top: 14rpx;
   max-width: 620rpx;
-  color: #5f4a00;
+  color: rgba(255, 255, 255, 0.88);
   font-size: 26rpx;
   line-height: 1.55;
 }
@@ -64,10 +64,10 @@ page {
 
 .cu-card {
   background: rgba(255, 255, 255, 0.98);
-  border: 1rpx solid rgba(237, 205, 73, 0.36);
+  border: 1rpx solid rgba(16, 185, 129, 0.16);
   border-radius: 24rpx;
   padding: 28rpx;
-  box-shadow: 0 14rpx 36rpx rgba(152, 111, 0, 0.075);
+  box-shadow: 0 14rpx 36rpx rgba(8, 84, 57, 0.06);
   box-sizing: border-box;
 }
 
@@ -77,7 +77,7 @@ page {
 }
 
 .section-title {
-  color: #241c08;
+  color: #18241d;
   font-size: 30rpx;
   font-weight: 800;
   line-height: 1.25;
@@ -92,19 +92,19 @@ page {
 
 .section-desc {
   margin-top: 8rpx;
-  color: #75622a;
+  color: #66796d;
   font-size: 24rpx;
   line-height: 1.5;
 }
 
 .cu-label {
-  color: #443608;
+  color: #2a3b31;
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .muted {
-  color: #75622a;
+  color: #66796d;
 }
 
 .text-sm {
@@ -124,19 +124,19 @@ page {
 }
 
 .text-green {
-  color: #b87912;
+  color: #0c8a5b;
 }
 
 .text-blue {
-  color: #b87912;
+  color: #0c8a5b;
 }
 
 .text-orange {
-  color: #c98716;
+  color: #0c8a5b;
 }
 
 .text-grey {
-  color: #75622a;
+  color: #66796d;
 }
 
 .text-cut-2 {
@@ -237,13 +237,13 @@ page {
   padding: 9rpx 13rpx;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.94);
-  border: 1rpx solid rgba(237, 205, 73, 0.46);
+  border: 1rpx solid rgba(16, 185, 129, 0.2);
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .platform-strip-label {
-  color: #7a6724;
+  color: #66796d;
   font-size: 22rpx;
   font-weight: 700;
   white-space: nowrap;
@@ -252,8 +252,8 @@ page {
 .platform-strip-item {
   padding: 8rpx 14rpx;
   border-radius: 999rpx;
-  background: #fff2a3;
-  color: #6f4d00;
+  background: #def4e9;
+  color: #0a7a52;
   font-size: 22rpx;
   font-weight: 800;
   white-space: nowrap;
@@ -264,9 +264,9 @@ page {
   min-width: 0;
   min-height: 108rpx;
   padding: 18rpx 12rpx;
-  border: 1rpx solid rgba(237, 205, 73, 0.34);
+  border: 1rpx solid rgba(16, 185, 129, 0.15);
   border-radius: 20rpx;
-  background: #fffdf5;
+  background: #f7fbf9;
   box-sizing: border-box;
   text-align: center;
 }
@@ -276,8 +276,8 @@ page {
   height: 38rpx;
   margin: 0 auto 10rpx;
   border-radius: 999rpx;
-  background: #ffe674;
-  color: #6f4d00;
+  background: #d6f3e5;
+  color: #0a7a52;
   font-size: 22rpx;
   font-weight: 900;
   line-height: 38rpx;
@@ -288,14 +288,14 @@ page {
   min-width: 0;
   padding: 22rpx;
   border-radius: 20rpx;
-  background: linear-gradient(180deg, #ffffff 0%, #fffaf0 100%);
-  border: 1rpx solid rgba(237, 205, 73, 0.36);
+  background: linear-gradient(180deg, #ffffff 0%, #f4faf7 100%);
+  border: 1rpx solid rgba(16, 185, 129, 0.16);
   box-sizing: border-box;
 }
 
 .metric-value {
   margin-top: 8rpx;
-  color: #3b2a16;
+  color: #1c2e25;
   font-size: 32rpx;
   font-weight: 800;
 }
@@ -304,10 +304,10 @@ page {
 .cu-textarea {
   width: 100%;
   box-sizing: border-box;
-  border: 1rpx solid rgba(237, 205, 73, 0.52);
+  border: 1rpx solid rgba(16, 185, 129, 0.26);
   border-radius: 20rpx;
-  background: #fffdf7;
-  color: #241c08;
+  background: #f9fcfa;
+  color: #18241d;
   font-size: 28rpx;
 }
 
@@ -354,20 +354,20 @@ page {
 }
 
 .cu-btn.primary {
-  color: #2d2300;
-  background: linear-gradient(135deg, #ffe86a 0%, #ffc814 100%);
-  box-shadow: 0 14rpx 26rpx rgba(255, 196, 0, 0.22);
+  color: #ffffff;
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
+  box-shadow: 0 14rpx 26rpx rgba(13, 157, 108, 0.3);
 }
 
 .cu-btn.secondary {
-  color: #6f4d00;
-  background: #fff8c7;
-  border: 1rpx solid rgba(237, 205, 73, 0.62);
+  color: #0a7a52;
+  background: #e6f6ee;
+  border: 1rpx solid rgba(16, 185, 129, 0.3);
 }
 
 .cu-btn.success {
-  color: #2d2300;
-  background: #ffd437;
+  color: #ffffff;
+  background: #10b981;
 }
 
 .cu-tag {
@@ -383,8 +383,8 @@ page {
 }
 
 .cu-tag.blue {
-  color: #6f4d00;
-  background: #ffe674;
+  color: #0a7a52;
+  background: #d6f3e5;
 }
 
 .paste-chip {
@@ -396,8 +396,8 @@ page {
   margin: 0;
   padding: 0 16rpx;
   border-radius: 999rpx;
-  color: #2d2300;
-  background: #ffd437;
+  color: #ffffff;
+  background: #10b981;
   font-size: 22rpx;
   font-weight: 800;
   line-height: 42rpx;
@@ -408,18 +408,18 @@ page {
 }
 
 .cu-tag.green {
-  color: #6f4d00;
-  background: #fff1a1;
+  color: #0a7a52;
+  background: #dcf4e8;
 }
 
 .cu-tag.orange {
-  color: #6f4d00;
-  background: #fff2ae;
+  color: #0a7a52;
+  background: #dff3ea;
 }
 
 .cu-tag.dark {
-  color: #3a2b06;
-  background: #f6ecbb;
+  color: #2a3b31;
+  background: #e6f0ea;
 }
 
 .product-card {
@@ -431,17 +431,17 @@ page {
   height: 156rpx;
   flex: 0 0 156rpx;
   border-radius: 20rpx;
-  background: #f6ecbb;
+  background: #e6f0ea;
 }
 
 .product-thumb.placeholder {
-  color: #7a6724;
+  color: #66796d;
   font-size: 24rpx;
   font-weight: 800;
 }
 
 .price {
-  color: #9c6500;
+  color: #047857;
   font-size: 34rpx;
   font-weight: 900;
 }
@@ -449,8 +449,8 @@ page {
 .rate-badge {
   padding: 8rpx 12rpx;
   border-radius: 12rpx;
-  background: #ffe674;
-  color: #6f4d00;
+  background: #d6f3e5;
+  color: #0a7a52;
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -461,8 +461,8 @@ page {
   justify-content: space-between;
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: linear-gradient(135deg, #fff4a1 0%, #ffd436 100%);
-  color: #4f3900;
+  background: linear-gradient(135deg, #d9f6e8 0%, #8be8c1 100%);
+  color: #065f46;
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.55);
 }
 
@@ -472,17 +472,17 @@ page {
 }
 
 .rebate-value {
-  color: #704900;
+  color: #047857;
   font-size: 36rpx;
   font-weight: 900;
 }
 
 .code-box {
   padding: 20rpx;
-  border: 1rpx solid rgba(237, 205, 73, 0.32);
+  border: 1rpx solid rgba(16, 185, 129, 0.14);
   border-radius: 18rpx;
-  background: #fffdf7;
-  color: #4f3f10;
+  background: #f9fcfa;
+  color: #3a4d42;
   font-size: 24rpx;
   line-height: 1.55;
   word-break: break-all;
@@ -491,8 +491,8 @@ page {
 .hint-bar {
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: #fff8c7;
-  color: #6f4d00;
+  background: #e6f6ee;
+  color: #0a7a52;
   font-size: 24rpx;
   line-height: 1.45;
 }
@@ -500,13 +500,13 @@ page {
 .soft-panel {
   padding: 20rpx;
   border-radius: 20rpx;
-  background: #fffdf7;
-  border: 1rpx solid rgba(237, 205, 73, 0.38);
+  background: #f9fcfa;
+  border: 1rpx solid rgba(16, 185, 129, 0.17);
 }
 
 .cu-empty {
   min-height: 260rpx;
-  color: #7a6724;
+  color: #66796d;
   font-size: 26rpx;
   text-align: center;
 }
@@ -516,8 +516,8 @@ page {
   height: 92rpx;
   margin: 0 auto 18rpx;
   border-radius: 999rpx;
-  background: #ffe674;
-  color: #6f4d00;
+  background: #d6f3e5;
+  color: #0a7a52;
   font-size: 42rpx;
   font-weight: 900;
   line-height: 92rpx;
@@ -527,8 +527,8 @@ page {
   overflow: hidden;
   border-radius: 24rpx;
   background: rgba(255, 255, 255, 0.98);
-  border: 1rpx solid rgba(237, 205, 73, 0.34);
-  box-shadow: 0 14rpx 36rpx rgba(152, 111, 0, 0.07);
+  border: 1rpx solid rgba(16, 185, 129, 0.15);
+  box-shadow: 0 14rpx 36rpx rgba(8, 84, 57, 0.055);
 }
 
 .cu-item {
@@ -554,25 +554,25 @@ page {
 }
 
 .line {
-  border-bottom: 1rpx solid rgba(237, 205, 73, 0.32);
+  border-bottom: 1rpx solid rgba(16, 185, 129, 0.14);
 }
 
 .cu-arrow {
-  color: #b4961a;
+  color: #8fb3a1;
   font-size: 38rpx;
 }
 
 .cu-upload {
   height: 168rpx;
-  border: 2rpx dashed rgba(203, 172, 22, 0.62);
+  border: 2rpx dashed rgba(16, 185, 129, 0.4);
   border-radius: 20rpx;
-  color: #7a6724;
-  background: #fffdf7;
+  color: #66796d;
+  background: #f9fcfa;
   box-sizing: border-box;
 }
 
 .mini-link {
-  color: #6f4d00;
+  color: #0a7a52;
   font-size: 24rpx;
   font-weight: 800;
 }
@@ -586,8 +586,8 @@ page {
   height: 88rpx;
   flex: 0 0 88rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #fff4a1 0%, #ffd436 100%);
-  color: #2d2300;
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
+  color: #ffffff;
   font-size: 34rpx;
   font-weight: 900;
   line-height: 88rpx;
@@ -604,8 +604,8 @@ page {
 }
 
 .login-btn {
-  color: #2d2300;
-  background: linear-gradient(135deg, #ffe86a 0%, #ffc814 100%);
+  color: #ffffff;
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
 }
 
 .article-card {
@@ -614,7 +614,7 @@ page {
 
 .article-text {
   margin-top: 14rpx;
-  color: #5b4a16;
+  color: #3a4d42;
   font-size: 26rpx;
   line-height: 1.7;
 }
@@ -690,12 +690,12 @@ page {
 }
 
 .item-pressed {
-  background: #fff8d9;
+  background: #eef7f2;
 }
 
 .skeleton-block {
   border-radius: 14rpx;
-  background: linear-gradient(90deg, #f6efd2 25%, #fdf8e2 50%, #f6efd2 75%);
+  background: linear-gradient(90deg, #e7efe9 25%, #f3f8f5 50%, #e7efe9 75%);
   background-size: 200% 100%;
   animation: shimmer 1.3s ease infinite;
 }
@@ -744,7 +744,7 @@ page {
 
 .char-count {
   margin-top: 8rpx;
-  color: #a89554;
+  color: #8aa093;
   font-size: 22rpx;
   text-align: right;
 }
@@ -753,21 +753,21 @@ page {
   width: 132rpx;
   height: 132rpx;
   border-radius: 16rpx;
-  background: #f6ecbb;
+  background: #e6f0ea;
 }
 
 .cu-upload.has-file {
   border-style: solid;
-  border-color: rgba(214, 178, 28, 0.78);
-  background: #fffbe6;
+  border-color: rgba(16, 185, 129, 0.6);
+  background: #effaf4;
 }
 
 .upload-plus {
   width: 56rpx;
   height: 56rpx;
   border-radius: 999rpx;
-  background: #ffe674;
-  color: #6f4d00;
+  background: #d6f3e5;
+  color: #0a7a52;
   font-size: 34rpx;
   font-weight: 900;
   line-height: 56rpx;

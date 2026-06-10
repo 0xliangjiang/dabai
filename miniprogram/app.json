@@ -10,15 +10,15 @@
   ],
   "window": {
     "navigationBarTitleText": "大白小助手",
-    "navigationBarBackgroundColor": "#fff7bf",
-    "navigationBarTextStyle": "black",
-    "backgroundColor": "#fffbe6"
+    "navigationBarBackgroundColor": "#3ddc97",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#e9f5ee"
   },
   "tabBar": {
     "custom": true,
-    "color": "#7a6724",
-    "selectedColor": "#6f4d00",
-    "backgroundColor": "#fffdf2",
+    "color": "#66796d",
+    "selectedColor": "#0a7a52",
+    "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
       {
