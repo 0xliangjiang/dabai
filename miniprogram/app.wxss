@@ -358,6 +358,20 @@ page {
   border: 0;
 }
 
+.clear-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  color: #66796d;
+  background: #eef3f0;
+  font-size: 22rpx;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .cu-tag.green {
   color: #0a7a52;
   background: #dcf4e8;

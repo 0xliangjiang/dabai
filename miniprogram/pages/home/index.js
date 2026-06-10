@@ -187,6 +187,11 @@ Page({
     });
   },
 
+  clearContent() {
+    if (!this.data.rawContent) return;
+    this.setData({ rawContent: "", result: null, errorMsg: "", copied: "" });
+  },
+
   fillRawContent(content) {
     this.setData({
       rawContent: content,

@@ -28,7 +28,7 @@
           <view class="section-title">商品内容</view>
         </view>
         <view class="flex align-center gap-xs">
-          <view class="cu-tag blue">自动识别</view>
+          <view class="clear-chip pressable" hover-class="pressed" bindtap="clearContent">清空</view>
           <button class="paste-chip pressable" hover-class="pressed" bindtap="pasteFromClipboard">粘贴</button>
         </view>
       </view>
