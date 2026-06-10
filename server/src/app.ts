@@ -1,5 +1,9 @@
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
+import fastifyStatic from "@fastify/static";
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import Fastify from "fastify";
 import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
@@ -13,10 +17,18 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerJobRoutes } from "./routes/jobs.js";
 import { registerOrderRoutes } from "./routes/orders.js";
+import { registerUploadRoutes } from "./routes/uploads.js";
 
 declare module "fastify" {
   interface FastifyRequest {
     userId: string;
+  }
+  interface FastifyInstance {
+    deps: {
+      config: AppConfig;
+      repositories: Repositories;
+      orderClient: DingdanxiaOrderClient;
+    };
   }
 }
 
@@ -56,10 +68,26 @@ export async function createApp(options: CreateAppOptions = {}) {
     allowList: () => config.nodeEnv === "test"
   });
 
+  await app.register(multipart, {
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+  });
+
+  const uploadDir = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
+  mkdirSync(uploadDir, { recursive: true });
+  await app.register(fastifyStatic, {
+    root: uploadDir,
+    prefix: "/uploads/"
+  });
+
   app.decorateRequest("userId", "");
+  app.decorate("deps", { config, repositories, orderClient });
 
   app.addHook("preHandler", async (request, reply) => {
     if (request.url === "/health" || request.url === "/api/auth/wechat-login") {
+      return;
+    }
+
+    if (request.url.startsWith("/uploads/")) {
       return;
     }
 
@@ -78,6 +106,11 @@ export async function createApp(options: CreateAppOptions = {}) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
+    const user = await repositories.users.findById(userId);
+    if (user && user.status === "banned") {
+      return reply.code(403).send({ error: "账号已被禁用，请联系客服" });
+    }
+
     request.userId = userId;
   });
 
@@ -86,6 +119,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
   await registerOrderRoutes(app, repositories);
+  await registerUploadRoutes(app, uploadDir);
   await registerJobRoutes(app, config, repositories, orderClient);
   await registerAdminRoutes(app, config, repositories);
 

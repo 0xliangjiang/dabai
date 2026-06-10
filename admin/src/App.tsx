@@ -5,6 +5,7 @@ import { Button } from "./components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import {
   fetchAdminApi,
+  type AdminClaim,
   type AdminConfig,
   type AdminOverview,
   type AdminUser,
@@ -16,6 +17,7 @@ type AdminData = {
   users: AdminUser[];
   config: AdminConfig["config"];
   pendingAttributions: PendingAttribution[];
+  claims: AdminClaim[];
 };
 
 const emptyData: AdminData = {
@@ -35,8 +37,11 @@ const emptyData: AdminData = {
     attributionWindowHours: 24,
     highValueReviewThresholdCents: 5000
   },
-  pendingAttributions: []
+  pendingAttributions: [],
+  claims: []
 };
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001";
 
 export function App() {
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem("dabai-admin-token") ?? "");
@@ -64,17 +69,19 @@ export function App() {
     setLoading(true);
     setError("");
     try {
-      const [overview, usersResponse, configResponse, pendingResponse] = await Promise.all([
+      const [overview, usersResponse, configResponse, pendingResponse, claimsResponse] = await Promise.all([
         fetchAdminApi<AdminOverview>("/api/admin/overview", token),
         fetchAdminApi<{ users: AdminUser[] }>("/api/admin/users", token),
         fetchAdminApi<AdminConfig>("/api/admin/config", token),
-        fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token)
+        fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token),
+        fetchAdminApi<{ claims: AdminClaim[] }>("/api/admin/claims", token)
       ]);
       setData({
         overview,
         users: usersResponse.users,
         config: configResponse.config,
-        pendingAttributions: pendingResponse.items
+        pendingAttributions: pendingResponse.items,
+        claims: claimsResponse.claims
       });
       localStorage.setItem("dabai-admin-token", token);
     } catch (loadError) {
@@ -88,6 +95,22 @@ export function App() {
     await fetchAdminApi(`/api/admin/orders/${id}/attribute`, adminToken, {
       method: "POST",
       body: JSON.stringify({ userId })
+    });
+    await loadData();
+  }
+
+  async function setUserStatus(id: string, status: "active" | "banned") {
+    await fetchAdminApi(`/api/admin/users/${id}/status`, adminToken, {
+      method: "POST",
+      body: JSON.stringify({ status })
+    });
+    await loadData();
+  }
+
+  async function reviewClaim(id: string, status: "approved" | "rejected") {
+    await fetchAdminApi(`/api/admin/claims/${id}/review`, adminToken, {
+      method: "POST",
+      body: JSON.stringify({ status })
     });
     await loadData();
   }
@@ -117,6 +140,9 @@ export function App() {
             </a>
             <a className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" href="#attribution">
               订单复核
+            </a>
+            <a className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" href="#claims">
+              申诉审核
             </a>
             <a className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" href="#config">
               配置
@@ -165,6 +191,8 @@ export function App() {
                   <TableHead>转化数</TableHead>
                   <TableHead>复制数</TableHead>
                   <TableHead>补充记录</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,9 +203,25 @@ export function App() {
                     <TableCell>{user.conversionCount}</TableCell>
                     <TableCell>{user.copyEventCount}</TableCell>
                     <TableCell>{user.claimCount}</TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === "banned" ? "warning" : "secondary"}>
+                        {user.status === "banned" ? "已封禁" : "正常"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {user.status === "banned" ? (
+                        <Button size="sm" variant="outline" onClick={() => void setUserStatus(user.id, "active")}>
+                          解封
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => void setUserStatus(user.id, "banned")}>
+                          封禁
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
-                {data.users.length === 0 ? <EmptyRow colSpan={5} text="暂无用户数据" /> : null}
+                {data.users.length === 0 ? <EmptyRow colSpan={7} text="暂无用户数据" /> : null}
               </TableBody>
             </Table>
           </section>
@@ -216,6 +260,68 @@ export function App() {
                   </TableRow>
                 ))}
                 {data.pendingAttributions.length === 0 ? <EmptyRow colSpan={6} text="暂无待复核订单" /> : null}
+              </TableBody>
+            </Table>
+          </section>
+
+          <section id="claims" className="mt-6 rounded-lg border border-slate-200 bg-white">
+            <SectionTitle title="订单申诉审核" subtitle="用户提交的漏单补充记录，核对后通过或驳回。" />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>用户 OpenID</TableHead>
+                  <TableHead>订单后缀</TableHead>
+                  <TableHead>备注</TableHead>
+                  <TableHead>截图</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.claims.map((claim) => (
+                  <TableRow key={claim.id}>
+                    <TableCell className="font-medium">{claim.userOpenid}</TableCell>
+                    <TableCell>{claim.orderSuffix}</TableCell>
+                    <TableCell className="max-w-56 truncate">{claim.notes || "—"}</TableCell>
+                    <TableCell>
+                      {claim.screenshotUrl ? (
+                        <a
+                          className="text-sm text-blue-600 underline"
+                          href={claim.screenshotUrl.startsWith("/") ? `${apiBaseUrl}${claim.screenshotUrl}` : claim.screenshotUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          查看
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          claim.status === "approved" ? "secondary" : claim.status === "rejected" ? "warning" : "secondary"
+                        }
+                      >
+                        {claim.status === "pending_review" ? "待审核" : claim.status === "approved" ? "已通过" : "已驳回"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="flex justify-end gap-2">
+                      {claim.status === "pending_review" ? (
+                        <>
+                          <Button size="sm" onClick={() => void reviewClaim(claim.id, "approved")}>
+                            <Check className="h-4 w-4" />
+                            通过
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => void reviewClaim(claim.id, "rejected")}>
+                            驳回
+                          </Button>
+                        </>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {data.claims.length === 0 ? <EmptyRow colSpan={6} text="暂无申诉记录" /> : null}
               </TableBody>
             </Table>
           </section>

@@ -42,10 +42,22 @@ export function createRepositories(): Repositories {
           id,
           openid,
           unionid: input.unionid ?? null,
+          status: "active",
           createdAt: new Date()
         };
         users.set(id, user);
         usersByOpenid.set(openid, id);
+        return user;
+      },
+      async findById(id: string) {
+        return users.get(id);
+      },
+      async updateStatus(id: string, status) {
+        const user = users.get(id);
+        if (!user) {
+          throw new Error(`user not found: ${id}`);
+        }
+        user.status = status;
         return user;
       },
       async list(): Promise<AdminUserRecord[]> {
@@ -176,6 +188,23 @@ export function createRepositories(): Repositories {
         };
         claims.set(record.id, record);
         return record;
+      },
+      async listClaims(status?: string) {
+        return [...claims.values()]
+          .filter((claim) => !status || claim.status === status)
+          .map((claim) => ({
+            ...claim,
+            userOpenid: users.get(claim.userId)?.openid ?? ""
+          }));
+      },
+      async reviewClaim(id: string, input: { status: "approved" | "rejected"; reviewedBy?: string }) {
+        const claim = claims.get(id);
+        if (!claim) {
+          throw new Error(`claim not found: ${id}`);
+        }
+        claim.status = input.status;
+        claims.set(id, claim);
+        return claim;
       }
     },
     commissionLedger: {

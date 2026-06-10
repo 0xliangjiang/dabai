@@ -81,6 +81,32 @@ async function ensureLogin() {
   return loginWithWechat();
 }
 
+function uploadFile(path, filePath) {
+  const token = getToken();
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: `${app.globalData.apiBaseUrl}${path}`,
+      filePath,
+      name: "file",
+      header: token ? { authorization: `Bearer ${token}` } : {},
+      success(res) {
+        let data = {};
+        try {
+          data = JSON.parse(res.data || "{}");
+        } catch (_error) {
+          // 非 JSON 响应
+        }
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(data);
+          return;
+        }
+        reject({ statusCode: res.statusCode, ...data });
+      },
+      fail: reject
+    });
+  });
+}
+
 function logout() {
   wx.removeStorageSync("token");
   wx.removeStorageSync("user");
@@ -88,6 +114,7 @@ function logout() {
 
 module.exports = {
   request,
+  uploadFile,
   ensureLogin,
   getCurrentUser,
   loginWithWechat,

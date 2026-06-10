@@ -12,9 +12,21 @@ export type AdminUser = {
   id: string;
   openid: string;
   unionid: string | null;
+  status: string;
   conversionCount: number;
   copyEventCount: number;
   claimCount: number;
+  createdAt: string;
+};
+
+export type AdminClaim = {
+  id: string;
+  userId: string;
+  userOpenid: string;
+  orderSuffix: string;
+  screenshotUrl: string | null;
+  notes: string | null;
+  status: string;
   createdAt: string;
 };
 

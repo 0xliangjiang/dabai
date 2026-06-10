@@ -24,6 +24,14 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
         });
         return mapUser(user);
       },
+      async findById(id: string) {
+        const user = await prisma.user.findUnique({ where: { id } });
+        return user ? mapUser(user) : undefined;
+      },
+      async updateStatus(id: string, status) {
+        const user = await prisma.user.update({ where: { id }, data: { status } });
+        return mapUser(user);
+      },
       async list(): Promise<AdminUserRecord[]> {
         const users = await prisma.user.findMany({
           orderBy: { createdAt: "desc" },
@@ -221,6 +229,28 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
           }
         });
         return mapClaim(record);
+      },
+      async listClaims(status?: string) {
+        const records = await prisma.orderClaim.findMany({
+          where: status ? { status } : undefined,
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { openid: true } } }
+        });
+        return records.map((record) => ({
+          ...mapClaim(record),
+          userOpenid: record.user.openid
+        }));
+      },
+      async reviewClaim(id: string, input: { status: "approved" | "rejected"; reviewedBy?: string }) {
+        const record = await prisma.orderClaim.update({
+          where: { id },
+          data: {
+            status: input.status,
+            reviewedBy: input.reviewedBy ?? "admin",
+            reviewedAt: new Date()
+          }
+        });
+        return mapClaim(record);
       }
     },
     commissionLedger: {
@@ -271,11 +301,18 @@ export function createPrismaRepositories(prisma = new PrismaClient()): Repositor
   };
 }
 
-function mapUser(user: { id: string; openid: string; unionid: string | null; createdAt: Date }): UserRecord {
+function mapUser(user: {
+  id: string;
+  openid: string;
+  unionid: string | null;
+  status: string;
+  createdAt: Date;
+}): UserRecord {
   return {
     id: user.id,
     openid: user.openid,
     unionid: user.unionid,
+    status: user.status,
     createdAt: user.createdAt
   };
 }

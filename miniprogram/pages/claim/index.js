@@ -1,4 +1,4 @@
-const { ensureLogin, request } = require("../../utils/api");
+const { ensureLogin, request, uploadFile } = require("../../utils/api");
 
 const NOTES_MAX = 200;
 
@@ -58,11 +58,19 @@ Page({
     this.setData({ submitting: true });
     try {
       await ensureLogin();
+
+      let screenshotUrl = "";
+      if (this.data.hasFiles && this.data.files[0]) {
+        const upload = await uploadFile("/api/uploads/claim-screenshot", this.data.files[0].tempFilePath);
+        screenshotUrl = upload.url || "";
+      }
+
       await request("/api/orders/claim", {
         method: "POST",
         data: {
           orderSuffix: this.data.orderSuffix,
-          notes: this.data.notes
+          notes: this.data.notes,
+          screenshotUrl
         }
       });
       wx.showToast({ title: "已提交", icon: "success" });

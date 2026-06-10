@@ -35,6 +35,12 @@ export async function registerOrderRoutes(app: FastifyInstance, repositories: Re
 
 const claimSchema = z.object({
   orderSuffix: z.string().trim().min(4).max(32),
-  screenshotUrl: z.string().trim().url().optional().or(z.literal("")),
+  screenshotUrl: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || value.startsWith("/uploads/") || /^https:\/\//.test(value), {
+      message: "screenshotUrl must be an uploaded file path or https URL"
+    })
+    .optional(),
   notes: z.string().trim().max(500).optional().or(z.literal(""))
 });

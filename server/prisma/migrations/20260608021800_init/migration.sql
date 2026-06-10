@@ -1,6 +1,4 @@
 
-> server@0.1.0 prisma
-> prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
 
 -- CreateTable
 CREATE TABLE "User" (

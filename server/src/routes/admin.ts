@@ -45,4 +45,33 @@ export async function registerAdminRoutes(app: FastifyInstance, config: AppConfi
       });
     }
   );
+
+  app.post<{ Params: { id: string }; Body: { status?: string } }>(
+    "/api/admin/users/:id/status",
+    async (request, reply) => {
+      const status = request.body?.status;
+      if (status !== "active" && status !== "banned") {
+        return reply.code(400).send({ error: "status must be active or banned" });
+      }
+      return repositories.users.updateStatus(request.params.id, status);
+    }
+  );
+
+  app.get<{ Querystring: { status?: string } }>("/api/admin/claims", async (request) => ({
+    claims: await repositories.orders.listClaims(request.query.status)
+  }));
+
+  app.post<{ Params: { id: string }; Body: { status?: string } }>(
+    "/api/admin/claims/:id/review",
+    async (request, reply) => {
+      const status = request.body?.status;
+      if (status !== "approved" && status !== "rejected") {
+        return reply.code(400).send({ error: "status must be approved or rejected" });
+      }
+      return repositories.orders.reviewClaim(request.params.id, {
+        status,
+        reviewedBy: "admin"
+      });
+    }
+  );
 }

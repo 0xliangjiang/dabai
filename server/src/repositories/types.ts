@@ -1,9 +1,12 @@
 export type Platform = "taobao" | "jd" | "pdd" | "vip";
 
+export type UserStatus = "active" | "banned";
+
 export type UserRecord = {
   id: string;
   openid: string;
   unionid: string | null;
+  status: string;
   createdAt: Date;
 };
 
@@ -135,6 +138,8 @@ export type CreateCommissionLedgerInput = {
 export type Repositories = {
   users: {
     findOrCreateByOpenid(openid: string, input?: { unionid?: string | null }): Promise<UserRecord>;
+    findById(id: string): Promise<UserRecord | undefined>;
+    updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
     list(): Promise<AdminUserRecord[]>;
   };
   conversions: {
@@ -159,6 +164,8 @@ export type Repositories = {
       screenshotUrl?: string | null;
       notes?: string | null;
     }): Promise<OrderClaimRecord>;
+    listClaims(status?: string): Promise<Array<OrderClaimRecord & { userOpenid: string }>>;
+    reviewClaim(id: string, input: { status: "approved" | "rejected"; reviewedBy?: string }): Promise<OrderClaimRecord>;
   };
   commissionLedger: {
     upsert(input: CreateCommissionLedgerInput): Promise<CommissionLedgerRecord>;
