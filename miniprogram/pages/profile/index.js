@@ -131,6 +131,10 @@ Page({
       await loginWithWechat();
       this.refreshUser();
       wx.showToast({ title: "登录成功", icon: "success" });
+      // 首次登录且未设置昵称时，自动展开资料面板（头像/昵称都支持微信一键带入）
+      if (!this.data.nickname) {
+        this.startEditProfile();
+      }
     } catch (_error) {
       wx.showToast({ title: "登录失败，请重试", icon: "none" });
     } finally {
