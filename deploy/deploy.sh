@@ -19,6 +19,15 @@ fail() { printf "\n\033[1;31mxx 部署失败：%s\033[0m\n" "$1"; exit 1; }
 [ -f server/.env.production ] || fail "缺少 server/.env.production（复制 server/.env.production.example 并填写）"
 command -v docker >/dev/null || fail "未安装 docker"
 
+# 兼容 docker compose（插件版）与 docker-compose（独立版）
+if docker compose version >/dev/null 2>&1; then
+  DC="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+  DC="docker-compose"
+else
+  fail "未找到 docker compose 或 docker-compose"
+fi
+
 step "拉取最新代码"
 git fetch origin
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -30,10 +39,10 @@ git pull --ff-only origin "$BRANCH"
 echo "当前版本：$(git log --oneline -1)"
 
 step "构建镜像${FRESH:+（无缓存）}"
-docker compose build $FRESH
+$DC build $FRESH
 
 step "启动服务"
-docker compose up -d
+$DC up -d
 
 step "等待 API 就绪（最多 60 秒）"
 for i in $(seq 1 30); do
@@ -41,7 +50,7 @@ for i in $(seq 1 30); do
     break
   fi
   [ "$i" = 30 ] && {
-    docker compose logs --tail 30 api
+    $DC logs --tail 30 api
     fail "API 健康检查超时，日志见上方"
   }
   sleep 2
@@ -52,11 +61,11 @@ step "检查管理后台"
 if curl -sf -o /dev/null "http://127.0.0.1:${ADMIN_PORT}"; then
   echo "Admin OK  → http://127.0.0.1:${ADMIN_PORT}"
 else
-  echo "警告：管理后台未响应，查看日志：docker compose logs admin"
+  echo "警告：管理后台未响应，查看日志：$DC logs admin"
 fi
 
 step "清理悬空镜像"
 docker image prune -f >/dev/null
 
 printf "\n\033[1;32m✔ 部署完成\033[0m  %s\n" "$(git log --oneline -1)"
-docker compose ps
+$DC ps
