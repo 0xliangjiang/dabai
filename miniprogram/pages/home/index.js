@@ -63,7 +63,16 @@ Page({
       this.setData({ showPrivacy: true });
       return;
     }
-    const content = await this.readClipboard();
+    const { content, error } = await this.readClipboard();
+    if (error) {
+      // 隐私接口被拦截（隐私指引未配置/未通过，或开发工具未勾选"不校验隐私接口"）
+      wx.showModal({
+        title: "无法读取剪贴板",
+        content: "请确认已同意隐私授权。开发调试请在开发者工具勾选「不校验隐私接口」；线上需在小程序后台通过《用户隐私保护指引》申报剪切板。",
+        showCancel: false
+      });
+      return;
+    }
     if (!content) {
       wx.showToast({ title: "剪贴板为空", icon: "none" });
       return;
@@ -74,7 +83,7 @@ Page({
   },
 
   async autoPasteFromClipboard() {
-    const content = await this.readClipboard();
+    const { content } = await this.readClipboard();
     if (!content || !looksLikeProductContent(content)) return;
     if (content === this.data.rawContent.trim()) return;
 
@@ -168,10 +177,11 @@ Page({
     return new Promise((resolve) => {
       wx.getClipboardData({
         success(result) {
-          resolve((result.data || "").trim());
+          resolve({ content: (result.data || "").trim(), error: null });
         },
-        fail() {
-          resolve("");
+        fail(error) {
+          console.warn("getClipboardData failed:", error.errMsg || error);
+          resolve({ content: "", error: error.errMsg || "fail" });
         }
       });
     });
