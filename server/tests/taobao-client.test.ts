@@ -12,7 +12,10 @@ const ZTK_CONFIG = {
   apiUrl: "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
   appKey: "ztk-key",
   sid: "12345",
-  pid: "mm_1_2_3"
+  pid: "mm_1_2_3",
+  jdApiUrl: "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
+  jdUnionId: "",
+  jdPositionId: ""
 };
 
 function ztkResponse(content: unknown, status = 200) {
@@ -111,6 +114,39 @@ describe("ZhetaokeClient", () => {
       UnsupportedPlatformError
     );
     await expect(client.convert("https://www.vip.com/product-1.html")).rejects.toThrow(UnsupportedPlatformError);
+  });
+
+  test("JD goes through zhetaoke when jdUnionId configured", async () => {
+    let captured: URLSearchParams | undefined;
+    const client = new ZhetaokeClient(
+      { ...ZTK_CONFIG, jdUnionId: "1001513077", jdPositionId: "9001" },
+      {
+        fetch: (async (url: unknown, init: RequestInit) => {
+          if (String(url).includes("open_jing_union")) {
+            captured = new URLSearchParams(init.body as string);
+            return new Response(
+              JSON.stringify({
+                status: 200,
+                content: { data: { shortURL: "https://u.jd.com/ztk", clickURL: "https://union-click.jd.com/ztk" } }
+              }),
+              { status: 200 }
+            );
+          }
+          return new Response("{}", { status: 200 });
+        }) as typeof fetch
+      }
+    );
+
+    const result = await client.convert("https://item.jd.com/100012043978.html");
+    expect(captured?.get("unionId")).toBe("1001513077");
+    expect(captured?.get("positionId")).toBe("9001");
+    expect(captured?.get("chainType")).toBe("2");
+    expect(result).toMatchObject({
+      platform: "jd",
+      itemId: "100012043978",
+      generatedShortUrl: "https://u.jd.com/ztk",
+      generatedClickUrl: "https://union-click.jd.com/ztk"
+    });
   });
 
   test("factory falls back to mock without zhetaoke key", () => {
