@@ -11,7 +11,7 @@
         <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '白'}}</view>
         <view class="flex-sub">
           <view class="section-title">{{loginTitle}}</view>
-          <view class="section-desc">{{loginDesc}}</view>
+          <view wx:if="{{loginDesc}}" class="section-desc">{{loginDesc}}</view>
         </view>
       </view>
       <button wx:if="{{!isLoggedIn}}" class="cu-btn login-btn pressable" hover-class="pressed" disabled="{{loggingIn}}" loading="{{loggingIn}}" bindtap="login">微信登录</button>
@@ -21,7 +21,6 @@
     <view wx:if="{{isLoggedIn && !editingProfile}}" class="cu-card flex align-start justify-between gap-sm anim-up delay-1">
       <view class="flex-sub">
         <view class="section-title">完善资料</view>
-        <view class="section-desc">{{nickname ? '修改头像和昵称' : '设置头像和昵称，方便客服核对订单'}}</view>
       </view>
       <view class="mini-link" bindtap="startEditProfile">去设置</view>
     </view>
@@ -55,37 +54,13 @@
       </view>
     </view>
 
-    <view class="cu-card flex-direction gap anim-up delay-3">
-      <view class="flex align-start justify-between gap-sm">
-        <view class="flex-sub">
-          <view class="section-title">积分说明</view>
-          <view class="section-desc">积分为预估参考，订单确认后到账，权益详询客服。</view>
-        </view>
-        <view class="cu-tag blue">预估</view>
-      </view>
-    </view>
-
-    <view class="cu-card flex align-start justify-between gap-sm anim-up delay-3">
-      <view class="flex-sub">
-        <view class="section-title">订单有遗漏？</view>
-        <view class="section-desc">提交订单信息。</view>
-      </view>
-      <navigator class="mini-link" url="/pages/claim/index">去补充</navigator>
-    </view>
-
-    <view class="cu-list anim-up delay-4">
+    <view class="cu-list anim-up delay-3">
       <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/claim/index">
-        <view>
-          <view class="cu-label">订单补充</view>
-          <view class="section-desc">补充订单信息</view>
-        </view>
+<view class="cu-label">订单补充</view>
         <view class="cu-arrow">›</view>
       </navigator>
       <view class="cu-item flex align-center justify-between line" hover-class="item-pressed" bindtap="toggleMoreLinks">
-        <view>
-          <view class="cu-label">更多说明</view>
-          <view class="section-desc">积分规则、隐私政策与用户协议</view>
-        </view>
+<view class="cu-label">更多说明</view>
         <view class="cu-arrow more-arrow {{showMoreLinks ? 'expanded' : ''}}">›</view>
       </view>
       <block wx:if="{{showMoreLinks}}">
@@ -109,16 +84,13 @@
         send-message-title="大白小助手客服"
         send-message-path="/pages/home/index"
       >
-        <view>
-          <view class="cu-label">客服入口</view>
-          <view class="section-desc">咨询订单、积分和使用问题</view>
-        </view>
+<view class="cu-label">客服入口</view>
         <view class="cu-arrow">›</view>
       </button>
       <view class="cu-item flex align-center justify-between">
-        <view>
+<view>
           <view class="cu-label">服务时间</view>
-          <view class="section-desc">工作日 09:00-18:00，非工作时间请留言</view>
+          <view class="section-desc">工作日 09:00-18:00</view>
         </view>
       </view>
     </view>

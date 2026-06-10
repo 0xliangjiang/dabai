@@ -27,7 +27,7 @@
     <view wx:elif="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center anim-up delay-2">
       <view class="empty-icon">积</view>
       <view class="text-bold">暂未匹配到订单</view>
-      <view class="section-desc">通过本小程序生成的打开内容下单后会显示在这里。</view>
+      <view class="section-desc">下单后会显示在这里</view>
     </view>
 
     <block wx:else>

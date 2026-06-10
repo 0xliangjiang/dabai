@@ -3,7 +3,6 @@
     <view class="flex align-center justify-between gap">
       <view class="flex-sub">
         <view class="hero-title">优惠一查便知</view>
-        <view class="hero-desc">粘贴商品链接或口令，立刻查看预估优惠</view>
       </view>
       <button class="checkin-chip pressable" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">
         <view class="checkin-chip-title">{{checkin.todayChecked ? '已签到' : '签到'}}</view>

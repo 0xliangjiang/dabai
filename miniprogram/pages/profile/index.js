@@ -21,7 +21,7 @@ Page({
     userId: "",
     identityText: "未登录",
     loginTitle: "登录后查看优惠",
-    loginDesc: "使用微信登录，订单和优惠记录会跟随你的账号。",
+    loginDesc: "",
     loggingIn: false,
     showPrivacy: false,
     showMoreLinks: false,
@@ -68,7 +68,7 @@ Page({
       displayAvatar: toDisplayUrl(user?.avatarUrl || ""),
       identityText: user ? "已登录" : "未登录",
       loginTitle: user ? (user.nickname || "微信已登录") : "登录后查看优惠",
-      loginDesc: user ? `账号 ${user.id}` : "使用微信登录，订单和优惠记录会跟随你的账号。"
+      loginDesc: user ? `账号 ${user.id}` : ""
     });
   },
 
