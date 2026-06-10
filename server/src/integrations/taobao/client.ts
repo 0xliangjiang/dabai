@@ -139,6 +139,23 @@ export class ZhetaokeClient implements TaobaoClient {
     };
   }
 
+  // 跟随最多 3 次重定向，返回最终落地 URL（失败时返回原始 URL）
+  private async resolveRedirect(url: string): Promise<string> {
+    let current = url;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const response = await this.fetch(current, { method: "GET", redirect: "manual" });
+        const location = response.headers.get("location");
+        if (!location) return current;
+        current = new URL(location, current).toString();
+        if (extractJdSkuId(current)) return current;
+      } catch {
+        return current;
+      }
+    }
+    return current;
+  }
+
   // 京东联盟官方 API 转链（免费）
   private async convertJd(rawContent: string): Promise<TaobaoConversionResult> {
     if (!this.jdUnion) {
@@ -146,7 +163,11 @@ export class ZhetaokeClient implements TaobaoClient {
     }
     // 2024-12 起京东要求用「联盟商品ID」转链：先 goods.query 取 itemId，再转链
     const materialUrl = extractJdMaterialId(rawContent);
-    const skuId = extractJdSkuId(rawContent);
+    // 短链（3.cn/u.jd.com）里没有 SKU，跟随重定向解析出真实商品页再提取
+    let skuId = extractJdSkuId(rawContent);
+    if (!skuId && materialUrl) {
+      skuId = extractJdSkuId(await this.resolveRedirect(materialUrl));
+    }
     const goods = skuId ? (await this.jdUnion.goodsQueryBySku(skuId)) ?? {} : {};
     const unionItemId = pickString(goods, ["itemId", "unionItemId"]);
     const { clickUrl, shortUrl } = await this.jdUnion.promotionGet(unionItemId || materialUrl);
