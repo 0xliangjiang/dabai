@@ -13,3 +13,16 @@ services:
       - UPLOAD_DIR=/app/server/uploads
     volumes:
       - ./deploy-data/uploads:/app/server/uploads
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      args:
+        # 管理后台访问的 API 地址（构建时注入），生产填 https://api.你的域名
+        VITE_API_BASE_URL: ${ADMIN_API_BASE_URL:-http://localhost:3001}
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api

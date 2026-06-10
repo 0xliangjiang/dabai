@@ -6,9 +6,6 @@ node_modules
 .claude
 miniprogram
 docs
-admin/src
-admin/index.html
-admin/*.config.*
 **/.env
 **/.env.*
 !**/.env.production.example
