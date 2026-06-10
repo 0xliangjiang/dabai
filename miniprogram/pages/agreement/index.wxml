@@ -1,12 +1,12 @@
 <view class="cu-page page-shell">
-  <view class="hero">
+  <view class="hero anim-up">
     <view class="eyebrow">协议</view>
     <view class="hero-title">用户协议</view>
     <view class="hero-desc">使用大白小助手前，请了解服务边界和注意事项。</view>
   </view>
 
   <view class="content-stack floating-stack">
-    <view class="cu-card article-card">
+    <view class="anim-up delay-1 cu-card article-card">
       <view class="section-title">服务说明</view>
       <view class="article-text">大白小助手提供商品内容识别、预估优惠查询、订单进度展示等辅助服务。相关结果仅供参考，不构成对价格、库存、优惠金额或结算时间的承诺。</view>
     </view>

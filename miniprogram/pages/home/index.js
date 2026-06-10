@@ -5,7 +5,9 @@ Page({
   data: {
     rawContent: "",
     loading: false,
-    result: null
+    result: null,
+    errorMsg: "",
+    copied: ""
   },
 
   async onLoad() {
@@ -46,7 +48,7 @@ Page({
       return;
     }
 
-    this.setData({ loading: true });
+    this.setData({ loading: true, errorMsg: "", copied: "" });
     try {
       await ensureLogin();
       const result = await request("/api/conversions", {
@@ -55,7 +57,10 @@ Page({
       });
       this.setData({ result: this.formatResult(result) });
     } catch (error) {
-      wx.showToast({ title: error.error || "查询失败", icon: "none" });
+      this.setData({
+        result: null,
+        errorMsg: error.error || "未识别到商品"
+      });
     } finally {
       this.setData({ loading: false });
     }
@@ -93,10 +98,19 @@ Page({
   async copyResult(copyType, data) {
     await ensureLogin();
     await wx.setClipboardData({ data });
+    this.setData({ copied: copyType });
+    clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => {
+      this.setData({ copied: "" });
+    }, 1500);
     await request(`/api/conversions/${this.data.result.id}/copy`, {
       method: "POST",
       data: { copyType }
     });
+  },
+
+  onUnload() {
+    clearTimeout(this.copiedTimer);
   },
 
   async loginQuietly() {
@@ -123,7 +137,9 @@ Page({
   fillRawContent(content) {
     this.setData({
       rawContent: content,
-      result: null
+      result: null,
+      errorMsg: "",
+      copied: ""
     });
   }
 });

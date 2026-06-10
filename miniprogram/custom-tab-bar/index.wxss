@@ -35,12 +35,29 @@
   color: #75622a;
   font-size: 24rpx;
   font-weight: 700;
+  transition: background 0.24s ease, color 0.24s ease, box-shadow 0.24s ease;
+}
+
+.tab-item:active {
+  transform: scale(0.95);
 }
 
 .tab-item.active {
   color: #2d2300;
   background: linear-gradient(135deg, #ffe86a 0%, #ffc814 100%);
   box-shadow: 0 10rpx 22rpx rgba(255, 196, 0, 0.2);
+}
+
+@keyframes tab-mark-bounce {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .tab-mark {
@@ -53,6 +70,11 @@
   font-weight: 900;
   line-height: 42rpx;
   text-align: center;
+  transition: background 0.24s ease, color 0.24s ease;
+}
+
+.tab-item.active .tab-mark {
+  animation: tab-mark-bounce 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .tab-item.active .tab-mark {

@@ -1,12 +1,12 @@
 <view class="cu-page page-shell">
-  <view class="hero">
+  <view class="hero anim-up">
     <view class="eyebrow">隐私</view>
     <view class="hero-title">隐私政策</view>
     <view class="hero-desc">我们仅在提供商品识别、优惠查询、订单匹配和账号服务时使用必要信息。</view>
   </view>
 
   <view class="content-stack floating-stack">
-    <view class="cu-card article-card">
+    <view class="anim-up delay-1 cu-card article-card">
       <view class="section-title">微信登录</view>
       <view class="article-text">用户使用微信登录时，我们会通过微信提供的登录凭证识别账号，用于保存查询记录、订单匹配状态和基础账号信息。</view>
     </view>

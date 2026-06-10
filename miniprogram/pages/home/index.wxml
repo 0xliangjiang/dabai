@@ -1,12 +1,12 @@
 <view class="cu-page page-shell">
-  <view class="hero">
+  <view class="hero anim-up">
     <view class="eyebrow">大白小助手</view>
     <view class="hero-title">粘贴商品 查预估优惠</view>
     <view class="hero-desc">支持淘宝、京东、拼多多、唯品会，展示结果仅供参考，以实际订单结算为准。</view>
   </view>
 
   <view class="content-stack floating-stack">
-    <view class="cu-card glass-card">
+    <view class="cu-card glass-card anim-up delay-1">
       <view class="quick-steps">
         <view class="step-pill">
           <view class="step-index">1</view>
@@ -26,7 +26,7 @@
       </view>
     </view>
 
-    <view class="platform-strip">
+    <view class="platform-strip anim-up delay-2">
       <view class="platform-strip-label">支持</view>
       <view class="platform-strip-item">淘宝</view>
       <view class="platform-strip-item">京东</view>
@@ -34,21 +34,40 @@
       <view class="platform-strip-item">唯品会</view>
     </view>
 
-    <view class="cu-card prompt-box flex-direction gap">
+    <view class="cu-card prompt-box flex-direction gap anim-up delay-3">
       <view class="section-heading">
         <view>
           <view class="section-title">商品内容</view>
         </view>
         <view class="flex align-center gap-xs">
           <view class="cu-tag blue">自动识别</view>
-          <button class="paste-chip" bindtap="pasteFromClipboard">粘贴</button>
+          <button class="paste-chip pressable" hover-class="pressed" bindtap="pasteFromClipboard">粘贴</button>
         </view>
       </view>
       <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
-      <button class="cu-btn primary block" loading="{{loading}}" bindtap="convert">查看预估优惠</button>
+      <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{loading}}" disabled="{{loading}}" bindtap="convert">{{loading ? '正在查询…' : '查看预估优惠'}}</button>
     </view>
 
-    <view wx:if="{{result}}" class="cu-card product-card flex-direction gap">
+    <view wx:if="{{loading}}" class="cu-card flex-direction gap anim-up">
+      <view class="flex align-start gap">
+        <view class="skeleton-block skeleton-thumb"></view>
+        <view class="flex-sub flex-direction gap-sm">
+          <view class="skeleton-block skeleton-line short"></view>
+          <view class="skeleton-block skeleton-line"></view>
+          <view class="skeleton-block skeleton-line half"></view>
+        </view>
+      </view>
+      <view class="skeleton-block skeleton-line tall"></view>
+    </view>
+
+    <view wx:elif="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
+      <view class="error-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <view class="section-desc">请检查粘贴的内容是否完整，或换一个商品试试。</view>
+      <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="convert">重新查询</button>
+    </view>
+
+    <view wx:elif="{{result}}" class="cu-card product-card flex-direction gap anim-pop">
       <view class="flex align-start gap">
         <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" />
         <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
@@ -80,8 +99,8 @@
         </view>
       </view>
       <view class="flex gap-sm">
-        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub" bindtap="copyPassword">复制口令</button>
-        <button class="cu-btn success flex-sub" bindtap="copyLink">复制链接</button>
+        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制 ✓' : '复制口令'}}</button>
+        <button class="cu-btn success flex-sub pressable {{copied === 'link' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyLink">{{copied === 'link' ? '已复制 ✓' : '复制链接'}}</button>
       </view>
     </view>
   </view>
