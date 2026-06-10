@@ -1,9 +1,9 @@
 // 按运行环境切换接口地址：develop=开发版，trial=体验版，release=正式版
 // 上线前把 trial/release 替换为已备案的 HTTPS 域名，并在微信后台配置 request 合法域名
 const API_BASE_URLS = {
-  develop: "http://dabai.discordbot.cn",
-  trial: "https://api.your-domain.com",
-  release: "https://dabai.discord.cn"
+  develop: "https://dabai.discordbot.cn",
+  trial: "https://dabai.discordbot.cn",
+  release: "https://dabai.discordbot.cn"
 };
 
 App({
