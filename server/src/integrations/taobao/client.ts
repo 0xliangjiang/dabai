@@ -42,6 +42,7 @@ export type CreateTaobaoClientConfig = {
   zhetaokeAppKey?: string;
   zhetaokeSid?: string;
   zhetaokePid?: string;
+  zhetaokeRelationId?: string;
   zhetaokeJdApiUrl?: string;
   zhetaokeJdUnionId?: string;
   zhetaokeJdPositionId?: string;
@@ -57,6 +58,7 @@ type ZhetaokeClientConfig = {
   appKey: string;
   sid: string;
   pid: string;
+  relationId: string;
   jdApiUrl: string;
   jdUnionId: string;
   jdPositionId: string;
@@ -94,8 +96,19 @@ export class ZhetaokeClient implements TaobaoClient {
     return this.convertTaobao(rawContent);
   }
 
-  // 折淘客万能转链：支持淘口令、链接、分享文案
+  // 折淘客淘宝转链：老式淘口令走 tkl 接口；新版分享（e.tb.cn + tk=）解析出商品ID走高佣转链
   private async convertTaobao(rawContent: string): Promise<TaobaoConversionResult> {
+    try {
+      return await this.convertTaobaoByTkl(rawContent);
+    } catch (error) {
+      if (!(error instanceof ConversionApiError)) throw error;
+      const itemId = await this.resolveTaobaoItemId(rawContent);
+      if (!itemId) throw error;
+      return this.convertTaobaoByItemId(itemId);
+    }
+  }
+
+  private async convertTaobaoByTkl(rawContent: string): Promise<TaobaoConversionResult> {
     const body = new URLSearchParams({
       appkey: this.config.appKey,
       sid: this.config.sid,
@@ -103,8 +116,53 @@ export class ZhetaokeClient implements TaobaoClient {
       tkl: rawContent,
       signurl: "5"
     });
+    if (isRealConfigValue(this.config.relationId)) {
+      body.set("relation_id", this.config.relationId);
+    }
+    const content = await this.postZhetaoke(this.config.apiUrl, body);
+    return this.mapTaobaoContent(content, rawContent);
+  }
 
-    const response = await this.fetch(this.config.apiUrl, {
+  private async convertTaobaoByItemId(itemId: string): Promise<TaobaoConversionResult> {
+    const body = new URLSearchParams({
+      appkey: this.config.appKey,
+      sid: this.config.sid,
+      pid: this.config.pid,
+      num_iid: itemId,
+      signurl: "5"
+    });
+    if (isRealConfigValue(this.config.relationId)) {
+      body.set("relation_id", this.config.relationId);
+    }
+    const gaoyongUrl = this.config.apiUrl.replace("open_gaoyongzhuanlian_tkl.ashx", "open_gaoyongzhuanlian.ashx");
+    const content = await this.postZhetaoke(gaoyongUrl, body);
+    return this.mapTaobaoContent(content, itemId);
+  }
+
+  // 新版淘宝分享短链（e.tb.cn/m.tb.cn）页面里带商品ID，自行解析
+  private async resolveTaobaoItemId(rawContent: string): Promise<string> {
+    const direct = rawContent.match(/[?&]id=(\d{8,})/);
+    if (direct) return direct[1];
+    const shortLink = rawContent.match(/https?:\/\/(?:e|m)\.tb\.cn\/[^\s，。"'<>]+/i)?.[0];
+    if (!shortLink) return "";
+    try {
+      const response = await this.fetch(shortLink, {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
+        }
+      });
+      const html = await response.text();
+      const match =
+        html.match(/[?&]id=(\d{8,})/) ?? html.match(/itemId[=:"']+(\d{8,})/i) ?? html.match(/"id"\s*:\s*"?(\d{10,})/);
+      return match?.[1] ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  private async postZhetaoke(url: string, body: URLSearchParams): Promise<Record<string, unknown>> {
+    const response = await this.fetch(url, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded;charset=utf-8" },
       body
@@ -112,8 +170,9 @@ export class ZhetaokeClient implements TaobaoClient {
     if (!response.ok) {
       throw new ConversionApiError(`Zhetaoke HTTP ${response.status}`);
     }
-
-    const payload = (await response.json()) as Record<string, unknown>;
+    const text = await response.text();
+    // 折淘客偶发返回两段 JSON 拼接（如 转链失败 + 具体原因），取信息量更大的一段
+    const payload = parseZhetaokePayload(text);
     const status = Number(payload.status ?? payload.code ?? 0);
     if (status !== 200) {
       const message =
@@ -122,10 +181,10 @@ export class ZhetaokeClient implements TaobaoClient {
           : String(payload.msg ?? payload.message ?? "折淘客转链失败");
       throw new ConversionApiError(message, { code: status });
     }
+    return Array.isArray(payload.content) ? asRecord(payload.content[0]) ?? {} : asRecord(payload.content) ?? {};
+  }
 
-    const content = Array.isArray(payload.content)
-      ? asRecord(payload.content[0]) ?? {}
-      : asRecord(payload.content) ?? {};
+  private mapTaobaoContent(content: Record<string, unknown>, fallbackId: string): TaobaoConversionResult {
     const priceCents = parseMoneyToCents(
       pickValue(content, ["quanhou_jiage", "quanhoujiage", "zk_final_price", "size", "price"])
     );
@@ -135,7 +194,7 @@ export class ZhetaokeClient implements TaobaoClient {
 
     return {
       platform: "taobao",
-      itemId: pickString(content, ["tao_id", "item_id", "num_iid", "goods_id"]) || rawContent,
+      itemId: pickString(content, ["tao_id", "item_id", "num_iid", "goods_id"]) || fallbackId,
       itemTitle: pickString(content, ["title", "tao_title", "goods_name"]) || "淘宝商品",
       itemImageUrl: pickString(content, ["pict_url", "pic_url"]),
       itemPriceCents: priceCents,
@@ -293,6 +352,7 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
         appKey: config.zhetaokeAppKey!,
         sid: config.zhetaokeSid ?? "",
         pid: config.zhetaokePid ?? "",
+        relationId: config.zhetaokeRelationId ?? "",
         jdApiUrl:
           config.zhetaokeJdApiUrl ??
           "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
@@ -320,6 +380,28 @@ export class MockTaobaoClient implements TaobaoClient {
       generatedShortUrl: "https://s.click.taobao.com/mock",
       generatedClickUrl: "https://uland.taobao.com/mock"
     };
+  }
+}
+
+// 折淘客偶发返回 "{...},{...}" 两段 JSON，取更具体的错误信息
+function parseZhetaokePayload(text: string): Record<string, unknown> {
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    const parts = text
+      .split(/\}\s*,\s*\{/)
+      .map((part, index, arr) => {
+        let fixed = part;
+        if (index > 0) fixed = `{${fixed}`;
+        if (index < arr.length - 1) fixed = `${fixed}}`;
+        try {
+          return JSON.parse(fixed) as Record<string, unknown>;
+        } catch {
+          return undefined;
+        }
+      })
+      .filter(Boolean) as Record<string, unknown>[];
+    return parts[parts.length - 1] ?? { status: 0, content: text.slice(0, 100) };
   }
 }
 

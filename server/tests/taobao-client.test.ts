@@ -13,6 +13,7 @@ const ZTK_CONFIG = {
   appKey: "ztk-key",
   sid: "12345",
   pid: "mm_1_2_3",
+  relationId: "",
   jdApiUrl: "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
   jdUnionId: "",
   jdPositionId: ""
