@@ -23,6 +23,7 @@ const testConfig: AppConfig = {
   jdUnionAppSecret: "",
   jdUnionSiteId: "",
   jdUnionPositionId: "",
+  jdUnionSceneId: "",
 
 
 };

@@ -46,6 +46,7 @@ export type CreateTaobaoClientConfig = {
   jdUnionAppSecret?: string;
   jdUnionSiteId?: string;
   jdUnionPositionId?: string;
+  jdUnionSceneId?: string;
 };
 
 type ZhetaokeClientConfig = {
@@ -143,11 +144,12 @@ export class ZhetaokeClient implements TaobaoClient {
     if (!this.jdUnion) {
       throw new UnsupportedPlatformError("京东转链未配置（缺少京东联盟密钥）");
     }
-    const materialId = extractJdMaterialId(rawContent);
-    const { clickUrl, shortUrl } = await this.jdUnion.promotionGet(materialId);
-
+    // 2024-12 起京东要求用「联盟商品ID」转链：先 goods.query 取 itemId，再转链
+    const materialUrl = extractJdMaterialId(rawContent);
     const skuId = extractJdSkuId(rawContent);
     const goods = skuId ? (await this.jdUnion.goodsQueryBySku(skuId)) ?? {} : {};
+    const unionItemId = pickString(goods, ["itemId", "unionItemId"]);
+    const { clickUrl, shortUrl } = await this.jdUnion.promotionGet(unionItemId || materialUrl);
     const commissionInfo = asRecord(pickValue(goods, ["commissionInfo"])) ?? {};
     const priceInfo = asRecord(pickValue(goods, ["priceInfo"])) ?? {};
     const itemPriceCents = parseMoneyToCents(
@@ -162,7 +164,7 @@ export class ZhetaokeClient implements TaobaoClient {
 
     return {
       platform: "jd",
-      itemId: skuId || pickString(goods, ["skuId"]) || materialId,
+      itemId: skuId || pickString(goods, ["skuId"]) || materialUrl,
       itemTitle: pickString(goods, ["skuName", "goodsName"]) || "京东商品",
       itemImageUrl: pickJdImage(goods),
       itemPriceCents,
@@ -180,7 +182,8 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
     appKey: config.jdUnionAppKey ?? "",
     appSecret: config.jdUnionAppSecret ?? "",
     siteId: config.jdUnionSiteId ?? "",
-    positionId: config.jdUnionPositionId
+    positionId: config.jdUnionPositionId,
+    sceneId: config.jdUnionSceneId
   };
   const jdUnion = isJdUnionConfigured(jdUnionConfig) ? createJdUnionClient(jdUnionConfig) : undefined;
 

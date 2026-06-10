@@ -11,6 +11,8 @@ export type JdUnionConfig = {
   appSecret: string;
   siteId: string;
   positionId?: string;
+  /** 转链场景：2024-12 起按 SKU/链接转链需指定，默认 2 */
+  sceneId?: string;
 };
 
 export class JdUnionApiError extends Error {
@@ -96,6 +98,9 @@ export function createJdUnionClient(config: JdUnionConfig, fetcher: typeof fetch
         materialId,
         siteId: config.siteId
       };
+      if (isReal(config.sceneId ?? "")) {
+        promotionCodeReq.sceneId = Number(config.sceneId);
+      }
       if (isReal(config.positionId ?? "")) {
         promotionCodeReq.positionId = Number(config.positionId);
       }
