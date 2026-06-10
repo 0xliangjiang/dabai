@@ -1,4 +1,5 @@
 const { ensureLogin, request, uploadFile } = require("../../utils/api");
+const { hasConsent } = require("../../utils/privacy");
 
 const NOTES_MAX = 200;
 
@@ -22,6 +23,10 @@ Page({
   },
 
   async onAddFile() {
+    if (!hasConsent()) {
+      wx.showToast({ title: "请先在首页同意隐私政策", icon: "none" });
+      return;
+    }
     try {
       const result = await wx.chooseMedia({
         count: 1,
