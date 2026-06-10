@@ -7,8 +7,7 @@ import path from "node:path";
 import Fastify from "fastify";
 import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
-import type { DingdanxiaOrderClient } from "./integrations/dingdanxia/orders.js";
-import { createJdOrderClient } from "./integrations/jd/orders.js";
+import { createJdOrderClient, type JdOrderClient } from "./integrations/jd/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
 import { createRepositories } from "./repositories/memory.js";
 import { createPrismaRepositories } from "./repositories/prisma.js";
@@ -34,7 +33,7 @@ declare module "fastify" {
     deps: {
       config: AppConfig;
       repositories: Repositories;
-      orderClient: DingdanxiaOrderClient;
+      orderClient: JdOrderClient;
     };
   }
 }
@@ -42,7 +41,7 @@ declare module "fastify" {
 export type CreateAppOptions = {
   config?: AppConfig;
   repositories?: Repositories;
-  orderClient?: DingdanxiaOrderClient;
+  orderClient?: JdOrderClient;
   taobaoClient?: TaobaoClient;
   wechatAuthFetch?: typeof fetch;
 };

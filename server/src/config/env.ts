@@ -12,28 +12,14 @@ export type AppConfig = {
   wechatAppSecret: string;
   wechatDealTemplateId: string;
   commissionSharingRatio: number;
+  zhetaokeApiUrl: string;
+  zhetaokeAppKey: string;
+  zhetaokeSid: string;
+  zhetaokePid: string;
   jdUnionAppKey: string;
   jdUnionAppSecret: string;
   jdUnionSiteId: string;
   jdUnionPositionId: string;
-  dingdanxiaApiKey: string;
-  dingdanxiaApiUrl: string;
-  dingdanxiaPid: string;
-  dingdanxiaJdApiUrl: string;
-  dingdanxiaJdGoodsApiUrl: string;
-  dingdanxiaJdOrderApiUrl: string;
-  dingdanxiaJdSiteId: string;
-  dingdanxiaJdUnionId: string;
-  dingdanxiaJdAuthKey: string;
-  dingdanxiaJdSceneId: string;
-  dingdanxiaJdPositionId: string;
-  dingdanxiaJdPid: string;
-  dingdanxiaPddApiUrl: string;
-  dingdanxiaPddPid: string;
-  dingdanxiaPddCustomParameters: string;
-  dingdanxiaVipApiUrl: string;
-  dingdanxiaVipChanTag: string;
-  dingdanxiaVipStatParam: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -52,29 +38,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     wechatAppSecret: env.WECHAT_APP_SECRET ?? "",
     wechatDealTemplateId: env.WECHAT_DEAL_TEMPLATE_ID ?? "",
     commissionSharingRatio: Number(env.COMMISSION_SHARING_RATIO ?? 0.5),
+    zhetaokeApiUrl:
+      env.ZTK_API_URL ?? "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
+    zhetaokeAppKey: env.ZTK_APP_KEY ?? "",
+    zhetaokeSid: env.ZTK_SID ?? "",
+    zhetaokePid: env.ZTK_PID ?? "",
     jdUnionAppKey: env.JD_UNION_APP_KEY ?? "",
     jdUnionAppSecret: env.JD_UNION_APP_SECRET ?? "",
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
     jdUnionPositionId: env.JD_UNION_POSITION_ID ?? "",
-    dingdanxiaApiKey: env.DINGDANXIA_API_KEY ?? "",
-    dingdanxiaApiUrl: env.DINGDANXIA_API_URL ?? "https://api.tbk.dingdanxia.com/tbk/wn_convert",
-    dingdanxiaPid: env.DINGDANXIA_PID ?? "",
-    dingdanxiaJdApiUrl: env.DINGDANXIA_JD_API_URL ?? "https://api.tbk.dingdanxia.com/jd/promotion_common",
-    dingdanxiaJdGoodsApiUrl: env.DINGDANXIA_JD_GOODS_API_URL ?? "https://api.tbk.dingdanxia.com/jd/query_goods",
-    dingdanxiaJdOrderApiUrl:
-      env.DINGDANXIA_JD_ORDER_API_URL ?? "https://api.tbk.dingdanxia.com/jd/order_details2",
-    dingdanxiaJdSiteId: env.DINGDANXIA_JD_SITE_ID ?? "",
-    dingdanxiaJdUnionId: env.DINGDANXIA_JD_UNION_ID ?? env.DINGDANXIA_JD_SITE_ID ?? "",
-    dingdanxiaJdAuthKey: env.DINGDANXIA_JD_AUTH_KEY ?? "",
-    dingdanxiaJdSceneId: env.DINGDANXIA_JD_SCENE_ID ?? "",
-    dingdanxiaJdPositionId: env.DINGDANXIA_JD_POSITION_ID ?? "",
-    dingdanxiaJdPid: env.DINGDANXIA_JD_PID ?? "",
-    dingdanxiaPddApiUrl: env.DINGDANXIA_PDD_API_URL ?? "https://api.tbk.dingdanxia.com/pdd/url_convert",
-    dingdanxiaPddPid: env.DINGDANXIA_PDD_PID ?? "",
-    dingdanxiaPddCustomParameters: env.DINGDANXIA_PDD_CUSTOM_PARAMETERS ?? "{\"uid\":\"default\"}",
-    dingdanxiaVipApiUrl: env.DINGDANXIA_VIP_API_URL ?? "https://api.tbk.dingdanxia.com/vip/url_privilege",
-    dingdanxiaVipChanTag: env.DINGDANXIA_VIP_CHAN_TAG ?? "",
-    dingdanxiaVipStatParam: env.DINGDANXIA_VIP_STAT_PARAM ?? ""
   };
 }
 
@@ -104,11 +76,12 @@ export function validateProductionConfig(config: AppConfig): void {
     ["AUTH_TOKEN_SECRET", config.authTokenSecret],
     ["WECHAT_APP_ID", config.wechatAppId],
     ["WECHAT_APP_SECRET", config.wechatAppSecret],
-    ["DINGDANXIA_API_KEY", config.dingdanxiaApiKey],
-    ["DINGDANXIA_PID", config.dingdanxiaPid],
-    ["DINGDANXIA_JD_SITE_ID", config.dingdanxiaJdSiteId],
-    ["DINGDANXIA_JD_AUTH_KEY", config.dingdanxiaJdAuthKey],
-    ["DINGDANXIA_PDD_PID", config.dingdanxiaPddPid]
+    ["ZTK_APP_KEY", config.zhetaokeAppKey],
+    ["ZTK_SID", config.zhetaokeSid],
+    ["ZTK_PID", config.zhetaokePid],
+    ["JD_UNION_APP_KEY", config.jdUnionAppKey],
+    ["JD_UNION_APP_SECRET", config.jdUnionAppSecret],
+    ["JD_UNION_SITE_ID", config.jdUnionSiteId]
   ].filter(([, value]) => !isRealConfigValue(value));
 
   if (!Number.isFinite(config.port) || config.port <= 0) {

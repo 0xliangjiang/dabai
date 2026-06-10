@@ -15,28 +15,16 @@ const testConfig: AppConfig = {
   wechatAppSecret: "",
   wechatDealTemplateId: "",
   commissionSharingRatio: 0.5,
+  zhetaokeApiUrl: "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
+  zhetaokeAppKey: "",
+  zhetaokeSid: "",
+  zhetaokePid: "",
   jdUnionAppKey: "",
   jdUnionAppSecret: "",
   jdUnionSiteId: "",
   jdUnionPositionId: "",
-  dingdanxiaApiKey: "",
-  dingdanxiaApiUrl: "https://api.tbk.dingdanxia.com/tbk/wn_convert",
-  dingdanxiaPid: "",
-  dingdanxiaJdApiUrl: "https://api.tbk.dingdanxia.com/jd/promotion_common",
-  dingdanxiaJdGoodsApiUrl: "https://api.tbk.dingdanxia.com/jd/query_goods",
-  dingdanxiaJdOrderApiUrl: "https://api.tbk.dingdanxia.com/jd/order_details2",
-  dingdanxiaJdSiteId: "",
-  dingdanxiaJdUnionId: "",
-  dingdanxiaJdAuthKey: "",
-  dingdanxiaJdSceneId: "",
-  dingdanxiaJdPositionId: "",
-  dingdanxiaJdPid: "",
-  dingdanxiaPddApiUrl: "https://api.tbk.dingdanxia.com/pdd/url_convert",
-  dingdanxiaPddPid: "",
-  dingdanxiaPddCustomParameters: "{\"uid\":\"default\"}",
-  dingdanxiaVipApiUrl: "https://api.tbk.dingdanxia.com/vip/url_privilege",
-  dingdanxiaVipChanTag: "",
-  dingdanxiaVipStatParam: ""
+
+
 };
 
 const ADMIN = { "x-admin-token": "dev-admin-token" };
