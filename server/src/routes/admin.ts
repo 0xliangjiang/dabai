@@ -2,8 +2,14 @@ import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import { registerAdminDealRoutes } from "./deals.js";
+import { handleMediaUpload } from "./uploads.js";
 
-export async function registerAdminRoutes(app: FastifyInstance, config: AppConfig, repositories: Repositories) {
+export async function registerAdminRoutes(
+  app: FastifyInstance,
+  config: AppConfig,
+  repositories: Repositories,
+  uploadDir: string
+) {
   app.addHook("preHandler", async (request, reply) => {
     if (!request.url.startsWith("/api/admin")) {
       return;
@@ -63,6 +69,11 @@ export async function registerAdminRoutes(app: FastifyInstance, config: AppConfi
   }));
 
   await registerAdminDealRoutes(app, repositories);
+
+  // 线报图文素材上传：图片 5MB，视频(mp4) 60MB
+  app.post("/api/admin/uploads", (request, reply) =>
+    handleMediaUpload(request, reply, uploadDir, undefined, undefined, 60 * 1024 * 1024)
+  );
 
   app.post<{ Params: { id: string }; Body: { status?: string } }>(
     "/api/admin/claims/:id/review",

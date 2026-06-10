@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
-import { fetchAdminApi, type AdminDeal, type AdminDealStep } from "./lib/api";
+import { fetchAdminApi, mediaUrl, uploadAdminFile, type AdminDeal, type AdminDealStep } from "./lib/api";
 
-const emptyStep: AdminDealStep = { content: "", copyType: null, copyValue: "" };
+const emptyStep: AdminDealStep = { content: "", copyType: null, copyValue: "", images: [], videoUrl: "" };
 
 type DraftDeal = {
   id: string | null;
@@ -53,7 +53,10 @@ export function DealManager({ adminToken }: { adminToken: string }) {
       title: deal.title,
       summary: deal.summary ?? "",
       status: deal.status === "published" ? "published" : "draft",
-      steps: deal.steps.length > 0 ? deal.steps.map((step) => ({ ...step })) : [{ ...emptyStep }]
+      steps:
+        deal.steps.length > 0
+          ? deal.steps.map((step) => ({ ...emptyStep, ...step, images: step.images ?? [] }))
+          : [{ ...emptyStep }]
     });
   }
 
@@ -95,7 +98,9 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         steps: draft.steps.map((step) => ({
           content: step.content.trim(),
           copyType: step.copyValue?.trim() ? step.copyType || "link" : null,
-          copyValue: step.copyValue?.trim() || null
+          copyValue: step.copyValue?.trim() || null,
+          images: step.images ?? [],
+          videoUrl: step.videoUrl || null
         }))
       };
       if (draft.id) {
@@ -129,6 +134,21 @@ export function DealManager({ adminToken }: { adminToken: string }) {
       })
     });
     await loadDeals();
+  }
+
+  async function uploadStepMedia(index: number, file: File, kind: "image" | "video") {
+    setError("");
+    try {
+      const url = await uploadAdminFile(file, adminToken);
+      if (!draft) return;
+      if (kind === "image") {
+        updateStep(index, { images: [...(draft.steps[index].images ?? []), url] });
+      } else {
+        updateStep(index, { videoUrl: url });
+      }
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "上传失败");
+    }
   }
 
   async function removeDeal(id: string) {
@@ -213,6 +233,58 @@ export function DealManager({ adminToken }: { adminToken: string }) {
                     value={step.copyValue ?? ""}
                     onChange={(event) => updateStep(index, { copyValue: event.target.value })}
                   />
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {(step.images ?? []).map((img, imgIndex) => (
+                    <span key={img} className="relative inline-block">
+                      <img alt="" className="h-16 w-16 rounded-md border border-slate-200 object-cover" src={mediaUrl(img)} />
+                      <button
+                        className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-xs text-white"
+                        type="button"
+                        onClick={() =>
+                          updateStep(index, { images: (step.images ?? []).filter((_, i) => i !== imgIndex) })
+                        }
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-300 text-xs text-slate-500 hover:border-slate-400">
+                    +图片
+                    <input
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      type="file"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void uploadStepMedia(index, file, "image");
+                      }}
+                    />
+                  </label>
+                  {step.videoUrl ? (
+                    <span className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                      <video className="h-16 w-28 rounded object-cover" src={mediaUrl(step.videoUrl)} />
+                      <button className="text-slate-500 underline" type="button" onClick={() => updateStep(index, { videoUrl: "" })}>
+                        移除视频
+                      </button>
+                    </span>
+                  ) : (
+                    <label className="flex h-16 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-300 px-3 text-xs text-slate-500 hover:border-slate-400">
+                      +视频(mp4)
+                      <input
+                        accept="video/mp4"
+                        className="hidden"
+                        type="file"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (file) void uploadStepMedia(index, file, "video");
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
               </div>
             ))}

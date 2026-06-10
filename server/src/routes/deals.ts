@@ -2,10 +2,19 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Repositories } from "../repositories/types.js";
 
+const mediaUrl = z
+  .string()
+  .trim()
+  .refine((value) => value.startsWith("/uploads/") || /^https:\/\//.test(value), {
+    message: "media url must be an uploaded file path or https URL"
+  });
+
 const stepSchema = z.object({
   content: z.string().trim().min(1).max(1000),
   copyType: z.enum(["link", "password"]).nullish(),
-  copyValue: z.string().trim().max(2000).nullish()
+  copyValue: z.string().trim().max(2000).nullish(),
+  images: z.array(mediaUrl).max(9).optional(),
+  videoUrl: mediaUrl.nullish().or(z.literal(""))
 });
 
 const dealSchema = z.object({

@@ -71,8 +71,9 @@ export async function createApp(options: CreateAppOptions = {}) {
     allowList: () => config.nodeEnv === "test"
   });
 
+  // 全局上限 60MB（线报视频），各端点通过 request.file 的 limits 再收紧
   await app.register(multipart, {
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+    limits: { fileSize: 60 * 1024 * 1024, files: 1 }
   });
 
   const uploadDir = path.resolve(process.env.UPLOAD_DIR ?? "./uploads");
@@ -127,7 +128,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerCheckInRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
   await registerJobRoutes(app, config, repositories, orderClient);
-  await registerAdminRoutes(app, config, repositories);
+  await registerAdminRoutes(app, config, repositories, uploadDir);
 
   return app;
 }

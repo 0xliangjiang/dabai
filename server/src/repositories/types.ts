@@ -87,6 +87,8 @@ export type DealStep = {
   content: string;
   copyType?: "link" | "password" | null;
   copyValue?: string | null;
+  images?: string[];
+  videoUrl?: string | null;
 };
 
 export type DealPostRecord = {

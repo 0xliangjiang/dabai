@@ -23,6 +23,25 @@
   line-height: 1.6;
 }
 
+.step-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.step-image {
+  width: 188rpx;
+  height: 188rpx;
+  border-radius: 16rpx;
+  background: #e8f2ec;
+}
+
+.step-video {
+  width: 100%;
+  border-radius: 16rpx;
+  background: #000000;
+}
+
 .step-copy-box {
   display: flex;
   flex-direction: column;
