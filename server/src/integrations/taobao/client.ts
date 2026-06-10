@@ -1,3 +1,5 @@
+import { createJdUnionClient, isJdUnionConfigured, type JdUnionClient } from "../jd/union.js";
+
 export type ConversionPlatform = "taobao" | "jd" | "pdd" | "vip";
 
 export type TaobaoConversionResult = {
@@ -18,6 +20,10 @@ export interface TaobaoClient {
 }
 
 export type CreateTaobaoClientConfig = {
+  jdUnionAppKey?: string;
+  jdUnionAppSecret?: string;
+  jdUnionSiteId?: string;
+  jdUnionPositionId?: string;
   dingdanxiaApiKey?: string;
   dingdanxiaApiUrl?: string;
   dingdanxiaPid?: string;
@@ -39,6 +45,7 @@ export type CreateTaobaoClientConfig = {
 
 type DingdanxiaClientDependencies = {
   fetch?: typeof fetch;
+  jdUnion?: JdUnionClient;
 };
 
 export class DingdanxiaApiError extends Error {
@@ -100,12 +107,14 @@ type DingdanxiaGenericResponse = {
 
 export class DingdanxiaClient implements TaobaoClient {
   private readonly fetch: typeof fetch;
+  private readonly jdUnion?: JdUnionClient;
 
   constructor(
     private readonly config: DingdanxiaClientConfig,
     dependencies: DingdanxiaClientDependencies = {}
   ) {
     this.fetch = dependencies.fetch ?? fetch;
+    this.jdUnion = dependencies.jdUnion;
   }
 
   async convert(rawContent: string): Promise<TaobaoConversionResult> {
@@ -170,6 +179,9 @@ export class DingdanxiaClient implements TaobaoClient {
   }
 
   private async convertJd(rawContent: string): Promise<TaobaoConversionResult> {
+    if (this.jdUnion) {
+      return this.convertJdViaUnion(rawContent);
+    }
     const siteId = this.config.jdSiteId || this.config.jdUnionId;
     const unionId = this.config.jdUnionId || this.config.jdSiteId;
     if (!isRealConfigValue(siteId ?? "")) {
@@ -220,6 +232,39 @@ export class DingdanxiaClient implements TaobaoClient {
       estimatedCommissionCents,
       generatedPassword: "",
       generatedShortUrl: clickUrl,
+      generatedClickUrl: clickUrl
+    };
+  }
+
+  // 京东联盟官方 API 转链（免费），商品详情查询失败不阻断
+  private async convertJdViaUnion(rawContent: string): Promise<TaobaoConversionResult> {
+    const materialId = extractJdMaterialId(rawContent);
+    const { clickUrl, shortUrl } = await this.jdUnion!.promotionGet(materialId);
+
+    const skuId = extractJdSkuId(rawContent);
+    const goods = skuId ? (await this.jdUnion!.goodsQueryBySku(skuId)) ?? {} : {};
+    const commissionInfo = asRecord(pickValue(goods, ["commissionInfo"])) ?? {};
+    const priceInfo = asRecord(pickValue(goods, ["priceInfo"])) ?? {};
+    const itemPriceCents = parseMoneyToCents(
+      pickValue(priceInfo, ["lowestCouponPrice", "lowestPrice", "price"])
+    );
+    const commissionRate = parsePercentRate(
+      pickValue(commissionInfo, ["commissionShare", "plusCommissionShare"])
+    );
+    const estimatedCommissionCents =
+      parseMoneyToCents(pickValue(commissionInfo, ["couponCommission", "commission"])) ||
+      estimateCommissionCents(itemPriceCents, commissionRate);
+
+    return {
+      platform: "jd",
+      itemId: skuId || pickString(goods, ["skuId"]) || materialId,
+      itemTitle: pickString(goods, ["skuName", "goodsName"]) || "京东商品",
+      itemImageUrl: pickJdImage(goods),
+      itemPriceCents,
+      commissionRate,
+      estimatedCommissionCents,
+      generatedPassword: "",
+      generatedShortUrl: shortUrl,
       generatedClickUrl: clickUrl
     };
   }
@@ -338,6 +383,14 @@ export class DingdanxiaClient implements TaobaoClient {
 }
 
 export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClient {
+  const jdUnionConfig = {
+    appKey: config.jdUnionAppKey ?? "",
+    appSecret: config.jdUnionAppSecret ?? "",
+    siteId: config.jdUnionSiteId ?? "",
+    positionId: config.jdUnionPositionId
+  };
+  const jdUnion = isJdUnionConfigured(jdUnionConfig) ? createJdUnionClient(jdUnionConfig) : undefined;
+
   if (isRealConfigValue(config.dingdanxiaApiKey ?? "")) {
     return new DingdanxiaClient({
       apiKey: config.dingdanxiaApiKey!,
@@ -357,7 +410,7 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
       vipApiUrl: config.dingdanxiaVipApiUrl ?? "https://api.tbk.dingdanxia.com/vip/url_privilege",
       vipChanTag: config.dingdanxiaVipChanTag,
       vipStatParam: config.dingdanxiaVipStatParam
-    });
+    }, { jdUnion });
   }
 
   return new MockTaobaoClient();
@@ -386,6 +439,11 @@ function detectPlatform(rawContent: string): ConversionPlatform {
   if (lower.includes("yangkeduo.com") || lower.includes("pinduoduo.com") || lower.includes("pdd")) return "pdd";
   if (lower.includes("vip.com") || lower.includes("vipshop.com")) return "vip";
   return "taobao";
+}
+
+function extractJdSkuId(rawContent: string): string {
+  const match = rawContent.match(/item(?:\.m)?\.jd\.com\/(?:product\/)?(\d{6,})\.html/i);
+  return match?.[1] ?? "";
 }
 
 function extractJdMaterialId(rawContent: string): string {

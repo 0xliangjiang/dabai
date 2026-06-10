@@ -7,7 +7,8 @@ import path from "node:path";
 import Fastify from "fastify";
 import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
-import { createDingdanxiaOrderClient, type DingdanxiaOrderClient } from "./integrations/dingdanxia/orders.js";
+import type { DingdanxiaOrderClient } from "./integrations/dingdanxia/orders.js";
+import { createJdOrderClient } from "./integrations/jd/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
 import { createRepositories } from "./repositories/memory.js";
 import { createPrismaRepositories } from "./repositories/prisma.js";
@@ -63,7 +64,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   });
   const repositories = options.repositories ?? createDefaultRepositories(config);
   const taobaoClient = options.taobaoClient ?? createTaobaoClient(config);
-  const orderClient = options.orderClient ?? createDingdanxiaOrderClient(config);
+  const orderClient = options.orderClient ?? createJdOrderClient(config);
 
   // 小程序 wx.request 不带 Origin，不受 CORS 影响；白名单只为管理后台浏览器访问
   await app.register(cors, { origin: config.corsOrigins });

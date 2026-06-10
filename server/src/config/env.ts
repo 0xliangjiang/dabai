@@ -12,6 +12,10 @@ export type AppConfig = {
   wechatAppSecret: string;
   wechatDealTemplateId: string;
   commissionSharingRatio: number;
+  jdUnionAppKey: string;
+  jdUnionAppSecret: string;
+  jdUnionSiteId: string;
+  jdUnionPositionId: string;
   dingdanxiaApiKey: string;
   dingdanxiaApiUrl: string;
   dingdanxiaPid: string;
@@ -48,6 +52,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     wechatAppSecret: env.WECHAT_APP_SECRET ?? "",
     wechatDealTemplateId: env.WECHAT_DEAL_TEMPLATE_ID ?? "",
     commissionSharingRatio: Number(env.COMMISSION_SHARING_RATIO ?? 0.5),
+    jdUnionAppKey: env.JD_UNION_APP_KEY ?? "",
+    jdUnionAppSecret: env.JD_UNION_APP_SECRET ?? "",
+    jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
+    jdUnionPositionId: env.JD_UNION_POSITION_ID ?? "",
     dingdanxiaApiKey: env.DINGDANXIA_API_KEY ?? "",
     dingdanxiaApiUrl: env.DINGDANXIA_API_URL ?? "https://api.tbk.dingdanxia.com/tbk/wn_convert",
     dingdanxiaPid: env.DINGDANXIA_PID ?? "",
