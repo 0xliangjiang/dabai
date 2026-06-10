@@ -121,7 +121,7 @@ Page({
     return {
       ...result,
       itemPrice: ((result.itemPriceCents || 0) / 100).toFixed(2),
-      estimatedRebate: ((result.estimatedRebateCents || 0) / 100).toFixed(2),
+      estimatedPoints: Math.round(result.estimatedRebateCents || 0),
       commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`,
       displayLink: result.generatedShortUrl || result.generatedClickUrl || "",
       platformLabel: this.platformLabel(result.platform),

@@ -466,6 +466,13 @@ page {
   font-weight: 900;
 }
 
+.rebate-unit,
+.points-unit {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #0a7a52;
+}
+
 .code-box {
   padding: 20rpx;
   border: 1rpx solid rgba(16, 185, 129, 0.14);

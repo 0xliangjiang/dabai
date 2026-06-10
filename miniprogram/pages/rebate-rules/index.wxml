@@ -1,8 +1,8 @@
 <view class="cu-page page-shell">
   <view class="hero anim-up">
     <view class="eyebrow">说明</view>
-    <view class="hero-title">优惠说明</view>
-    <view class="hero-desc">页面展示内容为预估参考，实际优惠和结算结果以各平台订单状态为准。</view>
+    <view class="hero-title">积分说明</view>
+    <view class="hero-desc">页面展示积分为预估参考，实际结果以各平台订单状态为准。</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -12,13 +12,13 @@
     </view>
 
     <view class="cu-card article-card">
-      <view class="section-title">预估金额</view>
-      <view class="article-text">预估优惠受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终结算金额不同。取消、退款、风控、跨店活动变化等情况可能导致无优惠或金额调整。</view>
+      <view class="section-title">积分预估</view>
+      <view class="article-text">预估积分受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终到账积分不同。取消、退款、风控、跨店活动变化等情况可能导致积分无法到账或数量调整。</view>
     </view>
 
     <view class="cu-card article-card">
       <view class="section-title">订单展示</view>
-      <view class="article-text">订单数据存在同步延迟，页面展示的订单状态仅作进度参考。最终结果以相关平台和合作服务方返回的结算数据为准。</view>
+      <view class="article-text">订单数据存在同步延迟，页面展示的订单状态仅作进度参考。最终积分以相关平台和合作服务方返回的结算数据为准。积分权益与使用方式可联系客服了解。</view>
     </view>
   </view>
 </view>

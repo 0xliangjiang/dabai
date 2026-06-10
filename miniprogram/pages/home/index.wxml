@@ -78,13 +78,13 @@
             <view class="price">¥{{result.itemPrice}}</view>
           </view>
           <view class="rebate-panel margin-top-sm">
-            <view class="rebate-label">预估优惠</view>
-            <view class="rebate-value">¥{{result.estimatedRebate}}</view>
+            <view class="rebate-label">预估积分</view>
+            <view class="rebate-value">{{result.estimatedPoints}}<text class="rebate-unit"> 积分</text></view>
           </view>
         </view>
       </view>
 
-      <view class="hint-bar">结果为预估参考，实际优惠和最终金额以订单结算为准。</view>
+      <view class="hint-bar">积分为预估参考，订单确认后到账，可联系客服了解积分权益。</view>
       <view class="flex-direction gap">
         <view wx:if="{{result.hasPassword}}">
           <view class="cu-label">打开口令</view>

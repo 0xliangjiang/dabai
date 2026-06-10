@@ -50,7 +50,7 @@
         <view class="metric-value">{{identityText}}</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">优惠</view>
+        <view class="muted text-sm">积分</view>
         <view class="metric-value">预估</view>
       </view>
     </view>
@@ -58,8 +58,8 @@
     <view class="cu-card flex-direction gap anim-up delay-3">
       <view class="flex align-start justify-between gap-sm">
         <view class="flex-sub">
-          <view class="section-title">优惠说明</view>
-          <view class="section-desc">展示金额为预估参考，实际结果以订单结算为准。</view>
+          <view class="section-title">积分说明</view>
+          <view class="section-desc">积分为预估参考，订单确认后到账，权益详询客服。</view>
         </view>
         <view class="cu-tag blue">预估</view>
       </view>
@@ -76,8 +76,8 @@
     <view class="cu-list anim-up delay-4">
       <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/rebate-rules/index">
         <view>
-          <view class="cu-label">优惠说明</view>
-          <view class="section-desc">查看预估、结算规则</view>
+          <view class="cu-label">积分说明</view>
+          <view class="section-desc">查看积分预估、到账规则</view>
         </view>
         <view class="cu-arrow">›</view>
       </navigator>
@@ -111,7 +111,7 @@
       >
         <view>
           <view class="cu-label">客服入口</view>
-          <view class="section-desc">咨询订单、优惠和使用问题</view>
+          <view class="section-desc">咨询订单、积分和使用问题</view>
         </view>
         <view class="cu-arrow">›</view>
       </button>

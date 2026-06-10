@@ -38,7 +38,7 @@ Page({
       this.setData({
         orders: data.orders.map((order) => ({
           ...order,
-          estimatedCommission: (order.estimatedCommissionCents / 100).toFixed(2)
+          estimatedPoints: Math.round(order.estimatedCommissionCents || 0)
         })),
         loading: false,
         showEmpty: data.orders.length === 0
