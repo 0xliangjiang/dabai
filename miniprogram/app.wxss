@@ -552,7 +552,8 @@ page {
 }
 
 .cu-item {
-  min-height: 116rpx;
+  display: flex;
+  min-height: 104rpx;
   padding: 24rpx 28rpx;
   box-sizing: border-box;
 }
@@ -560,13 +561,25 @@ page {
 .contact-item {
   width: 100%;
   margin: 0;
+  padding-top: 24rpx;
+  padding-bottom: 24rpx;
   border-radius: 0;
   border: 0;
   background: transparent;
   color: inherit;
   font-size: inherit;
+  font-weight: inherit;
   line-height: inherit;
   text-align: left;
+}
+
+.contact-item .cu-label {
+  line-height: 1.4;
+}
+
+button.contact-item {
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .contact-item::after {
