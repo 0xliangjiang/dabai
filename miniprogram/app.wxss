@@ -53,8 +53,12 @@ page {
   padding-bottom: 46rpx;
 }
 
-.hero-slim .hero-tags {
-  margin-top: 0;
+.hero-platforms {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 26rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  text-shadow: 0 1rpx 4rpx rgba(5, 90, 60, 0.2);
 }
 
 .checkin-pill {
@@ -120,21 +124,6 @@ page {
 
 .checkin-pill.checked .checkin-pill-text {
   color: #0a7a52;
-}
-
-.hero-tags {
-  display: flex;
-  gap: 12rpx;
-  margin-top: 20rpx;
-}
-
-.hero-tag {
-  padding: 8rpx 18rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.24);
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 700;
 }
 
 .hero-desc {

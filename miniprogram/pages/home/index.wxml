@@ -1,12 +1,7 @@
 <view class="cu-page page-shell">
   <view class="hero hero-slim anim-up">
     <view class="flex align-center justify-between gap">
-      <view class="hero-tags">
-        <view class="hero-tag">淘宝</view>
-        <view class="hero-tag">京东</view>
-        <view class="hero-tag">拼多多</view>
-        <view class="hero-tag">唯品会</view>
-      </view>
+      <view class="hero-platforms">淘宝 · 京东 · 拼多多 · 唯品会</view>
       <button class="checkin-pill {{checkin.todayChecked ? 'checked' : ''}}" hover-class="checkin-pill-pressed" bindtap="checkIn" disabled="{{checkinLoading}}">
         <view class="checkin-pill-icon">{{checkin.todayChecked ? '✓' : '+'}}</view>
         <view class="checkin-pill-text">{{checkin.todayChecked ? (checkin.streak > 1 ? '连签 ' + checkin.streak + ' 天' : '已签到') : '签到领积分'}}</view>
