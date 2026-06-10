@@ -558,6 +558,20 @@ page {
   font-size: 38rpx;
 }
 
+.more-arrow {
+  transition: transform 0.24s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.more-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.cu-item.sub-item {
+  min-height: 88rpx;
+  padding-left: 48rpx;
+  background: #fbfdfc;
+}
+
 .cu-upload {
   height: 168rpx;
   border: 2rpx dashed rgba(16, 185, 129, 0.4);

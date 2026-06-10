@@ -24,6 +24,7 @@ Page({
     loginDesc: "使用微信登录，订单和优惠记录会跟随你的账号。",
     loggingIn: false,
     showPrivacy: false,
+    showMoreLinks: false,
     nickname: "",
     avatarUrl: "",
     editingProfile: false,
@@ -153,6 +154,10 @@ Page({
     } finally {
       this.setData({ loggingIn: false });
     }
+  },
+
+  toggleMoreLinks() {
+    this.setData({ showMoreLinks: !this.data.showMoreLinks });
   },
 
   logout() {
