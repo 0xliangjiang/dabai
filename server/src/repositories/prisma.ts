@@ -14,7 +14,8 @@ import type {
   UserRecord
 } from "./types.js";
 
-export function createPrismaRepositories(prisma = new PrismaClient()): Repositories {
+export function createPrismaRepositories(databaseUrl?: string): Repositories {
+  const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
   return {
     users: {
       async findOrCreateByOpenid(openid: string, input: { unionid?: string | null } = {}) {

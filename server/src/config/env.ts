@@ -36,7 +36,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     nodeEnv: env.NODE_ENV ?? "development",
     port: Number(env.PORT ?? 3001),
-    databaseUrl: env.DATABASE_URL ?? "",
+    databaseUrl: resolveDatabaseUrl(env),
     adminToken: env.ADMIN_TOKEN ?? "dev-admin-token",
     schedulerToken: env.SCHEDULER_TOKEN ?? "dev-scheduler-token",
     authTokenSecret: env.AUTH_TOKEN_SECRET ?? "dev-auth-token-secret",
@@ -68,6 +68,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     dingdanxiaVipChanTag: env.DINGDANXIA_VIP_CHAN_TAG ?? "",
     dingdanxiaVipStatParam: env.DINGDANXIA_VIP_STAT_PARAM ?? ""
   };
+}
+
+// 支持两种配置方式：完整 DATABASE_URL，或分离的 DB_* 字段（密码可含特殊字符，自动 URL 编码）
+export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.DATABASE_URL) {
+    return env.DATABASE_URL;
+  }
+  if (env.DB_HOST && env.DB_USER && env.DB_NAME) {
+    const user = encodeURIComponent(env.DB_USER);
+    const password = encodeURIComponent(env.DB_PASSWORD ?? "");
+    const port = env.DB_PORT ?? "3306";
+    return `mysql://${user}:${password}@${env.DB_HOST}:${port}/${env.DB_NAME}`;
+  }
+  return "";
 }
 
 export function validateProductionConfig(config: AppConfig): void {

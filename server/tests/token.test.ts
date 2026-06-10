@@ -34,3 +34,27 @@ describe("auth token", () => {
     expect(verifyUserToken("v1.not-base64", SECRET)).toBeNull();
   });
 });
+
+import { resolveDatabaseUrl } from "../src/config/env.js";
+
+describe("resolveDatabaseUrl", () => {
+  test("prefers DATABASE_URL when set", () => {
+    expect(resolveDatabaseUrl({ DATABASE_URL: "mysql://a:b@h:3306/d", DB_HOST: "x" } as NodeJS.ProcessEnv)).toBe(
+      "mysql://a:b@h:3306/d"
+    );
+  });
+
+  test("builds url from DB_* parts with encoded password", () => {
+    const url = resolveDatabaseUrl({
+      DB_HOST: "10.0.0.8",
+      DB_USER: "dabai",
+      DB_PASSWORD: "p@ss#w:o/rd!?",
+      DB_NAME: "dabai"
+    } as NodeJS.ProcessEnv);
+    expect(url).toBe("mysql://dabai:p%40ss%23w%3Ao%2Frd!%3F@10.0.0.8:3306/dabai");
+  });
+
+  test("returns empty when nothing configured", () => {
+    expect(resolveDatabaseUrl({} as NodeJS.ProcessEnv)).toBe("");
+  });
+});

@@ -153,7 +153,7 @@ function resolveUserId(token: string, config: AppConfig): string | null {
 
 function createDefaultRepositories(config: AppConfig): Repositories {
   if (config.databaseUrl && config.nodeEnv !== "test") {
-    return createPrismaRepositories();
+    return createPrismaRepositories(config.databaseUrl);
   }
   return createRepositories();
 }
