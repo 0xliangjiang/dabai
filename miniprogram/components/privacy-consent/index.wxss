@@ -3,27 +3,30 @@
   inset: 0;
   z-index: 1100;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
+  padding: 0 44rpx;
+  box-sizing: border-box;
   background: rgba(13, 31, 23, 0.55);
 }
 
 .privacy-card {
   width: 100%;
+  max-width: 620rpx;
   box-sizing: border-box;
-  padding: 44rpx 36rpx calc(36rpx + env(safe-area-inset-bottom));
-  border-top-left-radius: 32rpx;
-  border-top-right-radius: 32rpx;
+  padding: 44rpx 36rpx 36rpx;
+  border-radius: 28rpx;
   background: #ffffff;
-  animation: privacy-slide-up 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: privacy-pop 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-@keyframes privacy-slide-up {
+@keyframes privacy-pop {
   from {
-    transform: translateY(40rpx);
+    transform: translateY(24rpx) scale(0.96);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
