@@ -120,13 +120,23 @@ Page({
 
   copyPassword() {
     this.copyResult("password", this.data.result.generatedPassword).catch(() => {
-      wx.showToast({ title: "复制失败", icon: "none" });
+      this.showManualCopyTip();
     });
   },
 
   copyLink() {
     this.copyResult("link", this.data.result.generatedShortUrl || this.data.result.generatedClickUrl).catch(() => {
-      wx.showToast({ title: "复制失败", icon: "none" });
+      this.showManualCopyTip();
+    });
+  },
+
+  // 一键复制失败（如剪贴板权限受限）时，引导用户长按文本手动复制
+  showManualCopyTip() {
+    wx.showModal({
+      title: "一键复制不可用",
+      content: "请长按上方口令或链接文字，选中后手动复制。",
+      showCancel: false,
+      confirmText: "知道了"
     });
   },
 

@@ -78,12 +78,18 @@
       <view class="hint-bar">积分为预估参考，订单确认后到账，可联系客服了解积分权益。</view>
       <view class="flex-direction gap">
         <view wx:if="{{result.hasPassword}}">
-          <view class="cu-label">打开口令</view>
-          <view class="code-box margin-top-xs">{{result.generatedPassword}}</view>
+          <view class="flex align-center justify-between">
+            <view class="cu-label">打开口令</view>
+            <view class="select-hint">长按可选中复制</view>
+          </view>
+          <view class="code-box margin-top-xs"><text user-select>{{result.generatedPassword}}</text></view>
         </view>
         <view>
-          <view class="cu-label">打开链接</view>
-          <view class="code-box margin-top-xs">{{result.displayLink}}</view>
+          <view class="flex align-center justify-between">
+            <view class="cu-label">打开链接</view>
+            <view class="select-hint">长按可选中复制</view>
+          </view>
+          <view class="code-box margin-top-xs"><text user-select>{{result.displayLink}}</text></view>
         </view>
       </view>
       <view class="flex gap-sm">

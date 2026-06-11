@@ -460,6 +460,11 @@ page {
   word-break: break-all;
 }
 
+.select-hint {
+  color: #9db3a7;
+  font-size: 20rpx;
+}
+
 .hint-bar {
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
