@@ -43,5 +43,6 @@
   },
   "style": "v2",
   "__usePrivacyCheck__": true,
+  "requiredPrivateInfos": ["getClipboardData"],
   "sitemapLocation": "sitemap.json"
 }
