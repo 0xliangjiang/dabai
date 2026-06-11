@@ -1,4 +1,6 @@
-.floating-stack {
+/* 给页面滚动容器加底部留白，防止内容被自定义 tab bar 遮挡 */
+/* tab bar 高度 = 14 + 104 + 14 + safe-area ≈ 132rpx + safe-area */
+page {
   padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
 }
 

@@ -1,3 +1,5 @@
+page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
+
 .result-code {
   word-break: break-all;
 }
