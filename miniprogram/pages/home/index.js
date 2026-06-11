@@ -119,7 +119,7 @@ Page({
   },
 
   copyPassword() {
-    this.copyResult("password", this.data.result.generatedPassword).catch(() => {
+    this.copyResult("password", this.data.result.shareText).catch(() => {
       this.showManualCopyTip();
     });
   },
@@ -141,14 +141,16 @@ Page({
   },
 
   formatResult(result) {
+    const displayLink = result.generatedShortUrl || result.generatedClickUrl || "";
     return {
       ...result,
       itemPrice: ((result.itemPriceCents || 0) / 100).toFixed(2),
       estimatedPoints: Math.round(result.estimatedRebateCents || 0),
       commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`,
-      displayLink: result.generatedShortUrl || result.generatedClickUrl || "",
+      displayLink,
       platformLabel: this.platformLabel(result.platform),
-      hasPassword: Boolean(result.generatedPassword)
+      hasPassword: Boolean(result.generatedPassword),
+      shareText: buildShareText(result, displayLink)
     };
   },
 
@@ -219,6 +221,17 @@ Page({
     });
   }
 });
+
+// 拼完整分享文案：口令 + 商品标题 + 短链，粘到淘宝弹窗/搜索框或浏览器都能打开
+function buildShareText(result, displayLink) {
+  if (!result.generatedPassword) return displayLink;
+  const parts = [`${result.generatedPassword} 「${result.itemTitle}」`];
+  parts.push("复制整段内容，打开「淘宝」即可查看");
+  if (displayLink) {
+    parts.push(`或点击链接直接打开 ${displayLink}`);
+  }
+  return parts.join("\n");
+}
 
 function looksLikeProductContent(content) {
   return /https?:\/\/\S+/i.test(content) ||

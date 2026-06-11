@@ -79,10 +79,10 @@
       <view class="flex-direction gap">
         <view wx:if="{{result.hasPassword}}">
           <view class="flex align-center justify-between">
-            <view class="cu-label">打开口令</view>
+            <view class="cu-label">分享文案</view>
             <view class="select-hint">长按可选中复制</view>
           </view>
-          <view class="code-box margin-top-xs"><text user-select>{{result.generatedPassword}}</text></view>
+          <view class="code-box margin-top-xs"><text user-select>{{result.shareText}}</text></view>
         </view>
         <view>
           <view class="flex align-center justify-between">
@@ -93,7 +93,7 @@
         </view>
       </view>
       <view class="flex gap-sm">
-        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制 ✓' : '复制口令'}}</button>
+        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制 ✓' : '复制文案'}}</button>
         <button class="cu-btn success flex-sub pressable {{copied === 'link' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyLink">{{copied === 'link' ? '已复制 ✓' : '复制链接'}}</button>
       </view>
     </view>
