@@ -1,1 +1,14 @@
+.floating-stack {
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
 
+.withdraw-btn {
+  width: 152rpx;
+  height: 68rpx;
+  flex: 0 0 auto;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #047857;
+  background: #d1fae5;
+}

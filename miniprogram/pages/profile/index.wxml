@@ -33,26 +33,22 @@
       </view>
     </view>
 
-    <view class="cu-card points-card flex align-center justify-between anim-up delay-2">
-      <view>
-        <view class="muted text-sm">签到积分（活跃奖励，不可提现）</view>
-        <view class="points-value">{{isLoggedIn ? totalPoints : '—'}}</view>
-        <view class="points-sub">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
+    <view class="cu-card points-card anim-up delay-2">
+      <view class="flex align-center justify-between">
+        <view>
+          <view class="muted text-sm">积分余额</view>
+          <view class="points-value">{{isLoggedIn ? balanceText : '—'}}</view>
+          <view class="points-sub">签到积分 {{isLoggedIn ? totalPoints : '—'}} · {{checkin.streak > 0 ? '连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
+        </view>
+        <view class="flex gap-xs" style="flex-direction:column;align-items:flex-end;">
+          <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
+          <view class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">积分提现</view>
+        </view>
       </view>
-      <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
-    </view>
-
-    <view class="cu-card balance-card flex align-center justify-between anim-up delay-2">
-      <view>
-        <view class="muted text-sm">推广佣金余额</view>
-        <view class="balance-value">{{isLoggedIn ? balanceText : '—'}}</view>
-        <view class="points-sub">通过推广链接引导他人下单后可得佣金</view>
-      </view>
-      <view class="cu-btn checkin-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">佣金提现</view>
     </view>
 
     <view wx:if="{{withdrawals.length > 0}}" class="cu-card anim-up delay-2">
-      <view class="section-title" style="padding: 20rpx 20rpx 8rpx;">提现记录</view>
+      <view class="section-title" style="padding: 20rpx 20rpx 8rpx;">积分提现记录</view>
       <view wx:for="{{withdrawals}}" wx:key="id" class="withdraw-record flex align-center justify-between">
         <view>
           <view class="text-sm">{{item.payType === 'wechat' ? '微信' : '支付宝'}} · {{item.payAccount}}</view>
@@ -68,8 +64,8 @@
     <!-- 提现申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
-        <view class="modal-title">佣金提现申请</view>
-        <view class="form-tip muted text-sm">推广佣金余额：¥{{balanceText}} · 最低提现 ¥10 · 3 个工作日到账</view>
+        <view class="modal-title">积分提现申请</view>
+        <view class="form-tip muted text-sm">可提现积分：¥{{balanceText}} · 最低 ¥10 · 3 个工作日到账</view>
 
         <view class="cu-label margin-top">提现金额（元）</view>
         <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
