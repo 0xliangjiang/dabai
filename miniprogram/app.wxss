@@ -342,15 +342,17 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 92rpx;
-  height: 42rpx;
+  flex: 0 0 auto;
+  height: 52rpx;
   margin: 0;
-  padding: 0 16rpx;
+  padding: 0 30rpx;
   border-radius: 999rpx;
   color: #ffffff;
-  background: #10b981;
-  font-size: 22rpx;
+  background: linear-gradient(135deg, #2fce8e 0%, #0d9d6c 100%);
+  box-shadow: 0 6rpx 14rpx rgba(13, 157, 108, 0.22);
+  font-size: 24rpx;
   font-weight: 800;
+  white-space: nowrap;
   line-height: 42rpx;
 }
 
@@ -362,12 +364,15 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 42rpx;
-  padding: 0 16rpx;
+  flex: 0 0 auto;
+  height: 52rpx;
+  padding: 0 30rpx;
   border-radius: 999rpx;
   color: #66796d;
-  background: #eef3f0;
-  font-size: 22rpx;
+  background: #ffffff;
+  border: 1rpx solid #dde8e2;
+  box-sizing: border-box;
+  font-size: 24rpx;
   font-weight: 800;
   white-space: nowrap;
 }
