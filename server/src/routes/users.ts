@@ -29,6 +29,12 @@ export async function registerUserRoutes(app: FastifyInstance, repositories: Rep
         return reply.code(400).send({ error: "没有需要更新的内容" });
       }
 
+      // 用户不存在（如开发环境内存库重启被清）返回 401，触发小程序自动重新登录
+      const existing = await repositories.users.findById(request.userId);
+      if (!existing) {
+        return reply.code(401).send({ error: "登录已过期，请重新登录" });
+      }
+
       const user = await repositories.users.updateProfile(request.userId, parsed.data);
       return { user };
     }

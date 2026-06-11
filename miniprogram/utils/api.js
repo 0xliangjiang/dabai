@@ -81,7 +81,7 @@ async function ensureLogin() {
   return loginWithWechat();
 }
 
-function uploadFile(path, filePath) {
+function rawUploadFile(path, filePath) {
   const token = getToken();
   return new Promise((resolve, reject) => {
     wx.uploadFile({
@@ -105,6 +105,20 @@ function uploadFile(path, filePath) {
       fail: reject
     });
   });
+}
+
+async function uploadFile(path, filePath, _retried = false) {
+  try {
+    return await rawUploadFile(path, filePath);
+  } catch (error) {
+    // 登录态过期：与 request 一致，静默重新登录后重试一次
+    if (error && error.statusCode === 401 && !_retried) {
+      logout();
+      await loginWithWechat();
+      return uploadFile(path, filePath, true);
+    }
+    throw error;
+  }
 }
 
 function logout() {
