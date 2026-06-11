@@ -217,6 +217,7 @@ Page({
       wx.showToast({ title: "请先登录", icon: "none" });
       return;
     }
+    this.setTabBarHidden(true);
     this.setData({
       showWithdrawForm: true,
       withdrawAmount: "",
@@ -227,7 +228,16 @@ Page({
   },
 
   closeWithdrawForm() {
+    this.setTabBarHidden(false);
     this.setData({ showWithdrawForm: false });
+  },
+
+  // 自定义 tab bar 是独立组件层，z-index 压不住，弹窗期间直接隐藏
+  setTabBarHidden(hidden) {
+    const tabBar = typeof this.getTabBar === "function" && this.getTabBar();
+    if (tabBar) {
+      tabBar.setData({ hidden });
+    }
   },
 
   onWithdrawAmountInput(e) {
@@ -276,7 +286,7 @@ Page({
         }
       });
       wx.showToast({ title: "提现申请已提交", icon: "success" });
-      this.setData({ showWithdrawForm: false });
+      this.closeWithdrawForm();
       await this.syncUserFromServer();
     } catch (error) {
       wx.showToast({ title: error.error || "提交失败，请重试", icon: "none" });
