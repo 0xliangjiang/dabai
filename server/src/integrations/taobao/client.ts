@@ -150,8 +150,10 @@ export class ZhetaokeClient implements TaobaoClient {
   private async resolveTaobaoItemId(rawContent: string): Promise<string> {
     const direct = rawContent.match(/[?&]id=(\d{8,})/);
     if (direct) return direct[1];
-    const shortLink = rawContent.match(/https?:\/\/(?:e|m)\.tb\.cn\/[^\s，。"'<>]+/i)?.[0];
+    let shortLink = rawContent.match(/https?:\/\/(?:e|m)\.tb\.cn\/[^\s，。"'<>]+/i)?.[0];
     if (!shortLink) return "";
+    // 价保链接（?tk=）跟随重定向会落到需要登录的页面，去掉 tk 参数直接跳商品页
+    shortLink = shortLink.replace(/[?&]tk=[^&\s]*/g, "").replace(/[?&]$/, "").replace(/\?&/, "?");
     try {
       const response = await this.fetch(shortLink, {
         headers: {
@@ -159,6 +161,9 @@ export class ZhetaokeClient implements TaobaoClient {
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
         }
       });
+      // 先检查重定向后的最终 URL（很多短链直接在 URL 里带 id=）
+      const finalUrlMatch = response.url?.match(/[?&]id=(\d{8,})/);
+      if (finalUrlMatch) return finalUrlMatch[1];
       const html = await response.text();
       const match =
         html.match(/[?&]id=(\d{8,})/) ?? html.match(/itemId[=:"']+(\d{8,})/i) ?? html.match(/"id"\s*:\s*"?(\d{10,})/);
