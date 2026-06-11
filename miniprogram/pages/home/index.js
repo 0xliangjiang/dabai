@@ -119,11 +119,15 @@ Page({
   },
 
   copyPassword() {
-    this.copyResult("password", this.data.result.generatedPassword);
+    this.copyResult("password", this.data.result.generatedPassword).catch(() => {
+      wx.showToast({ title: "复制失败", icon: "none" });
+    });
   },
 
   copyLink() {
-    this.copyResult("link", this.data.result.generatedShortUrl || this.data.result.generatedClickUrl);
+    this.copyResult("link", this.data.result.generatedShortUrl || this.data.result.generatedClickUrl).catch(() => {
+      wx.showToast({ title: "复制失败", icon: "none" });
+    });
   },
 
   formatResult(result) {
@@ -147,9 +151,13 @@ Page({
     }[platform] || "商品";
   },
 
-  async copyResult(copyType, data) {
+  async copyResult(copyType, content) {
+    if (!content) {
+      wx.showToast({ title: "暂无可复制内容", icon: "none" });
+      return;
+    }
     await ensureLogin();
-    await wx.setClipboardData({ data });
+    await wx.setClipboardData({ data: content });
     this.setData({ copied: copyType });
     clearTimeout(this.copiedTimer);
     this.copiedTimer = setTimeout(() => {
@@ -158,7 +166,7 @@ Page({
     await request(`/api/conversions/${this.data.result.id}/copy`, {
       method: "POST",
       data: { copyType }
-    });
+    }).catch(() => {});
   },
 
   onUnload() {
