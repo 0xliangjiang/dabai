@@ -83,9 +83,14 @@ Page({
   },
 
   async autoPasteFromClipboard() {
+    // 已有查询结果或正在查询时不自动粘贴，避免覆盖用户正在查看的内容
+    if (this.data.result || this.data.loading) return;
+
     const { content } = await this.readClipboard();
     if (!content || !looksLikeProductContent(content)) return;
     if (content === this.data.rawContent.trim()) return;
+    // 剪贴板里是本次会话刚复制出去的文案/链接时跳过，防止自我循环
+    if (content === this.lastCopiedContent) return;
 
     this.fillRawContent(content);
   },
@@ -170,6 +175,7 @@ Page({
     }
     await ensureLogin();
     await wx.setClipboardData({ data: content });
+    this.lastCopiedContent = content;
     this.setData({ copied: copyType });
     clearTimeout(this.copiedTimer);
     this.copiedTimer = setTimeout(() => {
