@@ -35,15 +35,17 @@
 
     <view class="cu-card points-card anim-up delay-2">
       <view class="flex align-center justify-between">
-        <view>
-          <view class="muted text-sm">积分余额</view>
-          <view class="points-value">{{isLoggedIn ? balanceText : '—'}}</view>
-          <view class="points-sub">签到积分 {{isLoggedIn ? totalPoints : '—'}} · {{checkin.streak > 0 ? '连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
-        </view>
-        <view class="flex gap-xs" style="flex-direction:column;align-items:flex-end;">
-          <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
-          <view class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">积分提现</view>
-        </view>
+        <view class="muted text-sm">积分余额</view>
+        <view class="streak-chip">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
+      </view>
+      <view class="points-row">
+        <view class="points-value">{{isLoggedIn ? availablePoints : '—'}}</view>
+        <view class="points-yuan">≈ ¥{{isLoggedIn ? balanceText : '—'}}</view>
+      </view>
+      <view class="points-sub">100 积分 = 1 元，满 1000 积分可提现</view>
+      <view class="points-actions flex gap-sm">
+        <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
+        <view class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">积分提现</view>
       </view>
     </view>
 
@@ -65,7 +67,7 @@
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
         <view class="modal-title">积分提现申请</view>
-        <view class="form-tip muted text-sm">可提现积分：¥{{balanceText}} · 最低 ¥10 · 3 个工作日到账</view>
+        <view class="form-tip muted text-sm">积分余额 {{availablePoints}}（约 ¥{{balanceText}}）· 100 积分 = 1 元 · 最低提现 ¥10 · 3 个工作日内到账</view>
 
         <view class="cu-label margin-top">提现金额（元）</view>
         <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />

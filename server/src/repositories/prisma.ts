@@ -411,17 +411,22 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         return records.map(mapWithdrawal);
       },
       async getAvailableBalance(userId: string) {
-        const [earned, requestedResult] = await Promise.all([
+        const [earned, points, requestedResult] = await Promise.all([
           prisma.commissionLedger.aggregate({
             where: { userId, status: "available" },
             _sum: { amountCents: true }
+          }),
+          prisma.checkIn.aggregate({
+            where: { userId },
+            _sum: { points: true }
           }),
           prisma.withdrawal.aggregate({
             where: { userId, status: { in: ["pending", "paid"] } },
             _sum: { amountCents: true }
           })
         ]);
-        const total = earned._sum.amountCents ?? 0;
+        // 100积分=1元，即 1积分=1分；签到积分与推广佣金合并为可提现余额
+        const total = (earned._sum.amountCents ?? 0) + (points._sum.points ?? 0);
         const requested = requestedResult._sum.amountCents ?? 0;
         return Math.max(0, total - requested);
       },

@@ -395,10 +395,14 @@ export function createRepositories(): Repositories {
         const earned = [...ledger.values()]
           .filter((r) => r.userId === userId && r.status === "available")
           .reduce((sum, r) => sum + r.amountCents, 0);
+        // 100积分=1元，即 1积分=1分；签到积分与推广佣金合并为可提现余额
+        const points = [...checkIns.values()]
+          .filter((r) => r.userId === userId)
+          .reduce((sum, r) => sum + r.points, 0);
         const requested = [...withdrawalMap.values()]
           .filter((r) => r.userId === userId && (r.status === "pending" || r.status === "paid"))
           .reduce((sum, r) => sum + r.amountCents, 0);
-        return Math.max(0, earned - requested);
+        return Math.max(0, earned + points - requested);
       },
       async list(status?: string) {
         const records = [...withdrawalMap.values()]

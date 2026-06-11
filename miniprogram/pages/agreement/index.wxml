@@ -19,12 +19,12 @@
 
     <view class="cu-card article-card">
       <view class="section-title">结算规则</view>
-      <view class="article-text">预估金额会根据平台活动、订单状态、退款、售后、风控等因素变化。最终是否有效及具体金额，以相关平台和合作服务方返回的结算结果为准。签到积分为活跃奖励，仅供记录展示，不具备货币价值，不可提现或兑换。</view>
+      <view class="article-text">预估金额会根据平台活动、订单状态、退款、售后、风控等因素变化。最终是否有效及具体金额，以相关平台和合作服务方返回的结算结果为准。签到等活动获得的积分按 100 积分 = 1 元计入可提现余额。</view>
     </view>
 
     <view class="cu-card article-card">
       <view class="section-title">提现规则</view>
-      <view class="article-text">「可提现余额」来源于已结算的推广佣金，最低提现金额为 ¥10。用户提交申请后，运营团队将在 3 个工作日内完成核实并通过微信或支付宝完成打款。如遇节假日顺延。平台有权对违规行为取消提现资格。</view>
+      <view class="article-text">「可提现余额」由已结算的推广佣金与活动积分（100 积分 = 1 元）共同构成，最低提现金额为 ¥10（即 1000 积分）。用户提交申请后，运营团队将在 3 个工作日内完成核实并通过微信或支付宝完成打款。如遇节假日顺延。平台有权对违规行为取消提现资格。</view>
     </view>
 
     <view class="cu-card article-card">

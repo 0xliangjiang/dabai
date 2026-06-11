@@ -16,5 +16,10 @@
       <view class="section-title">订单展示</view>
       <view class="article-text">订单数据存在同步延迟，页面展示的订单状态仅作进度参考。最终积分以相关平台和合作服务方返回的结算数据为准。积分权益与使用方式可联系客服了解。</view>
     </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">积分提现</view>
+      <view class="article-text">积分按 100 积分 = 1 元折算，累计满 1000 积分（¥10）即可在「我的」页面申请提现，支持微信或支付宝收款，提交后 3 个工作日内审核打款。</view>
+    </view>
   </view>
 </view>

@@ -36,6 +36,7 @@ Page({
     draftAvatarTemp: "",
     savingProfile: false,
     availableBalance: 0,
+    availablePoints: 0,
     balanceText: "0.00",
     withdrawals: [],
     showWithdrawForm: false,
@@ -68,6 +69,7 @@ Page({
         totalPoints: checkin.totalPoints || 0,
         checkin: { todayChecked: checkin.todayChecked, streak: checkin.streak },
         availableBalance: withdrawalData.availableBalance || 0,
+        availablePoints: withdrawalData.availableBalance || 0,
         balanceText: ((withdrawalData.availableBalance || 0) / 100).toFixed(2),
         withdrawals: (withdrawalData.withdrawals || []).slice(0, 5).map((w) => ({
           ...w,

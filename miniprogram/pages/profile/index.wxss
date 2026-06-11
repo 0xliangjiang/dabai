@@ -4,12 +4,45 @@ page {
   padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
 }
 
-.withdraw-btn {
-  width: 152rpx;
-  height: 68rpx;
-  flex: 0 0 auto;
+.streak-chip {
+  padding: 6rpx 18rpx;
   border-radius: 999rpx;
+  background: #eef9f3;
+  color: #0a7a52;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.points-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14rpx;
+  margin-top: 14rpx;
+}
+
+.points-yuan {
+  color: #8aa093;
   font-size: 26rpx;
+  font-weight: 700;
+}
+
+.points-actions {
+  margin-top: 24rpx;
+}
+
+.points-actions .checkin-btn,
+.points-actions .withdraw-btn {
+  flex: 1;
+  width: auto;
+  height: 80rpx;
+}
+
+.withdraw-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  font-size: 28rpx;
   font-weight: 800;
   color: #047857;
   background: #d1fae5;
