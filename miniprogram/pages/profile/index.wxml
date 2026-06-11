@@ -49,20 +49,6 @@
       </view>
     </view>
 
-    <view wx:if="{{withdrawals.length > 0}}" class="cu-card anim-up delay-2">
-      <view class="section-title" style="padding: 20rpx 20rpx 8rpx;">积分提现记录</view>
-      <view wx:for="{{withdrawals}}" wx:key="id" class="withdraw-record flex align-center justify-between">
-        <view>
-          <view class="text-sm">{{item.payType === 'wechat' ? '微信' : '支付宝'}} · {{item.payAccount}}</view>
-          <view class="muted" style="font-size: 22rpx;">{{item.createdAt}}</view>
-        </view>
-        <view class="flex align-center gap-xs">
-          <view class="withdraw-amount">-¥{{item.amountText}}</view>
-          <view class="withdraw-status {{item.status}}">{{item.status === 'pending' ? '审核中' : item.status === 'paid' ? '已到账' : '已驳回'}}</view>
-        </view>
-      </view>
-    </view>
-
     <!-- 提现申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
@@ -92,6 +78,10 @@
     </view>
 
     <view class="cu-list anim-up delay-3">
+      <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/withdrawals/index">
+<view class="cu-label">提现记录</view>
+        <view class="cu-arrow">›</view>
+      </navigator>
       <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/claim/index">
 <view class="cu-label">订单补充</view>
         <view class="cu-arrow">›</view>

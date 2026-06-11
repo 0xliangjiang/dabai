@@ -38,7 +38,6 @@ Page({
     availableBalance: 0,
     availablePoints: 0,
     balanceText: "0.00",
-    withdrawals: [],
     showWithdrawForm: false,
     withdrawAmount: "",
     withdrawPayType: "wechat",
@@ -70,12 +69,7 @@ Page({
         checkin: { todayChecked: checkin.todayChecked, streak: checkin.streak },
         availableBalance: withdrawalData.availableBalance || 0,
         availablePoints: withdrawalData.availableBalance || 0,
-        balanceText: ((withdrawalData.availableBalance || 0) / 100).toFixed(2),
-        withdrawals: (withdrawalData.withdrawals || []).slice(0, 5).map((w) => ({
-          ...w,
-          createdAt: w.createdAt ? w.createdAt.slice(0, 10) : "",
-          amountText: (w.amountCents / 100).toFixed(2)
-        }))
+        balanceText: ((withdrawalData.availableBalance || 0) / 100).toFixed(2)
       });
     } catch (_error) {
       // 静默失败，下次进入再同步
@@ -287,9 +281,11 @@ Page({
           notes: this.data.withdrawNotes.trim() || undefined
         }
       });
-      wx.showToast({ title: "提现申请已提交", icon: "success" });
       this.closeWithdrawForm();
-      await this.syncUserFromServer();
+      this.syncUserFromServer();
+      // 跳转记录页，让用户立刻看到申请状态
+      wx.navigateTo({ url: "/pages/withdrawals/index" });
+      wx.showToast({ title: "提现申请已提交", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error.error || "提交失败，请重试", icon: "none" });
     } finally {

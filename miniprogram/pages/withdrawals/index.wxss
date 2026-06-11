@@ -1,0 +1,28 @@
+.balance-inline {
+  color: #047857;
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.empty-card {
+  padding: 64rpx 32rpx;
+  text-align: center;
+  color: #8aa093;
+  font-size: 26rpx;
+}
+
+.empty-title {
+  color: #3a4d42;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.reject-note {
+  margin-top: 12rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 14rpx;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 22rpx;
+  line-height: 1.5;
+}
