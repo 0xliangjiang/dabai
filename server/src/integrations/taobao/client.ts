@@ -208,7 +208,7 @@ export class ZhetaokeClient implements TaobaoClient {
       platform: "taobao",
       itemId: pickString(content, ["tao_id", "item_id", "num_iid", "goods_id"]) || fallbackId,
       itemTitle: pickString(content, ["title", "tao_title", "goods_name"]) || "淘宝商品",
-      itemImageUrl: pickString(content, ["pict_url", "pic_url"]),
+      itemImageUrl: ensureHttps(pickString(content, ["pict_url", "pic_url"])),
       itemPriceCents: priceCents,
       commissionRate,
       estimatedCommissionCents: estimateCommissionCents(priceCents, commissionRate),
@@ -517,4 +517,10 @@ function parsePercentRate(value: unknown): number {
 function estimateCommissionCents(priceCents: number, rate: number): number {
   if (priceCents <= 0 || rate <= 0) return 0;
   return Math.round(priceCents * rate);
+}
+
+function ensureHttps(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("//")) return `https:${url}`;
+  return url;
 }
