@@ -700,6 +700,115 @@ button.contact-item {
   color: #66796d;
 }
 
+.balance-card {
+  padding: 32rpx;
+}
+
+.balance-value {
+  margin-top: 6rpx;
+  color: #047857;
+  font-size: 56rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.withdraw-record {
+  padding: 20rpx 28rpx;
+  border-bottom: 1rpx solid #f0f5f2;
+}
+
+.withdraw-record:last-child {
+  border-bottom: 0;
+}
+
+.withdraw-amount {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1a3328;
+}
+
+.withdraw-status {
+  margin-left: 10rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.withdraw-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.withdraw-status.paid {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.withdraw-status.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 32rpx calc(env(safe-area-inset-bottom) + 36rpx);
+  box-sizing: border-box;
+}
+
+.modal-title {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #1a3328;
+  margin-bottom: 8rpx;
+}
+
+.form-tip {
+  margin-bottom: 8rpx;
+}
+
+.margin-top {
+  margin-top: 24rpx;
+}
+
+.pay-type-row {
+  margin-top: 12rpx;
+}
+
+.pay-type-option {
+  flex: 1;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  border: 2rpx solid #dde8e2;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #66796d;
+}
+
+.pay-type-option.selected {
+  border-color: #0d9d6c;
+  background: #f0fdf4;
+  color: #047857;
+}
+
 .login-btn,
 .mini-btn {
   width: 164rpx;

@@ -121,6 +121,25 @@ export type OrderClaimRecord = {
   createdAt: Date;
 };
 
+export type WithdrawalRecord = {
+  id: string;
+  userId: string;
+  amountCents: number;
+  status: string;
+  payAccount: string;
+  payType: string;
+  notes: string | null;
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type AdminWithdrawalRecord = WithdrawalRecord & {
+  userNickname: string | null;
+  userOpenid: string;
+};
+
 export type OrderSummary = {
   id: string;
   itemTitle: string;
@@ -227,6 +246,19 @@ export type Repositories = {
     create(input: { userId: string; checkInDate: string; points: number }): Promise<CheckInRecord>;
     listRecentDates(userId: string, limit: number): Promise<string[]>;
     totalPoints(userId: string): Promise<number>;
+  };
+  withdrawals: {
+    create(input: {
+      userId: string;
+      amountCents: number;
+      payAccount: string;
+      payType: string;
+      notes?: string | null;
+    }): Promise<WithdrawalRecord>;
+    listByUser(userId: string): Promise<WithdrawalRecord[]>;
+    getAvailableBalance(userId: string): Promise<number>;
+    list(status?: string): Promise<AdminWithdrawalRecord[]>;
+    review(id: string, input: { status: "paid" | "rejected"; reviewedBy?: string; notes?: string | null }): Promise<WithdrawalRecord>;
   };
   admin: {
     overview(): Promise<{

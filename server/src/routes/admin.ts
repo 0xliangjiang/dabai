@@ -70,6 +70,25 @@ export async function registerAdminRoutes(
     claims: await repositories.orders.listClaims(request.query.status)
   }));
 
+  app.get<{ Querystring: { status?: string } }>("/api/admin/withdrawals", async (request) => ({
+    withdrawals: await repositories.withdrawals.list(request.query.status)
+  }));
+
+  app.post<{ Params: { id: string }; Body: { status?: string; notes?: string } }>(
+    "/api/admin/withdrawals/:id/review",
+    async (request, reply) => {
+      const { status, notes } = request.body ?? {};
+      if (status !== "paid" && status !== "rejected") {
+        return reply.code(400).send({ error: "status must be paid or rejected" });
+      }
+      return repositories.withdrawals.review(request.params.id, {
+        status,
+        reviewedBy: "admin",
+        notes: notes ?? null
+      });
+    }
+  );
+
   await registerAdminDealRoutes(app, repositories, notifyDealPublished);
 
   // 线报图文素材上传：图片 5MB，视频(mp4) 60MB

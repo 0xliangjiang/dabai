@@ -1,4 +1,5 @@
 import {
+  ArrowDownToLine,
   Check,
   ClipboardCheck,
   Copy,
@@ -25,6 +26,7 @@ import {
   type AdminConfig,
   type AdminOverview,
   type AdminUser,
+  type AdminWithdrawal,
   type PendingAttribution
 } from "./lib/api";
 import { toast } from "./lib/toast";
@@ -35,6 +37,7 @@ type AdminData = {
   config: AdminConfig["config"];
   pendingAttributions: PendingAttribution[];
   claims: AdminClaim[];
+  withdrawals: AdminWithdrawal[];
 };
 
 const emptyData: AdminData = {
@@ -55,7 +58,8 @@ const emptyData: AdminData = {
     highValueReviewThresholdCents: 5000
   },
   pendingAttributions: [],
-  claims: []
+  claims: [],
+  withdrawals: []
 };
 
 const NAV_ITEMS = [
@@ -64,6 +68,7 @@ const NAV_ITEMS = [
   { id: "users", label: "用户", icon: Users },
   { id: "attribution", label: "订单复核", icon: ClipboardCheck },
   { id: "claims", label: "申诉审核", icon: ShieldQuestion },
+  { id: "withdrawals", label: "提现审核", icon: ArrowDownToLine },
   { id: "config", label: "配置", icon: Settings }
 ];
 
@@ -91,19 +96,21 @@ export function App() {
 
     setLoading(true);
     try {
-      const [overview, usersResponse, configResponse, pendingResponse, claimsResponse] = await Promise.all([
+      const [overview, usersResponse, configResponse, pendingResponse, claimsResponse, withdrawalsResponse] = await Promise.all([
         fetchAdminApi<AdminOverview>("/api/admin/overview", token),
         fetchAdminApi<{ users: AdminUser[] }>("/api/admin/users", token),
         fetchAdminApi<AdminConfig>("/api/admin/config", token),
         fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token),
-        fetchAdminApi<{ claims: AdminClaim[] }>("/api/admin/claims", token)
+        fetchAdminApi<{ claims: AdminClaim[] }>("/api/admin/claims", token),
+        fetchAdminApi<{ withdrawals: AdminWithdrawal[] }>("/api/admin/withdrawals", token)
       ]);
       setData({
         overview,
         users: usersResponse.users,
         config: configResponse.config,
         pendingAttributions: pendingResponse.items,
-        claims: claimsResponse.claims
+        claims: claimsResponse.claims,
+        withdrawals: withdrawalsResponse.withdrawals
       });
       localStorage.setItem("dabai-admin-token", token);
       setAdminToken(token);
@@ -152,6 +159,15 @@ export function App() {
       body: JSON.stringify({ status })
     });
     toast(status === "banned" ? "已封禁该用户" : "已解封该用户");
+    await loadData(adminToken, { silent: true });
+  }
+
+  async function reviewWithdrawal(id: string, status: "paid" | "rejected") {
+    await fetchAdminApi(`/api/admin/withdrawals/${id}/review`, adminToken, {
+      method: "POST",
+      body: JSON.stringify({ status })
+    });
+    toast(status === "paid" ? "已标记为已打款" : "已驳回提现申请");
     await loadData(adminToken, { silent: true });
   }
 
@@ -442,6 +458,56 @@ export function App() {
                   </TableRow>
                 ))}
                 {data.claims.length === 0 ? <EmptyRow colSpan={6} text="暂无申诉记录" /> : null}
+              </TableBody>
+            </Table>
+          </SectionCard>
+
+          <SectionCard id="withdrawals" title="提现审核" subtitle="用户提现申请，核对后打款或驳回">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>用户</TableHead>
+                  <TableHead>金额</TableHead>
+                  <TableHead>收款方式</TableHead>
+                  <TableHead>收款账号</TableHead>
+                  <TableHead>备注</TableHead>
+                  <TableHead>申请时间</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.withdrawals.map((w) => (
+                  <TableRow key={w.id}>
+                    <TableCell className="font-medium">{w.userNickname || w.userOpenid.slice(0, 8) + "…"}</TableCell>
+                    <TableCell className="font-semibold tabular-nums">{formatMoney(w.amountCents)}</TableCell>
+                    <TableCell>{w.payType === "wechat" ? "微信" : "支付宝"}</TableCell>
+                    <TableCell className="font-mono text-xs">{w.payAccount}</TableCell>
+                    <TableCell className="max-w-40 truncate text-slate-500">{w.notes || "—"}</TableCell>
+                    <TableCell className="text-xs text-slate-400">{new Date(w.createdAt).toLocaleDateString("zh-CN")}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={w.status === "paid" ? "success" : w.status === "rejected" ? "danger" : "warning"}
+                      >
+                        {w.status === "pending" ? "待处理" : w.status === "paid" ? "已打款" : "已驳回"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {w.status === "pending" ? (
+                        <span className="flex justify-end gap-2">
+                          <Button size="sm" onClick={() => void reviewWithdrawal(w.id, "paid")}>
+                            <Check className="h-4 w-4" />
+                            已打款
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => void reviewWithdrawal(w.id, "rejected")}>
+                            驳回
+                          </Button>
+                        </span>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {data.withdrawals.length === 0 ? <EmptyRow colSpan={8} text="暂无提现申请" /> : null}
               </TableBody>
             </Table>
           </SectionCard>

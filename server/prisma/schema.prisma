@@ -24,6 +24,26 @@ model User {
   orderClaims       OrderClaim[]
   checkIns          CheckIn[]
   subscribeGrants   SubscribeGrant[]
+  withdrawals       Withdrawal[]
+}
+
+model Withdrawal {
+  id          String    @id @default(cuid())
+  userId      String
+  amountCents Int
+  status      String    @default("pending")
+  payAccount  String    @db.VarChar(256)
+  payType     String
+  notes       String?   @db.VarChar(512)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model CheckIn {

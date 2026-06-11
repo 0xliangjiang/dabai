@@ -61,6 +61,19 @@ export type AdminConfig = {
   };
 };
 
+export type AdminWithdrawal = {
+  id: string;
+  userId: string;
+  userNickname: string | null;
+  userOpenid: string;
+  amountCents: number;
+  status: string;
+  payAccount: string;
+  payType: string;
+  notes: string | null;
+  createdAt: string;
+};
+
 export type PendingAttribution = {
   id: string;
   userId: string | null;

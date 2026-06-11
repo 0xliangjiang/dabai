@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   AdminUserRecord,
+  AdminWithdrawalRecord,
   AttributionRecord,
   CheckInRecord,
   DealPostInput,
@@ -13,7 +14,8 @@ import type {
   Repositories,
   UpsertAttributionInput,
   UpsertOrderInput,
-  UserRecord
+  UserRecord,
+  WithdrawalRecord
 } from "./types.js";
 
 export function createRepositories(): Repositories {
@@ -29,6 +31,7 @@ export function createRepositories(): Repositories {
   const claims = new Map<string, OrderClaimRecord>();
   const checkIns = new Map<string, CheckInRecord>();
   const deals = new Map<string, DealPostRecord>();
+  const withdrawalMap = new Map<string, WithdrawalRecord>();
   const subscribeGrants = new Map<
     string,
     { id: string; userId: string; templateId: string; used: boolean }
@@ -362,6 +365,67 @@ export function createRepositories(): Repositories {
         return [...checkIns.values()]
           .filter((record) => record.userId === userId)
           .reduce((total, record) => total + record.points, 0);
+      }
+    },
+    withdrawals: {
+      async create(input) {
+        const now = new Date();
+        const record: WithdrawalRecord = {
+          id: randomUUID(),
+          userId: input.userId,
+          amountCents: input.amountCents,
+          status: "pending",
+          payAccount: input.payAccount,
+          payType: input.payType,
+          notes: input.notes ?? null,
+          reviewedBy: null,
+          reviewedAt: null,
+          createdAt: now,
+          updatedAt: now
+        };
+        withdrawalMap.set(record.id, record);
+        return record;
+      },
+      async listByUser(userId: string) {
+        return [...withdrawalMap.values()]
+          .filter((r) => r.userId === userId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+      async getAvailableBalance(userId: string) {
+        const earned = [...ledger.values()]
+          .filter((r) => r.userId === userId && r.status === "available")
+          .reduce((sum, r) => sum + r.amountCents, 0);
+        const requested = [...withdrawalMap.values()]
+          .filter((r) => r.userId === userId && (r.status === "pending" || r.status === "paid"))
+          .reduce((sum, r) => sum + r.amountCents, 0);
+        return Math.max(0, earned - requested);
+      },
+      async list(status?: string) {
+        const records = [...withdrawalMap.values()]
+          .filter((r) => !status || r.status === status)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return records.map((r): AdminWithdrawalRecord => {
+          const user = users.get(r.userId);
+          return {
+            ...r,
+            userNickname: user?.nickname ?? null,
+            userOpenid: user?.openid ?? ""
+          };
+        });
+      },
+      async review(id: string, input: { status: "paid" | "rejected"; reviewedBy?: string; notes?: string | null }) {
+        const record = withdrawalMap.get(id);
+        if (!record) throw new Error("Withdrawal not found");
+        const updated: WithdrawalRecord = {
+          ...record,
+          status: input.status,
+          reviewedBy: input.reviewedBy ?? "admin",
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+          ...(input.notes !== undefined ? { notes: input.notes } : {})
+        };
+        withdrawalMap.set(id, updated);
+        return updated;
       }
     },
     admin: {

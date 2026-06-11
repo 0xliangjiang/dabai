@@ -15,6 +15,7 @@ import type { Repositories } from "./repositories/types.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCheckInRoutes } from "./routes/checkins.js";
+import { registerWithdrawalRoutes } from "./routes/withdrawals.js";
 import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerDealRoutes } from "./routes/deals.js";
 import { createDealPublishedNotifier } from "./domain/deal-notify.js";
@@ -129,6 +130,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerUploadRoutes(app, uploadDir);
   await registerUserRoutes(app, repositories);
   await registerCheckInRoutes(app, repositories);
+  await registerWithdrawalRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
   await registerSubscriptionRoutes(app, config, repositories);
   await registerJobRoutes(app, config, repositories, orderClient);

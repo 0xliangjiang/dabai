@@ -42,6 +42,57 @@
       <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
     </view>
 
+    <view class="cu-card balance-card flex align-center justify-between anim-up delay-2">
+      <view>
+        <view class="muted text-sm">可提现余额</view>
+        <view class="balance-value">{{isLoggedIn ? '¥' + (availableBalance / 100).toFixed(2) : '—'}}</view>
+        <view class="points-sub">返利佣金累计到账后可提现</view>
+      </view>
+      <view class="cu-btn checkin-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">申请提现</view>
+    </view>
+
+    <view wx:if="{{withdrawals.length > 0}}" class="cu-card anim-up delay-2">
+      <view class="section-title" style="padding: 20rpx 20rpx 8rpx;">提现记录</view>
+      <view wx:for="{{withdrawals}}" wx:key="id" class="withdraw-record flex align-center justify-between">
+        <view>
+          <view class="text-sm">{{item.payType === 'wechat' ? '微信' : '支付宝'}} · {{item.payAccount}}</view>
+          <view class="muted" style="font-size: 22rpx;">{{item.createdAt}}</view>
+        </view>
+        <view class="flex align-center gap-xs">
+          <view class="withdraw-amount">-¥{{(item.amountCents / 100).toFixed(2)}}</view>
+          <view class="withdraw-status {{item.status}}">{{item.status === 'pending' ? '审核中' : item.status === 'paid' ? '已到账' : '已驳回'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提现申请弹窗 -->
+    <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
+      <view class="modal-card" catchtap="stopProp">
+        <view class="modal-title">申请提现</view>
+        <view class="form-tip muted text-sm">当前可提现：¥{{(availableBalance / 100).toFixed(2)}}，最低 ¥10</view>
+
+        <view class="cu-label margin-top">提现金额（元）</view>
+        <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
+
+        <view class="cu-label margin-top">收款方式</view>
+        <view class="pay-type-row flex gap-sm">
+          <view class="pay-type-option pressable {{withdrawPayType === 'wechat' ? 'selected' : ''}}" hover-class="pressed" data-type="wechat" bindtap="selectPayType">微信</view>
+          <view class="pay-type-option pressable {{withdrawPayType === 'alipay' ? 'selected' : ''}}" hover-class="pressed" data-type="alipay" bindtap="selectPayType">支付宝</view>
+        </view>
+
+        <view class="cu-label margin-top">收款账号</view>
+        <input class="cu-input" type="text" placeholder="{{withdrawPayType === 'wechat' ? '微信号或手机号' : '支付宝账号或手机号'}}" value="{{withdrawAccount}}" bindinput="onWithdrawAccountInput" />
+
+        <view class="cu-label margin-top">备注（可选）</view>
+        <input class="cu-input" type="text" placeholder="如有特殊说明可填写" value="{{withdrawNotes}}" bindinput="onWithdrawNotesInput" />
+
+        <view class="flex gap-sm margin-top">
+          <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="closeWithdrawForm">取消</button>
+          <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{submittingWithdraw}}" disabled="{{submittingWithdraw}}" bindtap="submitWithdraw">提交申请</button>
+        </view>
+      </view>
+    </view>
+
     <view class="cu-list anim-up delay-3">
       <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/claim/index">
 <view class="cu-label">订单补充</view>

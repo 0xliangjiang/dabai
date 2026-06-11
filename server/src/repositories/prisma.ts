@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import type {
   AdminUserRecord,
+  AdminWithdrawalRecord,
   AttributionRecord,
   DealPostRecord,
   CommissionLedgerRecord,
@@ -11,7 +12,8 @@ import type {
   Repositories,
   UpsertAttributionInput,
   UpsertOrderInput,
-  UserRecord
+  UserRecord,
+  WithdrawalRecord
 } from "./types.js";
 
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
@@ -388,6 +390,66 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         return result._sum.points ?? 0;
       }
     },
+    withdrawals: {
+      async create(input) {
+        const record = await prisma.withdrawal.create({
+          data: {
+            userId: input.userId,
+            amountCents: input.amountCents,
+            payAccount: input.payAccount,
+            payType: input.payType,
+            notes: input.notes ?? null
+          }
+        });
+        return mapWithdrawal(record);
+      },
+      async listByUser(userId: string) {
+        const records = await prisma.withdrawal.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" }
+        });
+        return records.map(mapWithdrawal);
+      },
+      async getAvailableBalance(userId: string) {
+        const [earned, requestedResult] = await Promise.all([
+          prisma.commissionLedger.aggregate({
+            where: { userId, status: "available" },
+            _sum: { amountCents: true }
+          }),
+          prisma.withdrawal.aggregate({
+            where: { userId, status: { in: ["pending", "paid"] } },
+            _sum: { amountCents: true }
+          })
+        ]);
+        const total = earned._sum.amountCents ?? 0;
+        const requested = requestedResult._sum.amountCents ?? 0;
+        return Math.max(0, total - requested);
+      },
+      async list(status?: string) {
+        const records = await prisma.withdrawal.findMany({
+          where: status ? { status } : undefined,
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { openid: true, nickname: true } } }
+        });
+        return records.map((record): AdminWithdrawalRecord => ({
+          ...mapWithdrawal(record),
+          userNickname: record.user.nickname,
+          userOpenid: record.user.openid
+        }));
+      },
+      async review(id: string, input: { status: "paid" | "rejected"; reviewedBy?: string; notes?: string | null }) {
+        const record = await prisma.withdrawal.update({
+          where: { id },
+          data: {
+            status: input.status,
+            reviewedBy: input.reviewedBy ?? "admin",
+            reviewedAt: new Date(),
+            ...(input.notes !== undefined ? { notes: input.notes } : {})
+          }
+        });
+        return mapWithdrawal(record);
+      }
+    },
     admin: {
       async overview() {
         const [
@@ -545,6 +607,22 @@ function mapDeal(record: {
     ...record,
     steps: Array.isArray(record.steps) ? (record.steps as DealPostRecord["steps"]) : []
   };
+}
+
+function mapWithdrawal(record: {
+  id: string;
+  userId: string;
+  amountCents: number;
+  status: string;
+  payAccount: string;
+  payType: string;
+  notes: string | null;
+  reviewedBy: string | null;
+  reviewedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}): WithdrawalRecord {
+  return record;
 }
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
