@@ -35,7 +35,7 @@
 
     <view class="cu-card points-card flex align-center justify-between anim-up delay-2">
       <view>
-        <view class="muted text-sm">签到积分</view>
+        <view class="muted text-sm">签到积分（活跃奖励，不可提现）</view>
         <view class="points-value">{{isLoggedIn ? totalPoints : '—'}}</view>
         <view class="points-sub">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
       </view>
@@ -44,11 +44,11 @@
 
     <view class="cu-card balance-card flex align-center justify-between anim-up delay-2">
       <view>
-        <view class="muted text-sm">可提现余额</view>
+        <view class="muted text-sm">推广佣金余额</view>
         <view class="balance-value">{{isLoggedIn ? '¥' + (availableBalance / 100).toFixed(2) : '—'}}</view>
-        <view class="points-sub">返利佣金累计到账后可提现</view>
+        <view class="points-sub">通过推广链接引导他人下单后可得佣金</view>
       </view>
-      <view class="cu-btn checkin-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">申请提现</view>
+      <view class="cu-btn checkin-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">佣金提现</view>
     </view>
 
     <view wx:if="{{withdrawals.length > 0}}" class="cu-card anim-up delay-2">
@@ -68,8 +68,8 @@
     <!-- 提现申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
-        <view class="modal-title">申请提现</view>
-        <view class="form-tip muted text-sm">当前可提现：¥{{(availableBalance / 100).toFixed(2)}}，最低 ¥10</view>
+        <view class="modal-title">佣金提现申请</view>
+        <view class="form-tip muted text-sm">推广佣金余额：¥{{(availableBalance / 100).toFixed(2)}} · 最低提现 ¥10 · 3 个工作日到账</view>
 
         <view class="cu-label margin-top">提现金额（元）</view>
         <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />

@@ -13,8 +13,18 @@
     </view>
 
     <view class="cu-card article-card">
+      <view class="section-title">佣金来源</view>
+      <view class="article-text">用户通过本平台生成的推广链接或口令，引导他人在淘宝、京东等电商平台完成购买后，本平台可从电商联盟获得 CPS（按销售付费）佣金。平台将其中一定比例作为用户奖励计入「可提现余额」，具体比例以页面展示为准。</view>
+    </view>
+
+    <view class="cu-card article-card">
       <view class="section-title">结算规则</view>
-      <view class="article-text">预估金额会根据平台活动、订单状态、退款、售后、风控等因素变化。最终是否有效及具体金额，以相关平台和合作服务方返回的结算结果为准。</view>
+      <view class="article-text">预估金额会根据平台活动、订单状态、退款、售后、风控等因素变化。最终是否有效及具体金额，以相关平台和合作服务方返回的结算结果为准。签到积分为活跃奖励，仅供记录展示，不具备货币价值，不可提现或兑换。</view>
+    </view>
+
+    <view class="cu-card article-card">
+      <view class="section-title">提现规则</view>
+      <view class="article-text">「可提现余额」来源于已结算的推广佣金，最低提现金额为 ¥10。用户提交申请后，运营团队将在 3 个工作日内完成核实并通过微信或支付宝完成打款。如遇节假日顺延。平台有权对违规行为取消提现资格。</view>
     </view>
 
     <view class="cu-card article-card">
