@@ -45,7 +45,7 @@
     <view class="cu-card balance-card flex align-center justify-between anim-up delay-2">
       <view>
         <view class="muted text-sm">推广佣金余额</view>
-        <view class="balance-value">{{isLoggedIn ? '¥' + (availableBalance / 100).toFixed(2) : '—'}}</view>
+        <view class="balance-value">{{isLoggedIn ? balanceText : '—'}}</view>
         <view class="points-sub">通过推广链接引导他人下单后可得佣金</view>
       </view>
       <view class="cu-btn checkin-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">佣金提现</view>
@@ -59,7 +59,7 @@
           <view class="muted" style="font-size: 22rpx;">{{item.createdAt}}</view>
         </view>
         <view class="flex align-center gap-xs">
-          <view class="withdraw-amount">-¥{{(item.amountCents / 100).toFixed(2)}}</view>
+          <view class="withdraw-amount">-¥{{item.amountText}}</view>
           <view class="withdraw-status {{item.status}}">{{item.status === 'pending' ? '审核中' : item.status === 'paid' ? '已到账' : '已驳回'}}</view>
         </view>
       </view>
@@ -69,7 +69,7 @@
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
         <view class="modal-title">佣金提现申请</view>
-        <view class="form-tip muted text-sm">推广佣金余额：¥{{(availableBalance / 100).toFixed(2)}} · 最低提现 ¥10 · 3 个工作日到账</view>
+        <view class="form-tip muted text-sm">推广佣金余额：¥{{balanceText}} · 最低提现 ¥10 · 3 个工作日到账</view>
 
         <view class="cu-label margin-top">提现金额（元）</view>
         <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
