@@ -1,5 +1,5 @@
 const { ensureLogin, request, uploadFile } = require("../../utils/api");
-const { hasConsent } = require("../../utils/privacy");
+const { hasConsent, setConsent } = require("../../utils/privacy");
 
 const NOTES_MAX = 200;
 
@@ -11,7 +11,8 @@ Page({
     files: [],
     hasFiles: false,
     previewUrl: "",
-    submitting: false
+    submitting: false,
+    showPrivacy: false
   },
 
   onSuffixChange(event) {
@@ -22,11 +23,29 @@ Page({
     this.setData({ notes: event.detail.value });
   },
 
+  async onPrivacyAgree() {
+    setConsent();
+    getApp().resolvePrivacy(true);
+    this.setData({ showPrivacy: false });
+    // 同意后自动继续选图
+    await this.pickFile();
+  },
+
+  onPrivacyReject() {
+    getApp().resolvePrivacy(false);
+    this.setData({ showPrivacy: false });
+    wx.showToast({ title: "同意后才能选择截图", icon: "none" });
+  },
+
   async onAddFile() {
     if (!hasConsent()) {
-      wx.showToast({ title: "请先在首页同意隐私政策", icon: "none" });
+      this.setData({ showPrivacy: true });
       return;
     }
+    await this.pickFile();
+  },
+
+  async pickFile() {
     try {
       const result = await wx.chooseMedia({
         count: 1,
@@ -54,6 +73,11 @@ Page({
 
   async submit() {
     if (this.data.submitting) return;
+
+    if (!hasConsent()) {
+      this.setData({ showPrivacy: true });
+      return;
+    }
 
     if (!this.data.orderSuffix.trim()) {
       wx.showToast({ title: "请填写订单后几位", icon: "none" });
