@@ -1,7 +1,10 @@
 .balance-inline {
-  color: #047857;
-  font-size: 36rpx;
+  background: linear-gradient(150deg, #0c8a5b 0%, #07543c 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 38rpx;
   font-weight: 900;
+  letter-spacing: 0.5rpx;
 }
 
 .empty-card {
