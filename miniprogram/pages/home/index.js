@@ -83,16 +83,35 @@ Page({
   },
 
   async autoPasteFromClipboard() {
-    // 已有查询结果或正在查询时不自动粘贴，避免覆盖用户正在查看的内容
-    if (this.data.result || this.data.loading) return;
+    if (this.data.loading) return;
 
     const { content } = await this.readClipboard();
     if (!content || !looksLikeProductContent(content)) return;
     if (content === this.data.rawContent.trim()) return;
     // 剪贴板里是本次会话刚复制出去的文案/链接时跳过，防止自我循环
     if (content === this.lastCopiedContent) return;
+    // 用户在弹窗里拒绝过的内容不再重复询问
+    if (content === this.dismissedContent) return;
 
-    this.fillRawContent(content);
+    // 没有查询结果时直接填入；有结果时弹窗确认，避免静默覆盖用户正在看的内容
+    if (!this.data.result) {
+      this.fillRawContent(content);
+      return;
+    }
+    wx.showModal({
+      title: "检测到新的商品内容",
+      content: "是否替换当前内容并查询新的优惠？",
+      confirmText: "查询",
+      cancelText: "保留当前",
+      success: (res) => {
+        if (res.confirm) {
+          this.fillRawContent(content);
+          this.convert();
+        } else {
+          this.dismissedContent = content;
+        }
+      }
+    });
   },
 
   async convert() {
