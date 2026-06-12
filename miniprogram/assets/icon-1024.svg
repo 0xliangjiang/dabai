@@ -1,0 +1,46 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="sq">
+      <rect x="0" y="0" width="1024" height="1024" rx="230"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="#0a7a52"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="230" fill="none" stroke="#1fae78" stroke-width="10"/>
+
+  <!-- Bear head -->
+  <ellipse cx="512" cy="555" rx="288" ry="268" fill="#f0fdf7"/>
+
+  <!-- Ears -->
+  <circle cx="252" cy="338" r="106" fill="#f0fdf7"/>
+  <circle cx="772" cy="338" r="106" fill="#f0fdf7"/>
+  <!-- Inner ears -->
+  <circle cx="252" cy="338" r="62" fill="#c6ede0"/>
+  <circle cx="772" cy="338" r="62" fill="#c6ede0"/>
+
+  <!-- Eyes -->
+  <ellipse cx="430" cy="518" rx="42" ry="46" fill="#1a3328"/>
+  <ellipse cx="594" cy="518" rx="42" ry="46" fill="#1a3328"/>
+  <!-- Eye shine -->
+  <circle cx="447" cy="503" r="13" fill="#ffffff"/>
+  <circle cx="611" cy="503" r="13" fill="#ffffff"/>
+
+  <!-- Nose -->
+  <ellipse cx="512" cy="596" rx="38" ry="25" fill="#1a3328"/>
+
+  <!-- Mouth -->
+  <path d="M466 622 Q512 666 558 622" fill="none" stroke="#1a3328" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- Cheek blush -->
+  <ellipse cx="376" cy="610" rx="54" ry="30" fill="#86efbd" opacity="0.55"/>
+  <ellipse cx="648" cy="610" rx="54" ry="30" fill="#86efbd" opacity="0.55"/>
+
+  <!-- Bottom label band -->
+  <rect x="0" y="800" width="1024" height="224" fill="#085f40" clip-path="url(#sq)"/>
+
+  <!-- 良匠小助手 -->
+  <text x="512" y="892" text-anchor="middle"
+    font-family="'PingFang SC','Hiragino Sans GB','Helvetica Neue',sans-serif"
+    font-size="90" font-weight="700" fill="#c6ede0" letter-spacing="8">良匠小助手</text>
+</svg>

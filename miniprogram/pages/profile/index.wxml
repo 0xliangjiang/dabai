@@ -5,7 +5,7 @@
     <view class="cu-card profile-card flex align-center justify-between gap anim-up delay-1">
       <view class="flex align-center gap-sm flex-sub">
         <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" />
-        <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '白'}}</view>
+        <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '匠'}}</view>
         <view class="flex-sub">
           <view class="section-title">{{loginTitle}}</view>
           <view wx:if="{{loginDesc}}" class="section-desc">{{loginDesc}}</view>
@@ -108,7 +108,7 @@
         class="cu-item contact-item flex align-center justify-between" hover-class="item-pressed"
         open-type="contact"
         show-message-card="true"
-        send-message-title="大白小助手客服"
+        send-message-title="良匠小助手客服"
         send-message-path="/pages/home/index"
       >
 <view class="cu-label">客服入口</view>

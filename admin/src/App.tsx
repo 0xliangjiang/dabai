@@ -212,7 +212,7 @@ export function App() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-lg font-bold text-white">
             白
           </div>
-          <h1 className="mt-5 text-xl font-semibold text-slate-900">大白小助手 · 运营后台</h1>
+          <h1 className="mt-5 text-xl font-semibold text-slate-900">良匠小助手 · 运营后台</h1>
           <p className="mt-1.5 text-sm text-slate-500">输入管理员 Token 进入控制台</p>
           <input
             autoFocus
@@ -243,7 +243,7 @@ export function App() {
               白
             </div>
             <div>
-              <div className="text-sm font-semibold leading-tight">大白小助手</div>
+              <div className="text-sm font-semibold leading-tight">良匠小助手</div>
               <div className="text-xs text-slate-400">运营后台</div>
             </div>
           </div>
