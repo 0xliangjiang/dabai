@@ -12,7 +12,7 @@
     "pages/deal-detail/index"
   ],
   "window": {
-    "navigationBarTitleText": "良匠小助手",
+    "navigationBarTitleText": "良匠省钱助手",
     "navigationBarBackgroundColor": "#3ddc97",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#e9f5ee"

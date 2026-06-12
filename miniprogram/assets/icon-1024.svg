@@ -39,8 +39,8 @@
   <!-- Bottom label band -->
   <rect x="0" y="800" width="1024" height="224" fill="#085f40" clip-path="url(#sq)"/>
 
-  <!-- 良匠小助手 -->
+  <!-- 良匠省钱助手 -->
   <text x="512" y="892" text-anchor="middle"
     font-family="'PingFang SC','Hiragino Sans GB','Helvetica Neue',sans-serif"
-    font-size="90" font-weight="700" fill="#c6ede0" letter-spacing="8">良匠小助手</text>
+    font-size="90" font-weight="700" fill="#c6ede0" letter-spacing="8">良匠省钱助手</text>
 </svg>
