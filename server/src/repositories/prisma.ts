@@ -213,6 +213,31 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           order: mapOrder(record.tbkOrder)
         }));
       },
+      async findByOrderNumber(orderNumber: string) {
+        const suffix = orderNumber.trim();
+        // tbkOrderId 精确匹配或后缀匹配；京东原始订单号走 rawPayload 单独查一次
+        let tbkOrder = await prisma.tbkOrder.findFirst({
+          where: { OR: [{ tbkOrderId: suffix }, { tbkOrderId: { endsWith: suffix } }] },
+          orderBy: { syncedAt: "desc" }
+        });
+        if (!tbkOrder && isNumeric(suffix)) {
+          // MySQL JSON_EXTRACT 通过 rawQuery 匹配京东 orderId 字段
+          const rows = await prisma.$queryRaw<{ id: string }[]>`
+            SELECT id FROM TbkOrder
+            WHERE JSON_EXTRACT(rawPayload, '$.orderId') = ${Number(suffix)}
+               OR JSON_EXTRACT(rawPayload, '$.trade_id') = ${suffix}
+            LIMIT 1`;
+          if (rows.length > 0) {
+            tbkOrder = await prisma.tbkOrder.findUnique({ where: { id: rows[0].id } });
+          }
+        }
+        if (!tbkOrder) return undefined;
+        const attribution = await prisma.orderAttribution.findUnique({ where: { tbkOrderId: tbkOrder.id } });
+        return {
+          order: mapOrder(tbkOrder),
+          attribution: attribution ? mapAttribution(attribution) : null
+        };
+      },
       async attributeOrder(id: string, input: { userId?: string | null; reviewedBy?: string }) {
         const record = await prisma.orderAttribution.update({
           where: { id },
@@ -632,4 +657,8 @@ function mapWithdrawal(record: {
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value ?? {})) as Prisma.InputJsonValue;
+}
+
+function isNumeric(value: string): boolean {
+  return /^\d+$/.test(value);
 }

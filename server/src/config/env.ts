@@ -20,6 +20,7 @@ export type AppConfig = {
   zhetaokeJdApiUrl: string;
   zhetaokeJdUnionId: string;
   zhetaokeJdPositionId: string;
+  zhetaokeOrderApiUrl: string;
   jdUnionAppKey: string;
   jdUnionAppSecret: string;
   jdUnionSiteId: string;
@@ -53,6 +54,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.ZTK_JD_API_URL ?? "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
     zhetaokeJdUnionId: env.ZTK_JD_UNION_ID ?? "",
     zhetaokeJdPositionId: env.ZTK_JD_POSITION_ID ?? "",
+    zhetaokeOrderApiUrl:
+      env.ZTK_ORDER_API_URL ?? "https://api.zhetaoke.com:10001/api/open_order.ashx",
     jdUnionAppKey: env.JD_UNION_APP_KEY ?? "",
     jdUnionAppSecret: env.JD_UNION_APP_SECRET ?? "",
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",

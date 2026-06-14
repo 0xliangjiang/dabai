@@ -29,6 +29,7 @@ const testConfig: AppConfig = {
   jdUnionSiteId: "",
   jdUnionPositionId: "",
   jdUnionSceneId: "",
+  zhetaokeOrderApiUrl: "https://api.zhetaoke.com:10001/api/open_order.ashx",
 
 
 };

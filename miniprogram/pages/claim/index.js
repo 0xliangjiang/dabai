@@ -1,74 +1,27 @@
-const { ensureLogin, request, uploadFile } = require("../../utils/api");
+const { ensureLogin, request } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
-
-const NOTES_MAX = 200;
 
 Page({
   data: {
-    orderSuffix: "",
-    notes: "",
-    notesMax: NOTES_MAX,
-    files: [],
-    hasFiles: false,
-    previewUrl: "",
+    orderNumber: "",
     submitting: false,
     showPrivacy: false
   },
 
-  onSuffixChange(event) {
-    this.setData({ orderSuffix: event.detail.value });
-  },
-
-  onNotesChange(event) {
-    this.setData({ notes: event.detail.value });
+  onOrderNumberChange(event) {
+    this.setData({ orderNumber: event.detail.value });
   },
 
   async onPrivacyAgree() {
     setConsent();
     getApp().resolvePrivacy(true);
     this.setData({ showPrivacy: false });
-    // 同意后自动继续选图
-    await this.pickFile();
   },
 
   onPrivacyReject() {
     getApp().resolvePrivacy(false);
     this.setData({ showPrivacy: false });
-    wx.showToast({ title: "同意后才能选择截图", icon: "none" });
-  },
-
-  async onAddFile() {
-    if (!hasConsent()) {
-      this.setData({ showPrivacy: true });
-      return;
-    }
-    await this.pickFile();
-  },
-
-  async pickFile() {
-    try {
-      const result = await wx.chooseMedia({
-        count: 1,
-        mediaType: ["image"],
-        sourceType: ["album", "camera"]
-      });
-      const file = result.tempFiles[0];
-      this.setData({
-        files: result.tempFiles,
-        hasFiles: Boolean(file),
-        previewUrl: file ? file.tempFilePath : ""
-      });
-    } catch (_error) {
-      // 用户取消选择
-    }
-  },
-
-  onRemoveFile() {
-    this.setData({
-      files: [],
-      hasFiles: false,
-      previewUrl: ""
-    });
+    wx.showToast({ title: "同意后才能使用绑定功能", icon: "none" });
   },
 
   async submit() {
@@ -79,39 +32,31 @@ Page({
       return;
     }
 
-    if (!this.data.orderSuffix.trim()) {
-      wx.showToast({ title: "请填写订单后几位", icon: "none" });
+    const orderNumber = this.data.orderNumber.trim();
+    if (!orderNumber || orderNumber.length < 4) {
+      wx.showToast({ title: "请输入至少4位订单号", icon: "none" });
       return;
     }
 
     this.setData({ submitting: true });
     try {
       await ensureLogin();
-
-      let screenshotUrl = "";
-      if (this.data.hasFiles && this.data.files[0]) {
-        const upload = await uploadFile("/api/uploads/claim-screenshot", this.data.files[0].tempFilePath);
-        screenshotUrl = upload.url || "";
-      }
-
-      await request("/api/orders/claim", {
+      const res = await request("/api/orders/bind", {
         method: "POST",
-        data: {
-          orderSuffix: this.data.orderSuffix,
-          notes: this.data.notes,
-          screenshotUrl
+        data: { orderNumber }
+      });
+      wx.showModal({
+        title: "绑定成功",
+        content: `「${res.order?.itemTitle || "订单"}」已绑定到您的账户，预计返利已入账。`,
+        showCancel: false,
+        confirmText: "查看订单",
+        success: () => {
+          wx.switchTab({ url: "/pages/profile/index" });
         }
       });
-      wx.showToast({ title: "已提交", icon: "success" });
-      setTimeout(() => {
-        wx.navigateBack({
-          fail() {
-            wx.switchTab({ url: "/pages/profile/index" });
-          }
-        });
-      }, 1200);
     } catch (error) {
-      wx.showToast({ title: error.error || "提交失败，请重试", icon: "none" });
+      wx.showToast({ title: error.error || "绑定失败，请检查订单号", icon: "none", duration: 3000 });
+    } finally {
       this.setData({ submitting: false });
     }
   }

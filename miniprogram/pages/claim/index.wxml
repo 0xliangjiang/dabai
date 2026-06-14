@@ -2,30 +2,24 @@
   <view class="hero hero-slim anim-up"></view>
 
   <view class="cu-card cu-form floating-stack anim-up delay-1">
+    <view class="margin-bottom-sm muted text-sm">输入淘宝或京东的订单号，系统自动匹配并绑定返利。</view>
     <view>
-      <view class="cu-label margin-bottom-sm">订单后几位</view>
-      <input class="cu-input" value="{{orderSuffix}}" placeholder="例如 1234" bindinput="onSuffixChange" />
+      <view class="cu-label margin-bottom-sm">订单号</view>
+      <input
+        class="cu-input"
+        value="{{orderNumber}}"
+        placeholder="请输入完整订单号或末4位"
+        type="number"
+        bindinput="onOrderNumberChange"
+      />
     </view>
-    <view>
-      <view class="cu-label margin-bottom-sm">补充说明</view>
-      <textarea class="cu-textarea" value="{{notes}}" placeholder="补充说明（选填）" maxlength="{{notesMax}}" auto-height bindinput="onNotesChange" />
-      <view class="char-count">{{notes.length}}/{{notesMax}}</view>
-    </view>
-    <view class="cu-upload pressable {{hasFiles ? 'has-file flex align-center gap' : 'flex-direction align-center justify-center gap-sm'}}" hover-class="pressed" bindtap="onAddFile">
-      <block wx:if="{{hasFiles}}">
-        <image class="upload-preview" src="{{previewUrl}}" mode="aspectFill" />
-        <view class="flex-sub">
-          <view class="cu-label">已选择 1 张截图</view>
-          <view class="muted text-sm margin-top-xs">点击可重新选择</view>
-        </view>
-      </block>
-      <block wx:else>
-        <view class="upload-plus">+</view>
-        <view class="muted text-sm">点击选择订单截图</view>
-      </block>
-    </view>
-    <button wx:if="{{hasFiles}}" class="cu-btn secondary block pressable" hover-class="pressed" bindtap="onRemoveFile">移除截图</button>
-    <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">{{submitting ? '提交中…' : '提交'}}</button>
+    <button
+      class="cu-btn primary block pressable"
+      hover-class="pressed"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+      bindtap="submit"
+    >{{submitting ? '绑定中…' : '立即绑定'}}</button>
   </view>
 
   <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />

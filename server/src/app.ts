@@ -9,6 +9,7 @@ import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
 import { createJdOrderClient, type JdOrderClient } from "./integrations/jd/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
+import { createTaobaoOrderClient, type TaobaoOrderClient } from "./integrations/taobao/orders.js";
 import { createRepositories } from "./repositories/memory.js";
 import { createPrismaRepositories } from "./repositories/prisma.js";
 import type { Repositories } from "./repositories/types.js";
@@ -35,6 +36,7 @@ declare module "fastify" {
       config: AppConfig;
       repositories: Repositories;
       orderClient: JdOrderClient;
+      taobaoOrderClient: TaobaoOrderClient;
     };
   }
 }
@@ -43,6 +45,7 @@ export type CreateAppOptions = {
   config?: AppConfig;
   repositories?: Repositories;
   orderClient?: JdOrderClient;
+  taobaoOrderClient?: TaobaoOrderClient;
   taobaoClient?: TaobaoClient;
   wechatAuthFetch?: typeof fetch;
 };
@@ -65,6 +68,11 @@ export async function createApp(options: CreateAppOptions = {}) {
   const repositories = options.repositories ?? createDefaultRepositories(config);
   const taobaoClient = options.taobaoClient ?? createTaobaoClient(config);
   const orderClient = options.orderClient ?? createJdOrderClient(config);
+  const taobaoOrderClient = options.taobaoOrderClient ?? createTaobaoOrderClient({
+    apiUrl: config.zhetaokeOrderApiUrl,
+    appKey: config.zhetaokeAppKey,
+    sid: config.zhetaokeSid
+  });
 
   // 小程序 wx.request 不带 Origin，不受 CORS 影响；白名单只为管理后台浏览器访问
   await app.register(cors, { origin: config.corsOrigins });
@@ -88,7 +96,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   });
 
   app.decorateRequest("userId", "");
-  app.decorate("deps", { config, repositories, orderClient });
+  app.decorate("deps", { config, repositories, orderClient, taobaoOrderClient });
 
   app.addHook("preHandler", async (request, reply) => {
     if (request.url === "/health" || request.url === "/api/auth/wechat-login") {
@@ -126,14 +134,14 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
-  await registerOrderRoutes(app, repositories);
+  await registerOrderRoutes(app, repositories, config.commissionSharingRatio);
   await registerUploadRoutes(app, uploadDir);
   await registerUserRoutes(app, repositories);
   await registerCheckInRoutes(app, repositories);
   await registerWithdrawalRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
   await registerSubscriptionRoutes(app, config, repositories);
-  await registerJobRoutes(app, config, repositories, orderClient);
+  await registerJobRoutes(app, config, repositories, orderClient, taobaoOrderClient);
   const dealNotifier = createDealPublishedNotifier(
     config,
     repositories,

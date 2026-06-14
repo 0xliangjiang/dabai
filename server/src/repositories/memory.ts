@@ -180,6 +180,18 @@ export function createRepositories(): Repositories {
           .filter((record) => record.status === "pending_review" || record.status === "unmatched")
           .map((record) => ({ ...record, order: orders.get(record.tbkOrderId)! }));
       },
+      async findByOrderNumber(orderNumber: string) {
+        const suffix = orderNumber.trim();
+        const order = [...orders.values()].find(
+          (o) => o.tbkOrderId === suffix || o.tbkOrderId.endsWith(suffix)
+        );
+        if (!order) return undefined;
+        const attributionId = attributionsByTbkOrderId.get(order.id);
+        return {
+          order,
+          attribution: attributionId ? (attributions.get(attributionId) ?? null) : null
+        };
+      },
       async attributeOrder(id: string, input: { userId?: string | null; reviewedBy?: string }) {
         const existing = attributions.get(id);
         if (!existing) {

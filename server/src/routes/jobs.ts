@@ -1,23 +1,33 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
-import { syncJdOrders } from "../domain/order-sync.js";
+import { syncJdOrders, syncTaobaoOrders } from "../domain/order-sync.js";
 import type { JdOrderClient } from "../integrations/jd/orders.js";
+import type { TaobaoOrderClient } from "../integrations/taobao/orders.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerJobRoutes(
   app: FastifyInstance,
   config: AppConfig,
   repositories: Repositories,
-  orderClient: JdOrderClient
+  orderClient: JdOrderClient,
+  taobaoOrderClient: TaobaoOrderClient
 ) {
   app.post("/api/jobs/sync-tbk-orders", async (request, reply) => {
     if (request.headers["x-scheduler-token"] !== config.schedulerToken) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
-    return syncJdOrders(repositories, orderClient, {
-      commissionSharingRatio: config.commissionSharingRatio,
-      attributionWindowHours: 24
-    });
+    const [taobao, jd] = await Promise.all([
+      syncTaobaoOrders(repositories, taobaoOrderClient, {
+        commissionSharingRatio: config.commissionSharingRatio,
+        attributionWindowHours: 24
+      }),
+      syncJdOrders(repositories, orderClient, {
+        commissionSharingRatio: config.commissionSharingRatio,
+        attributionWindowHours: 24
+      })
+    ]);
+
+    return { ok: true, taobao, jd };
   });
 }

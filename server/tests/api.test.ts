@@ -31,6 +31,7 @@ describe("server API", () => {
   jdUnionSiteId: "",
   jdUnionPositionId: "",
   jdUnionSceneId: "",
+  zhetaokeOrderApiUrl: "https://api.zhetaoke.com:10001/api/open_order.ashx",
 
 
   };
@@ -298,7 +299,7 @@ describe("server API", () => {
     });
 
     expect(sync.statusCode).toBe(200);
-    expect(sync.json()).toMatchObject({ ok: true, synced: 1, attributed: 1 });
+    expect(sync.json()).toMatchObject({ ok: true, jd: { synced: 1, attributed: 1 } });
 
     const orders = await app.inject({
       method: "GET",

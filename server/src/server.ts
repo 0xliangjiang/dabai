@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { loadConfig, validateProductionConfig } from "./config/env.js";
-import { syncJdOrders } from "./domain/order-sync.js";
+import { syncJdOrders, syncTaobaoOrders } from "./domain/order-sync.js";
 
 const config = loadConfig();
 validateProductionConfig(config);
@@ -22,12 +22,17 @@ if (syncEnabled) {
     if (syncing) return;
     syncing = true;
     try {
-      const result = await syncJdOrders(app.deps.repositories, app.deps.orderClient, {
-        startTime: new Date(Date.now() - syncIntervalMinutes * 2 * 60 * 1000),
+      const startTime = new Date(Date.now() - syncIntervalMinutes * 2 * 60 * 1000);
+      const syncOptions = {
+        startTime,
         commissionSharingRatio: config.commissionSharingRatio,
         attributionWindowHours: 24
-      });
-      app.log.info({ result }, "order sync completed");
+      };
+      const [taobao, jd] = await Promise.all([
+        syncTaobaoOrders(app.deps.repositories, app.deps.taobaoOrderClient, syncOptions),
+        syncJdOrders(app.deps.repositories, app.deps.orderClient, syncOptions)
+      ]);
+      app.log.info({ taobao, jd }, "order sync completed");
     } catch (error) {
       app.log.error({ err: error }, "order sync failed");
     } finally {
