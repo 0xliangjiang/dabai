@@ -442,35 +442,39 @@ export function App() {
                   <TableHead>订单号</TableHead>
                   <TableHead>商品</TableHead>
                   <TableHead>付款时间</TableHead>
-                  <TableHead>实付金额</TableHead>
-                  <TableHead>预估佣金</TableHead>
                   <TableHead>订单状态</TableHead>
+                  <TableHead className="text-right">实付金额</TableHead>
+                  <TableHead className="text-right">预估佣金</TableHead>
+                  <TableHead className="text-right">结算佣金</TableHead>
                   <TableHead>归因状态</TableHead>
                   <TableHead>归因用户</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.items.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="max-w-36 truncate font-mono text-xs text-slate-500">{order.tbkOrderId}</TableCell>
-                    <TableCell className="max-w-52 truncate font-medium">{order.itemTitle}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-slate-500">{new Date(order.payTime).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
-                    <TableCell>{formatMoney(order.payAmountCents)}</TableCell>
-                    <TableCell>{formatMoney(order.estimatedCommissionCents)}</TableCell>
-                    <TableCell>
-                      <Badge variant={order.orderStatus === "settled" ? "success" : order.orderStatus === "refunded" ? "danger" : "secondary"}>
-                        {order.orderStatus === "settled" ? "已结算" : order.orderStatus === "refunded" ? "已关闭" : "已付款"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={order.attribution?.status === "auto_matched" || order.attribution?.status === "manual_matched" ? "success" : order.attribution?.status === "pending_review" ? "warning" : "secondary"}>
-                        {order.attribution?.status === "auto_matched" ? "自动匹配" : order.attribution?.status === "manual_matched" ? "人工匹配" : order.attribution?.status === "pending_review" ? "待复核" : order.attribution?.status === "unmatched" ? "未匹配" : "无归因"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{order.attribution?.userNickname ?? "—"}</TableCell>
-                  </TableRow>
-                ))}
-                {orders.items.length === 0 ? <EmptyRow colSpan={8} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
+                {orders.items.map((order) => {
+                  const statusLabel = order.orderStatus === "settled" ? "已结算" : order.orderStatus === "refunded" ? "已关闭" : "已付款";
+                  const statusVariant = order.orderStatus === "settled" ? "success" : order.orderStatus === "refunded" ? "danger" : "secondary";
+                  const attrLabel = order.attribution?.status === "auto_matched" ? "自动匹配" : order.attribution?.status === "manual_matched" ? "人工匹配" : order.attribution?.status === "pending_review" ? "待复核" : order.attribution?.status === "unmatched" ? "未匹配" : "无归因";
+                  const attrVariant = (order.attribution?.status === "auto_matched" || order.attribution?.status === "manual_matched") ? "success" : order.attribution?.status === "pending_review" ? "warning" : "secondary";
+                  return (
+                    <TableRow key={order.id}>
+                      <TableCell className="max-w-40 truncate font-mono text-xs text-slate-400" title={order.tbkOrderId}>{order.tbkOrderId}</TableCell>
+                      <TableCell className="max-w-56 truncate font-medium" title={order.itemTitle}>{order.itemTitle}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                        {new Date(order.payTime).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </TableCell>
+                      <TableCell><Badge variant={statusVariant}>{statusLabel}</Badge></TableCell>
+                      <TableCell className="text-right tabular-nums">{formatMoney(order.payAmountCents)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-slate-500">{formatMoney(order.estimatedCommissionCents)}</TableCell>
+                      <TableCell className="text-right tabular-nums font-medium text-emerald-600">
+                        {order.settledCommissionCents != null ? formatMoney(order.settledCommissionCents) : "—"}
+                      </TableCell>
+                      <TableCell><Badge variant={attrVariant}>{attrLabel}</Badge></TableCell>
+                      <TableCell className="text-sm">{order.attribution?.userNickname ?? "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {orders.items.length === 0 ? <EmptyRow colSpan={9} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>
