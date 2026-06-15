@@ -199,6 +199,8 @@ export type Repositories = {
     updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
     updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }): Promise<UserRecord>;
     list(): Promise<AdminUserRecord[]>;
+    deleteUser(id: string): Promise<void>;
+    adjustPoints(id: string, input: { delta: number; reason: string }): Promise<void>;
   };
   conversions: {
     create(input: Omit<ConversionRecord, "id" | "createdAt">): Promise<ConversionRecord>;

@@ -66,6 +66,30 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           copyEventCount: user._count.copyEvents,
           claimCount: user._count.orderClaims
         }));
+      },
+      async deleteUser(id: string) {
+        await prisma.$transaction([
+          // 先把订单归因里的 userId 置空（保留订单记录）
+          prisma.orderAttribution.updateMany({ where: { userId: id }, data: { userId: null } }),
+          prisma.commissionLedger.deleteMany({ where: { userId: id } }),
+          prisma.withdrawal.deleteMany({ where: { userId: id } }),
+          prisma.checkIn.deleteMany({ where: { userId: id } }),
+          prisma.subscribeGrant.deleteMany({ where: { userId: id } }),
+          prisma.orderClaim.deleteMany({ where: { userId: id } }),
+          prisma.copyEvent.deleteMany({ where: { userId: id } }),
+          prisma.conversion.deleteMany({ where: { userId: id } }),
+          prisma.user.delete({ where: { id } })
+        ]);
+      },
+      async adjustPoints(id: string, input: { delta: number; reason: string }) {
+        // 用 CheckIn 表写一条特殊调整记录，余额计算已包含此表的 points 求和
+        await prisma.checkIn.create({
+          data: {
+            userId: id,
+            checkInDate: `admin_adj_${Date.now()}`,
+            points: input.delta
+          }
+        });
       }
     },
     conversions: {

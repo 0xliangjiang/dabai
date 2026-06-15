@@ -90,6 +90,12 @@ export function createRepositories(): Repositories {
           copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
           claimCount: [...claims.values()].filter((record) => record.userId === user.id).length
         }));
+      },
+      async deleteUser(id: string) {
+        users.delete(id);
+      },
+      async adjustPoints(_id: string, _input: { delta: number; reason: string }) {
+        // no-op in memory store
       }
     },
     conversions: {

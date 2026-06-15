@@ -67,6 +67,26 @@ export async function registerAdminRoutes(
     }
   );
 
+  app.delete<{ Params: { id: string } }>("/api/admin/users/:id", async (request, reply) => {
+    await repositories.users.deleteUser(request.params.id);
+    return reply.code(200).send({ ok: true });
+  });
+
+  app.post<{ Params: { id: string }; Body: { delta?: number; reason?: string } }>(
+    "/api/admin/users/:id/adjust-points",
+    async (request, reply) => {
+      const { delta, reason } = request.body ?? {};
+      if (!delta || !Number.isInteger(delta)) {
+        return reply.code(400).send({ error: "delta 必须为整数" });
+      }
+      await repositories.users.adjustPoints(request.params.id, {
+        delta,
+        reason: reason ?? "admin_manual"
+      });
+      return { ok: true };
+    }
+  );
+
   app.post<{ Params: { id: string }; Body: { status?: string } }>(
     "/api/admin/users/:id/status",
     async (request, reply) => {

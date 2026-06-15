@@ -89,6 +89,8 @@ export function App() {
   const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [pointsModal, setPointsModal] = useState<{ userId: string; nickname: string } | null>(null);
+  const [pointsDelta, setPointsDelta] = useState("");
 
   const configItems = useMemo(
     () => [
@@ -198,6 +200,26 @@ export function App() {
     });
     toast(status === "paid" ? "已标记为已打款" : "已驳回提现申请");
     await loadData(adminToken, { silent: true });
+  }
+
+  async function deleteUser(id: string, nickname: string) {
+    if (!window.confirm(`确定删除用户「${nickname}」的所有数据？此操作不可恢复。`)) return;
+    await fetchAdminApi(`/api/admin/users/${id}`, adminToken, { method: "DELETE" });
+    toast("用户数据已删除");
+    await loadData(adminToken, { silent: true });
+  }
+
+  async function submitAdjustPoints() {
+    if (!pointsModal) return;
+    const delta = parseInt(pointsDelta, 10);
+    if (!delta || isNaN(delta)) { toast("请输入有效的积分数量", "error"); return; }
+    await fetchAdminApi(`/api/admin/users/${pointsModal.userId}/adjust-points`, adminToken, {
+      method: "POST",
+      body: JSON.stringify({ delta, reason: "admin_manual" })
+    });
+    toast(`已为「${pointsModal.nickname}」${delta > 0 ? "增加" : "扣除"} ${Math.abs(delta)} 积分`);
+    setPointsModal(null);
+    setPointsDelta("");
   }
 
   async function syncOrders() {
@@ -400,15 +422,17 @@ export function App() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {user.status === "banned" ? (
-                        <Button size="sm" variant="outline" onClick={() => void setUserStatus(user.id, "active")}>
-                          解封
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { setPointsModal({ userId: user.id, nickname: user.nickname ?? user.id }); setPointsDelta(""); }}>
+                          调积分
                         </Button>
-                      ) : (
-                        <Button size="sm" variant="danger" onClick={() => void setUserStatus(user.id, "banned")}>
-                          封禁
-                        </Button>
-                      )}
+                        {user.status === "banned" ? (
+                          <Button size="sm" variant="outline" onClick={() => void setUserStatus(user.id, "active")}>解封</Button>
+                        ) : (
+                          <Button size="sm" variant="danger" onClick={() => void setUserStatus(user.id, "banned")}>封禁</Button>
+                        )}
+                        <Button size="sm" variant="danger" onClick={() => void deleteUser(user.id, user.nickname ?? user.id)}>删除</Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -639,6 +663,28 @@ export function App() {
           </SectionCard>
         </section>
       </div>
+
+      {pointsModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPointsModal(null)}>
+          <div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold">调整积分</h3>
+            <p className="mt-1 text-sm text-slate-500">用户：{pointsModal.nickname}</p>
+            <input
+              autoFocus
+              className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+              placeholder="积分数量，负数为扣除（如 -500）"
+              type="number"
+              value={pointsDelta}
+              onChange={(e) => setPointsDelta(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void submitAdjustPoints(); }}
+            />
+            <div className="mt-4 flex gap-2">
+              <Button className="flex-1" onClick={() => void submitAdjustPoints()}>确认</Button>
+              <Button className="flex-1" variant="outline" onClick={() => setPointsModal(null)}>取消</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
