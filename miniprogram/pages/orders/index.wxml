@@ -4,12 +4,12 @@
   <view class="content-stack floating-stack">
     <view class="cu-card glass-card grid-2 anim-up delay-1">
       <view class="metric">
-        <view class="muted text-sm">订单数量</view>
-        <view class="metric-value">{{loading ? '—' : orders.length}}</view>
+        <view class="muted text-sm">已到账积分</view>
+        <view class="metric-value">{{loading ? '—' : settledPoints}}</view>
       </view>
       <view class="metric">
-        <view class="muted text-sm">结算状态</view>
-        <view class="metric-value">{{loading ? '—' : (orders.length ? '预估' : '暂无')}}</view>
+        <view class="muted text-sm">预估待结算</view>
+        <view class="metric-value">{{loading ? '—' : pendingPoints}}</view>
       </view>
     </view>
 
@@ -31,13 +31,24 @@
       <view wx:for="{{orders}}" wx:key="id" class="cu-card product-card flex-direction gap anim-up delay-{{index < 4 ? index + 1 : 4}}">
         <view class="flex align-start justify-between gap-sm">
           <view class="section-title flex-sub text-cut-2">{{item.itemTitle}}</view>
-          <view class="cu-tag orange">{{item.status}}</view>
+          <view class="cu-tag {{item.statusClass}}">{{item.statusLabel}}</view>
+        </view>
+        <view class="order-meta">
+          <view class="order-meta-row">
+            <view class="order-meta-label">下单时间</view>
+            <view class="order-meta-value">{{item.payTimeText || '—'}}</view>
+          </view>
+          <view class="order-meta-row">
+            <view class="order-meta-label">实付金额</view>
+            <view class="order-meta-value">¥{{item.payAmountText}}</view>
+          </view>
         </view>
         <view class="soft-panel flex align-center justify-between">
-          <view>
-            <view class="muted text-sm">预估积分</view>
+          <view class="muted text-sm">我的积分</view>
+          <view class="flex align-center">
+            <view class="price">{{item.points}}<text class="points-unit"> 积分</text></view>
+            <text class="points-state {{item.settled ? 'settled' : 'pending'}}">{{item.settled ? '已到账' : '预估'}}</text>
           </view>
-          <view class="price">{{item.estimatedPoints}}<text class="points-unit"> 积分</text></view>
         </view>
       </view>
     </block>

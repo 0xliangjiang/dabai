@@ -153,7 +153,10 @@ export function createRepositories(): Repositories {
               id: order.id,
               itemTitle: order.itemTitle,
               status: order.orderStatus,
+              payTime: order.payTime,
+              payAmountCents: order.payAmountCents,
               estimatedCommissionCents: order.estimatedCommissionCents,
+              settledCommissionCents: order.settledCommissionCents,
               userRebateCents: userLedger
             };
           });

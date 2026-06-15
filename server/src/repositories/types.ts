@@ -144,7 +144,10 @@ export type OrderSummary = {
   id: string;
   itemTitle: string;
   status: string;
+  payTime: Date;
+  payAmountCents: number;
   estimatedCommissionCents: number;
+  settledCommissionCents: number | null;
   userRebateCents: number;
 };
 

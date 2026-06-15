@@ -396,6 +396,53 @@ page {
   background: #1d3329;
 }
 
+.cu-tag.gray {
+  color: #8a9690;
+  background: #eef2f0;
+}
+
+/* ---- 订单卡片元信息 ---- */
+
+.order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 16rpx 0;
+  border-top: 1rpx solid rgba(10, 60, 42, 0.07);
+  border-bottom: 1rpx solid rgba(10, 60, 42, 0.07);
+}
+
+.order-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.order-meta-label {
+  color: #6b7f74;
+  font-size: 24rpx;
+}
+
+.order-meta-value {
+  color: #25372d;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.points-state {
+  font-size: 22rpx;
+  font-weight: 700;
+  margin-left: 8rpx;
+}
+
+.points-state.settled {
+  color: #07684a;
+}
+
+.points-state.pending {
+  color: #8a6420;
+}
+
 /* ---- 输入区操作钮 ---- */
 
 .paste-chip {

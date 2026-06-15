@@ -166,7 +166,10 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             id: record.tbkOrder.id,
             itemTitle: record.tbkOrder.itemTitle,
             status: record.tbkOrder.orderStatus,
+            payTime: record.tbkOrder.payTime,
+            payAmountCents: record.tbkOrder.payAmountCents,
             estimatedCommissionCents: record.tbkOrder.estimatedCommissionCents,
+            settledCommissionCents: record.tbkOrder.settledCommissionCents,
             userRebateCents: userRebateCents ?? 0
           };
         });
