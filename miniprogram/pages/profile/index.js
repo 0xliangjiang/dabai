@@ -40,9 +40,6 @@ Page({
     balanceText: "0.00",
     showWithdrawForm: false,
     withdrawAmount: "",
-    withdrawPayType: "wechat",
-    withdrawAccount: "",
-    withdrawNotes: "",
     submittingWithdraw: false
   },
 
@@ -216,10 +213,7 @@ Page({
     this.setTabBarHidden(true);
     this.setData({
       showWithdrawForm: true,
-      withdrawAmount: "",
-      withdrawPayType: "wechat",
-      withdrawAccount: "",
-      withdrawNotes: ""
+      withdrawAmount: ""
     });
   },
 
@@ -240,32 +234,15 @@ Page({
     this.setData({ withdrawAmount: e.detail.value });
   },
 
-  onWithdrawAccountInput(e) {
-    this.setData({ withdrawAccount: e.detail.value });
-  },
-
-  onWithdrawNotesInput(e) {
-    this.setData({ withdrawNotes: e.detail.value });
-  },
-
-  selectPayType(e) {
-    this.setData({ withdrawPayType: e.currentTarget.dataset.type });
-  },
-
   async submitWithdraw() {
     if (this.data.submittingWithdraw) return;
-    const amountYuan = parseFloat(this.data.withdrawAmount);
-    if (!amountYuan || amountYuan < 10) {
-      wx.showToast({ title: "最低兑换金额为 ¥10", icon: "none" });
+    const points = parseInt(this.data.withdrawAmount, 10);
+    if (!points || points < 1000) {
+      wx.showToast({ title: "最低兑换 1000 积分", icon: "none" });
       return;
     }
-    const amountCents = Math.floor(amountYuan * 100);
-    if (amountCents > this.data.availableBalance) {
-      wx.showToast({ title: "超出可兑换余额", icon: "none" });
-      return;
-    }
-    if (!this.data.withdrawAccount.trim()) {
-      wx.showToast({ title: "请填写收款账号", icon: "none" });
+    if (points > this.data.availableBalance) {
+      wx.showToast({ title: "超出可兑换积分", icon: "none" });
       return;
     }
 
@@ -274,16 +251,10 @@ Page({
       await ensureLogin();
       await request("/api/withdrawals", {
         method: "POST",
-        data: {
-          amountCents,
-          payAccount: this.data.withdrawAccount.trim(),
-          payType: this.data.withdrawPayType,
-          notes: this.data.withdrawNotes.trim() || undefined
-        }
+        data: { amountCents: points }
       });
       this.closeWithdrawForm();
       this.syncUserFromServer();
-      // 跳转记录页，让用户立刻看到申请状态
       wx.navigateTo({ url: "/pages/withdrawals/index" });
       wx.showToast({ title: "兑换申请已提交", icon: "success" });
     } catch (error) {

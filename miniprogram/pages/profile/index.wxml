@@ -53,22 +53,10 @@
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
         <view class="modal-title">积分兑换申请</view>
-        <view class="form-tip muted text-sm">积分余额 {{availablePoints}}（约 ¥{{balanceText}}）· 100 积分 = 1 元 · 最低兑换 ¥10 · 3 个工作日内到账</view>
+        <view class="form-tip muted text-sm">当前积分 {{availablePoints}} · 100 积分 = 1 元 · 最低兑换 1000 积分</view>
 
-        <view class="cu-label margin-top">兑换金额（元）</view>
-        <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
-
-        <view class="cu-label margin-top">收款方式</view>
-        <view class="pay-type-row flex gap-sm">
-          <view class="pay-type-option pressable {{withdrawPayType === 'wechat' ? 'selected' : ''}}" hover-class="pressed" data-type="wechat" bindtap="selectPayType">微信</view>
-          <view class="pay-type-option pressable {{withdrawPayType === 'alipay' ? 'selected' : ''}}" hover-class="pressed" data-type="alipay" bindtap="selectPayType">支付宝</view>
-        </view>
-
-        <view class="cu-label margin-top">收款账号</view>
-        <input class="cu-input" type="text" placeholder="{{withdrawPayType === 'wechat' ? '微信号或手机号' : '支付宝账号或手机号'}}" value="{{withdrawAccount}}" bindinput="onWithdrawAccountInput" />
-
-        <view class="cu-label margin-top">备注（可选）</view>
-        <input class="cu-input" type="text" placeholder="如有特殊说明可填写" value="{{withdrawNotes}}" bindinput="onWithdrawNotesInput" />
+        <view class="cu-label margin-top">兑换积分</view>
+        <input class="cu-input" type="number" placeholder="请输入积分数量，最低 1000" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
 
         <view class="flex gap-sm margin-top">
           <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="closeWithdrawForm">取消</button>

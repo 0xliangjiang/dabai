@@ -12,32 +12,26 @@ export async function registerWithdrawalRoutes(app: FastifyInstance, repositorie
     return { withdrawals, availableBalance };
   });
 
-  app.post<{ Body: { amountCents?: number; payAccount?: string; payType?: string; notes?: string } }>(
+  app.post<{ Body: { amountCents?: number } }>(
     "/api/withdrawals",
     async (request, reply) => {
-      const { amountCents, payAccount, payType, notes } = request.body ?? {};
+      const { amountCents } = request.body ?? {};
 
       if (!amountCents || amountCents < MIN_WITHDRAWAL_CENTS) {
-        return reply.code(400).send({ error: `最低提现金额为 ¥${MIN_WITHDRAWAL_CENTS / 100}` });
-      }
-      if (!payAccount?.trim()) {
-        return reply.code(400).send({ error: "请填写收款账号" });
-      }
-      if (payType !== "wechat" && payType !== "alipay") {
-        return reply.code(400).send({ error: "收款方式无效" });
+        return reply.code(400).send({ error: `最低兑换 ${MIN_WITHDRAWAL_CENTS} 积分` });
       }
 
       const available = await repositories.withdrawals.getAvailableBalance(request.userId);
       if (amountCents > available) {
-        return reply.code(400).send({ error: "可提现余额不足" });
+        return reply.code(400).send({ error: "可兑换积分不足" });
       }
 
       const withdrawal = await repositories.withdrawals.create({
         userId: request.userId,
         amountCents,
-        payAccount: payAccount.trim(),
-        payType,
-        notes: notes?.trim() || null
+        payAccount: "",
+        payType: "redpacket",
+        notes: null
       });
 
       return { withdrawal };

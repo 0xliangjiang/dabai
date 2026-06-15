@@ -19,7 +19,7 @@
 
     <view class="cu-card article-card">
       <view class="section-title">积分兑换</view>
-      <view class="article-text">积分按 100 积分 = 1 元折算，累计满 1000 积分（¥10）即可在「我的」页面申请兑换，填写支付宝或微信收款账号后，运营方将在 3 个工作日内人工完成转账。</view>
+      <view class="article-text">积分按 100 积分 = 1 元折算，累计满 1000 积分即可在「我的」页面申请兑换，提交后运营方将在 3 个工作日内安排发放。</view>
     </view>
   </view>
 </view>

@@ -24,7 +24,7 @@
 
     <view class="cu-card article-card">
       <view class="section-title">兑换规则</view>
-      <view class="article-text">「可兑换余额」由已结算的推广佣金与活动积分（100 积分 = 1 元）共同构成，最低兑换金额为 ¥10（即 1000 积分）。用户提交申请后，运营团队将在 3 个工作日内完成核实，以人工方式通过微信或支付宝完成转账。如遇节假日顺延。平台有权对违规行为取消兑换资格。</view>
+      <view class="article-text">「可兑换余额」由已结算的推广佣金与活动积分（100 积分 = 1 元）共同构成，最低兑换 1000 积分。用户提交申请后，运营团队将在 3 个工作日内完成核实并安排发放。如遇节假日顺延。平台有权对违规行为取消兑换资格。</view>
     </view>
 
     <view class="cu-card article-card">
