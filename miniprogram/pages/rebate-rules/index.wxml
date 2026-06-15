@@ -4,7 +4,7 @@
   <view class="content-stack floating-stack">
     <view class="anim-up delay-1 cu-card article-card">
       <view class="section-title">服务用途</view>
-      <view class="article-text">良匠省钱助手用于识别用户粘贴的商品内容，查询可参考的优惠信息，并生成对应的打开内容，方便用户前往对应平台查看商品。</view>
+      <view class="article-text">捷径一生工具箱用于识别用户粘贴的商品内容，查询可参考的优惠信息，并生成对应的打开内容，方便用户前往对应平台查看商品。</view>
     </view>
 
     <view class="cu-card article-card">

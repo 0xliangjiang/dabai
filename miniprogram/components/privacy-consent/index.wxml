@@ -1,7 +1,7 @@
 <view wx:if="{{show}}" class="privacy-mask" catchtouchmove="noop">
   <view class="privacy-card">
     <view class="privacy-title">隐私保护提示</view>
-    <view class="privacy-text">欢迎使用良匠省钱助手。在使用前，请阅读并同意<text class="privacy-link" bindtap="openPrivacy">《隐私政策》</text>和<text class="privacy-link" bindtap="openAgreement">《用户协议》</text>。</view>
+    <view class="privacy-text">欢迎使用捷径一生工具箱。在使用前，请阅读并同意<text class="privacy-link" bindtap="openPrivacy">《隐私政策》</text>和<text class="privacy-link" bindtap="openAgreement">《用户协议》</text>。</view>
     <view class="privacy-text">为了向你提供优惠查询服务：</view>
     <view class="privacy-text">· 你点击粘贴或进入页面时，我们会读取剪贴板内容用于识别商品；</view>
     <view class="privacy-text">· 使用微信登录仅用于关联你的订单与优惠记录。</view>

@@ -108,7 +108,7 @@
         class="cu-item contact-item flex align-center justify-between" hover-class="item-pressed"
         open-type="contact"
         show-message-card="true"
-        send-message-title="良匠省钱助手客服"
+        send-message-title="捷径一生工具箱客服"
         send-message-path="/pages/home/index"
       >
 <view class="cu-label">客服入口</view>
