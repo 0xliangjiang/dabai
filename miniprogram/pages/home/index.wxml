@@ -1,5 +1,8 @@
 <view class="cu-page page-shell">
-  <view class="hero hero-slim anim-up"></view>
+  <view class="hero hero-slim anim-up">
+    <view class="hero-title">捷径一生工具箱</view>
+    <view class="hero-subtitle">粘贴商品口令 · 秒查隐藏优惠 · 下单返积分</view>
+  </view>
 
   <view class="content-stack floating-stack">
     <view class="cu-card glass-card anim-up delay-1">

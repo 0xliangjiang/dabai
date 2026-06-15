@@ -200,10 +200,29 @@ Page({
     this.copiedTimer = setTimeout(() => {
       this.setData({ copied: "" });
     }, 1500);
+    this.showOpenAppGuide(copyType);
     await request(`/api/conversions/${this.data.result.id}/copy`, {
       method: "POST",
       data: { copyType }
     }).catch(() => {});
+  },
+
+  // 复制成功后引导用户去对应平台下单，每个结果只弹一次，避免打扰
+  showOpenAppGuide(copyType) {
+    const result = this.data.result;
+    if (!result || this.guidedResultId === result.id) return;
+    this.guidedResultId = result.id;
+
+    const app = this.platformLabel(result.platform);
+    const content = copyType === "password"
+      ? `打开「${app}」App，会自动弹出该商品，确认下单即可返积分到账。`
+      : `打开「${app}」App 或浏览器，粘贴刚复制的链接即可打开商品，下单后返积分。`;
+    wx.showModal({
+      title: `已复制，去${app}下单`,
+      content,
+      showCancel: false,
+      confirmText: "知道了"
+    });
   },
 
   onUnload() {
