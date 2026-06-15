@@ -13,6 +13,7 @@ services:
       # 容器内固定监听 3001（覆盖 env 文件里的 PORT），对外端口只由上面的 ports 映射决定
       - PORT=3001
       - UPLOAD_DIR=/app/server/uploads
+      - CORS_ORIGINS=http://43.134.117.111:3666,https://dabai.discordbot.cn:3666,https://dabai.discordbot.cn
     volumes:
       - ./deploy-data/uploads:/app/server/uploads
 
