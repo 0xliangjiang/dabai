@@ -134,7 +134,7 @@ export async function fetchAdminApi<T>(path: string, adminToken: string, init: R
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
-      "content-type": "application/json",
+      ...(init.body != null ? { "content-type": "application/json" } : {}),
       "x-admin-token": adminToken,
       ...init.headers
     }
