@@ -86,14 +86,14 @@ export async function syncTaobaoOrders(
   options: SyncOrdersOptions
 ) {
   const endTime = options.endTime ?? new Date();
-  const startTime = options.startTime ?? new Date(endTime.getTime() - 30 * 60 * 1000);
+  const startTime = options.startTime ?? new Date(endTime.getTime() - 2 * 60 * 60 * 1000);
   const pageSize = options.pageSize ?? 100;
-  let pageIndex = 1;
+  let positionIndex: string | undefined;
   let synced = 0;
   let attributed = 0;
 
   while (true) {
-    const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, pageIndex, pageSize });
+    const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, positionIndex, pageSize });
     for (const incoming of page.orders) {
       const order = await repositories.orders.upsert(incoming);
       const copyEvents = await repositories.copyEvents.listByItem(order.itemId);
@@ -130,7 +130,7 @@ export async function syncTaobaoOrders(
     }
 
     if (!page.hasNext || page.orders.length === 0) break;
-    pageIndex += 1;
+    positionIndex = page.positionIndex;
   }
 
   return { ok: true, synced, attributed, startTime, endTime };

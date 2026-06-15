@@ -55,7 +55,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     zhetaokeJdUnionId: env.ZTK_JD_UNION_ID ?? "",
     zhetaokeJdPositionId: env.ZTK_JD_POSITION_ID ?? "",
     zhetaokeOrderApiUrl:
-      env.ZTK_ORDER_API_URL ?? "https://api.zhetaoke.com:10001/api/open_order.ashx",
+      env.ZTK_ORDER_API_URL ?? "http://api.zhetaoke.cn:10000/api/open_dingdanchaxun2.ashx",
     jdUnionAppKey: env.JD_UNION_APP_KEY ?? "",
     jdUnionAppSecret: env.JD_UNION_APP_SECRET ?? "",
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
