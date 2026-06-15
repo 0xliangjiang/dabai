@@ -20,8 +20,25 @@ export async function registerUploadRoutes(app: FastifyInstance, uploadDir: stri
     handleMediaUpload(request, reply, uploadDir, IMAGE_MIME_EXTENSIONS, "仅支持 JPG、PNG、WebP 图片")
   );
   app.post("/api/uploads/avatar", (request, reply) =>
-    handleMediaUpload(request, reply, uploadDir, IMAGE_MIME_EXTENSIONS, "仅支持 JPG、PNG、WebP 图片")
+    handleAvatarUpload(request, reply, uploadDir)
   );
+}
+
+async function handleAvatarUpload(request: FastifyRequest, reply: FastifyReply, uploadDir: string) {
+  const file = await request.file({ limits: { fileSize: 5 * 1024 * 1024 } });
+  if (!file) return reply.code(400).send({ error: "缺少文件" });
+
+  // 微信头像可能报任意 image/* 类型或空类型，统一存为 jpg
+  const isImage = !file.mimetype || file.mimetype.startsWith("image/") || file.mimetype === "application/octet-stream";
+  if (!isImage) return reply.code(400).send({ error: "仅支持图片文件" });
+
+  const ext = IMAGE_MIME_EXTENSIONS[file.mimetype] ?? "jpg";
+  const filename = `${randomUUID()}.${ext}`;
+  await pipeline(file.file, createWriteStream(path.join(uploadDir, filename)));
+
+  if (file.file.truncated) return reply.code(400).send({ error: "文件超出大小限制" });
+
+  return { url: `/uploads/${filename}` };
 }
 
 export async function handleMediaUpload(
