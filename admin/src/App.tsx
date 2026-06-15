@@ -7,6 +7,7 @@ import {
   LogOut,
   Megaphone,
   RefreshCw,
+  RotateCcw,
   Settings,
   ShieldQuestion,
   Users,
@@ -78,6 +79,7 @@ export function App() {
   const [authed, setAuthed] = useState(false);
   const [data, setData] = useState<AdminData>(emptyData);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [activeNav, setActiveNav] = useState("overview");
 
   const configItems = useMemo(
@@ -169,6 +171,24 @@ export function App() {
     });
     toast(status === "paid" ? "已标记为已打款" : "已驳回提现申请");
     await loadData(adminToken, { silent: true });
+  }
+
+  async function syncOrders() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const result = await fetchAdminApi<{ ok: boolean; taobao: { synced: number; attributed: number }; jd: { synced: number; attributed: number } }>(
+        "/api/jobs/sync-tbk-orders",
+        adminToken,
+        { method: "POST" }
+      );
+      toast(`同步完成：淘宝 ${result.taobao.synced} 单，京东 ${result.jd.synced} 单`);
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("同步失败，请稍后重试", "error");
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function reviewClaim(id: string, status: "approved" | "rejected") {
@@ -285,10 +305,16 @@ export function App() {
               <h1 className="text-xl font-semibold">运营控制台</h1>
               <p className="mt-1 text-sm text-slate-500">用户、线报、订单与配置</p>
             </div>
-            <Button disabled={loading} variant="outline" onClick={() => void loadData()}>
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              刷新
-            </Button>
+            <div className="flex gap-2">
+              <Button disabled={syncing} variant="outline" onClick={() => void syncOrders()}>
+                <RotateCcw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "同步中…" : "同步订单"}
+              </Button>
+              <Button disabled={loading} variant="outline" onClick={() => void loadData()}>
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                刷新
+              </Button>
+            </div>
           </header>
 
           <section id="overview" className="mt-6 grid grid-cols-5 gap-3">

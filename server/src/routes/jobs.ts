@@ -13,7 +13,9 @@ export async function registerJobRoutes(
   taobaoOrderClient: TaobaoOrderClient
 ) {
   app.post("/api/jobs/sync-tbk-orders", async (request, reply) => {
-    if (request.headers["x-scheduler-token"] !== config.schedulerToken) {
+    const schedulerOk = request.headers["x-scheduler-token"] === config.schedulerToken;
+    const adminOk = request.headers["x-admin-token"] === config.adminToken;
+    if (!schedulerOk && !adminOk) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
