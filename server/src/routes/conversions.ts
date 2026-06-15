@@ -21,12 +21,14 @@ export async function registerConversionRoutes(
         { commissionSharingRatio }
       );
     } catch (error) {
-      if (
-        error instanceof ConversionValidationError ||
-        error instanceof UnsupportedPlatformError ||
-        error instanceof ConversionApiError
-      ) {
+      if (error instanceof ConversionValidationError) {
         return reply.code(400).send({ error: error.message });
+      }
+      if (error instanceof UnsupportedPlatformError || error instanceof ConversionApiError) {
+        const msg = error.message.includes("暂未开通")
+          ? error.message
+          : "该商品暂时无优惠券，您可以直接前往平台购买";
+        return reply.code(400).send({ error: msg });
       }
       throw error;
     }
