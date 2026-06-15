@@ -19,7 +19,7 @@
 
     <view class="cu-card article-card">
       <view class="section-title">收款账号信息</view>
-      <view class="article-text">当用户申请佣金提现时，需填写收款账号（微信号或支付宝账号）及收款方式。该信息仅用于人工核实身份并完成打款操作，不会用于其他用途，也不会与任何第三方共享。</view>
+      <view class="article-text">当用户申请积分兑换时，需填写收款账号（微信号或支付宝账号）及收款方式。该信息仅用于人工核实身份并完成转账操作，不会用于其他用途，也不会与任何第三方共享。</view>
     </view>
 
     <view class="cu-card article-card">

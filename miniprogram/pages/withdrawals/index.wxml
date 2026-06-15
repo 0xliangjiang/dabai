@@ -3,15 +3,15 @@
 
   <view class="content-stack floating-stack">
     <view class="cu-card flex align-center justify-between anim-up delay-1" style="padding: 28rpx 32rpx;">
-      <view class="muted text-sm">当前可提现余额</view>
+      <view class="muted text-sm">当前可兑换余额</view>
       <view class="balance-inline">¥{{balanceText}}</view>
     </view>
 
     <view wx:if="{{loading}}" class="cu-card empty-card anim-up">加载中…</view>
 
     <view wx:elif="{{showEmpty}}" class="cu-card empty-card anim-up">
-      <view class="empty-title">暂无提现记录</view>
-      <view class="muted text-sm margin-top-xs">在「我的」页面点击「积分提现」即可发起申请</view>
+      <view class="empty-title">暂无兑换记录</view>
+      <view class="muted text-sm margin-top-xs">在「我的」页面点击「积分兑换」即可发起申请</view>
     </view>
 
     <view wx:else class="cu-card anim-up delay-2">
@@ -28,6 +28,6 @@
       </view>
     </view>
 
-    <view class="hint-bar anim-up delay-3">提现申请提交后 3 个工作日内审核打款，节假日顺延；如有疑问可通过「我的 → 客服入口」联系我们。</view>
+    <view class="hint-bar anim-up delay-3">兑换申请提交后 3 个工作日内审核到账，节假日顺延；如有疑问可通过「我的 → 客服入口」联系我们。</view>
   </view>
 </view>

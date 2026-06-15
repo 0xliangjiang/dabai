@@ -256,12 +256,12 @@ Page({
     if (this.data.submittingWithdraw) return;
     const amountYuan = parseFloat(this.data.withdrawAmount);
     if (!amountYuan || amountYuan < 10) {
-      wx.showToast({ title: "最低提现金额为 ¥10", icon: "none" });
+      wx.showToast({ title: "最低兑换金额为 ¥10", icon: "none" });
       return;
     }
     const amountCents = Math.floor(amountYuan * 100);
     if (amountCents > this.data.availableBalance) {
-      wx.showToast({ title: "超出可提现余额", icon: "none" });
+      wx.showToast({ title: "超出可兑换余额", icon: "none" });
       return;
     }
     if (!this.data.withdrawAccount.trim()) {
@@ -285,7 +285,7 @@ Page({
       this.syncUserFromServer();
       // 跳转记录页，让用户立刻看到申请状态
       wx.navigateTo({ url: "/pages/withdrawals/index" });
-      wx.showToast({ title: "提现申请已提交", icon: "success" });
+      wx.showToast({ title: "兑换申请已提交", icon: "success" });
     } catch (error) {
       wx.showToast({ title: error.error || "提交失败，请重试", icon: "none" });
     } finally {

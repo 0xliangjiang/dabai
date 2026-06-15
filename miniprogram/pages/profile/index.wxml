@@ -42,20 +42,20 @@
         <view class="points-value">{{isLoggedIn ? availablePoints : '—'}}</view>
         <view class="points-yuan">≈ ¥{{isLoggedIn ? balanceText : '—'}}</view>
       </view>
-      <view class="points-sub">100 积分 = 1 元，满 1000 积分可提现</view>
+      <view class="points-sub">100 积分 = 1 元，满 1000 积分可兑换</view>
       <view class="points-actions flex gap-sm">
         <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
-        <view class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">积分提现</view>
+        <view class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">积分兑换</view>
       </view>
     </view>
 
-    <!-- 提现申请弹窗 -->
+    <!-- 兑换申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
-        <view class="modal-title">积分提现申请</view>
-        <view class="form-tip muted text-sm">积分余额 {{availablePoints}}（约 ¥{{balanceText}}）· 100 积分 = 1 元 · 最低提现 ¥10 · 3 个工作日内到账</view>
+        <view class="modal-title">积分兑换申请</view>
+        <view class="form-tip muted text-sm">积分余额 {{availablePoints}}（约 ¥{{balanceText}}）· 100 积分 = 1 元 · 最低兑换 ¥10 · 3 个工作日内到账</view>
 
-        <view class="cu-label margin-top">提现金额（元）</view>
+        <view class="cu-label margin-top">兑换金额（元）</view>
         <input class="cu-input" type="digit" placeholder="请输入金额，最低 10 元" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
 
         <view class="cu-label margin-top">收款方式</view>
@@ -79,7 +79,7 @@
 
     <view class="cu-list anim-up delay-3">
       <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/withdrawals/index">
-<view class="cu-label">提现记录</view>
+<view class="cu-label">兑换记录</view>
         <view class="cu-arrow">›</view>
       </navigator>
       <navigator class="cu-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/claim/index">
