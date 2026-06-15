@@ -213,6 +213,42 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           order: mapOrder(record.tbkOrder)
         }));
       },
+      async listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
+        const skip = (page - 1) * pageSize;
+
+        const where = {
+          ...(options?.orderStatus ? { orderStatus: options.orderStatus } : {}),
+          ...(options?.attributionStatus
+            ? { attribution: { status: options.attributionStatus } }
+            : {})
+        };
+
+        const [total, records] = await Promise.all([
+          prisma.tbkOrder.count({ where }),
+          prisma.tbkOrder.findMany({
+            where,
+            orderBy: { payTime: "desc" },
+            skip,
+            take: pageSize,
+            include: { attribution: { include: { user: { select: { nickname: true } } } } }
+          })
+        ]);
+
+        return {
+          total,
+          items: records.map((r) => ({
+            ...mapOrder(r),
+            attribution: r.attribution
+              ? {
+                  ...mapAttribution(r.attribution),
+                  userNickname: r.attribution.user?.nickname ?? null
+                }
+              : null
+          }))
+        };
+      },
       async findByOrderNumber(orderNumber: string) {
         const suffix = orderNumber.trim();
         // tbkOrderId 精确匹配或后缀匹配；京东原始订单号走 rawPayload 单独查一次

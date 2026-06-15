@@ -39,6 +39,18 @@ export async function registerAdminRoutes(
     }
   }));
 
+  app.get<{ Querystring: { page?: string; pageSize?: string; orderStatus?: string; attributionStatus?: string } }>(
+    "/api/admin/orders",
+    async (request) => {
+      return repositories.orders.listAllOrders({
+        page: request.query.page ? Number(request.query.page) : 1,
+        pageSize: request.query.pageSize ? Number(request.query.pageSize) : 50,
+        orderStatus: request.query.orderStatus,
+        attributionStatus: request.query.attributionStatus
+      });
+    }
+  );
+
   app.get("/api/admin/pending-attributions", async () => {
     return {
       items: await repositories.orders.listPendingAttributions()

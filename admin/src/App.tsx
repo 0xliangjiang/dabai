@@ -1,11 +1,14 @@
 import {
   ArrowDownToLine,
   Check,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   Copy,
   LayoutDashboard,
   LogOut,
   Megaphone,
+  PackageSearch,
   RefreshCw,
   RotateCcw,
   Settings,
@@ -25,6 +28,7 @@ import {
   mediaUrl,
   type AdminClaim,
   type AdminConfig,
+  type AdminOrder,
   type AdminOverview,
   type AdminUser,
   type AdminWithdrawal,
@@ -67,7 +71,8 @@ const NAV_ITEMS = [
   { id: "overview", label: "概览", icon: LayoutDashboard },
   { id: "deals", label: "线报管理", icon: Megaphone },
   { id: "users", label: "用户", icon: Users },
-  { id: "attribution", label: "订单复核", icon: ClipboardCheck },
+  { id: "all-orders", label: "全部订单", icon: PackageSearch },
+  { id: "attribution", label: "待复核", icon: ClipboardCheck },
   { id: "claims", label: "申诉审核", icon: ShieldQuestion },
   { id: "withdrawals", label: "提现审核", icon: ArrowDownToLine },
   { id: "config", label: "配置", icon: Settings }
@@ -81,6 +86,9 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [activeNav, setActiveNav] = useState("overview");
+  const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   const configItems = useMemo(
     () => [
@@ -118,6 +126,9 @@ export function App() {
       setAdminToken(token);
       setAuthed(true);
       if (!options.silent) toast("数据已刷新");
+      void fetchAdminApi<{ total: number; items: AdminOrder[] }>("/api/admin/orders?page=1&pageSize=50", token)
+        .then((r) => { setOrders(r); setOrdersPage(1); })
+        .catch(() => null);
       return true;
     } catch (_error) {
       if (authed) {
@@ -126,6 +137,22 @@ export function App() {
       return false;
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadOrders(page = ordersPage) {
+    setOrdersLoading(true);
+    try {
+      const result = await fetchAdminApi<{ total: number; items: AdminOrder[] }>(
+        `/api/admin/orders?page=${page}&pageSize=50`,
+        adminToken
+      );
+      setOrders(result);
+      setOrdersPage(page);
+    } catch {
+      toast("订单加载失败", "error");
+    } finally {
+      setOrdersLoading(false);
     }
   }
 
@@ -183,7 +210,7 @@ export function App() {
         { method: "POST", body: "{}", headers: { "content-type": "application/json" } }
       );
       toast(`同步完成：淘宝 ${result.taobao.synced} 单，京东 ${result.jd.synced} 单`);
-      await loadData(adminToken, { silent: true });
+      await Promise.all([loadData(adminToken, { silent: true }), loadOrders(1)]);
     } catch {
       toast("同步失败，请稍后重试", "error");
     } finally {
@@ -390,6 +417,64 @@ export function App() {
             </Table>
           </SectionCard>
 
+          <SectionCard
+            id="all-orders"
+            title="全部订单"
+            subtitle={`共 ${orders.total} 条，每页 50 条`}
+            headerRight={
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" disabled={ordersPage <= 1 || ordersLoading} onClick={() => void loadOrders(ordersPage - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-slate-500">第 {ordersPage} / {Math.max(1, Math.ceil(orders.total / 50))} 页</span>
+                <Button size="sm" variant="ghost" disabled={ordersPage >= Math.ceil(orders.total / 50) || ordersLoading} onClick={() => void loadOrders(ordersPage + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" disabled={ordersLoading} onClick={() => void loadOrders(ordersPage)}>
+                  <RefreshCw className={`h-4 w-4 ${ordersLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+            }
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>订单号</TableHead>
+                  <TableHead>商品</TableHead>
+                  <TableHead>付款时间</TableHead>
+                  <TableHead>实付金额</TableHead>
+                  <TableHead>预估佣金</TableHead>
+                  <TableHead>订单状态</TableHead>
+                  <TableHead>归因状态</TableHead>
+                  <TableHead>归因用户</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.items.map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="max-w-36 truncate font-mono text-xs text-slate-500">{order.tbkOrderId}</TableCell>
+                    <TableCell className="max-w-52 truncate font-medium">{order.itemTitle}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-slate-500">{new Date(order.payTime).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
+                    <TableCell>{formatMoney(order.payAmountCents)}</TableCell>
+                    <TableCell>{formatMoney(order.estimatedCommissionCents)}</TableCell>
+                    <TableCell>
+                      <Badge variant={order.orderStatus === "settled" ? "success" : order.orderStatus === "refunded" ? "danger" : "secondary"}>
+                        {order.orderStatus === "settled" ? "已结算" : order.orderStatus === "refunded" ? "已关闭" : "已付款"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={order.attribution?.status === "auto_matched" || order.attribution?.status === "manual_matched" ? "success" : order.attribution?.status === "pending_review" ? "warning" : "secondary"}>
+                        {order.attribution?.status === "auto_matched" ? "自动匹配" : order.attribution?.status === "manual_matched" ? "人工匹配" : order.attribution?.status === "pending_review" ? "待复核" : order.attribution?.status === "unmatched" ? "未匹配" : "无归因"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{order.attribution?.userNickname ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+                {orders.items.length === 0 ? <EmptyRow colSpan={8} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
+              </TableBody>
+            </Table>
+          </SectionCard>
+
           <SectionCard id="attribution" title="订单归因复核" subtitle="处理自动匹配不确定和未匹配的订单">
             <Table>
               <TableHeader>
@@ -558,18 +643,23 @@ function SectionCard({
   id,
   title,
   subtitle,
+  headerRight,
   children
 }: {
   id: string;
   title: string;
   subtitle: string;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section id={id} className="mt-5 scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="font-semibold">{title}</h2>
-        <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 className="font-semibold">{title}</h2>
+          <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>
+        </div>
+        {headerRight ? <div>{headerRight}</div> : null}
       </div>
       {children}
     </section>

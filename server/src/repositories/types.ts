@@ -215,6 +215,10 @@ export type Repositories = {
     upsert(input: UpsertOrderInput): Promise<OrderRecord>;
     upsertAttribution(input: UpsertAttributionInput): Promise<AttributionRecord>;
     listPendingAttributions(): Promise<Array<AttributionRecord & { order: OrderRecord }>>;
+    listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }): Promise<{
+      total: number;
+      items: Array<OrderRecord & { attribution: (AttributionRecord & { userNickname: string | null }) | null }>;
+    }>;
     attributeOrder(id: string, input: { userId?: string | null; reviewedBy?: string }): Promise<AttributionRecord>;
     findByOrderNumber(orderNumber: string): Promise<{ order: OrderRecord; attribution: AttributionRecord | null } | undefined>;
     createClaim(input: {

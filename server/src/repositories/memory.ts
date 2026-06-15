@@ -180,6 +180,21 @@ export function createRepositories(): Repositories {
           .filter((record) => record.status === "pending_review" || record.status === "unmatched")
           .map((record) => ({ ...record, order: orders.get(record.tbkOrderId)! }));
       },
+      async listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
+        let items = [...orders.values()].sort((a, b) => b.payTime.getTime() - a.payTime.getTime());
+        if (options?.orderStatus) items = items.filter((o) => o.orderStatus === options.orderStatus);
+        const total = items.length;
+        return {
+          total,
+          items: items.slice((page - 1) * pageSize, page * pageSize).map((o) => {
+            const attrId = attributionsByTbkOrderId.get(o.id);
+            const attr = attrId ? attributions.get(attrId) ?? null : null;
+            return { ...o, attribution: attr ? { ...attr, userNickname: null } : null };
+          })
+        };
+      },
       async findByOrderNumber(orderNumber: string) {
         const suffix = orderNumber.trim();
         const order = [...orders.values()].find(

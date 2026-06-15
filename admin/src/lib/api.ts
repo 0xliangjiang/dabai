@@ -74,6 +74,25 @@ export type AdminWithdrawal = {
   createdAt: string;
 };
 
+export type AdminOrder = {
+  id: string;
+  tbkOrderId: string;
+  itemTitle: string;
+  payTime: string;
+  payAmountCents: number;
+  estimatedCommissionCents: number;
+  settledCommissionCents: number | null;
+  orderStatus: string;
+  attribution: {
+    id: string;
+    status: string;
+    confidence: number;
+    reason: string;
+    userId: string | null;
+    userNickname: string | null;
+  } | null;
+};
+
 export type PendingAttribution = {
   id: string;
   userId: string | null;
