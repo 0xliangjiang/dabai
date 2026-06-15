@@ -21,16 +21,21 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
   return {
     users: {
       async findOrCreateByOpenid(openid: string, input: { unionid?: string | null } = {}) {
+        // 软删除用户重新登录时复活账号（清除 deletedAt），保留历史数据
         const user = await prisma.user.upsert({
           where: { openid },
           create: { openid, unionid: input.unionid ?? null },
-          update: input.unionid ? { unionid: input.unionid } : {}
+          update: {
+            ...(input.unionid ? { unionid: input.unionid } : {}),
+            deletedAt: null
+          }
         });
         return mapUser(user);
       },
       async findById(id: string) {
         const user = await prisma.user.findUnique({ where: { id } });
-        return user ? mapUser(user) : undefined;
+        // 软删除用户视为不存在
+        return user && !user.deletedAt ? mapUser(user) : undefined;
       },
       async updateStatus(id: string, status) {
         const user = await prisma.user.update({ where: { id }, data: { status } });
@@ -48,6 +53,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       },
       async list(): Promise<AdminUserRecord[]> {
         const users = await prisma.user.findMany({
+          where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           include: {
             _count: {
@@ -68,26 +74,19 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         }));
       },
       async deleteUser(id: string) {
-        await prisma.$transaction([
-          // 先把订单归因里的 userId 置空（保留订单记录）
-          prisma.orderAttribution.updateMany({ where: { userId: id }, data: { userId: null } }),
-          prisma.commissionLedger.deleteMany({ where: { userId: id } }),
-          prisma.withdrawal.deleteMany({ where: { userId: id } }),
-          prisma.checkIn.deleteMany({ where: { userId: id } }),
-          prisma.subscribeGrant.deleteMany({ where: { userId: id } }),
-          prisma.orderClaim.deleteMany({ where: { userId: id } }),
-          prisma.copyEvent.deleteMany({ where: { userId: id } }),
-          prisma.conversion.deleteMany({ where: { userId: id } }),
-          prisma.user.delete({ where: { id } })
-        ]);
+        // 软删除：仅标记 deletedAt，保留订单、佣金等历史数据，便于复盘与防误删
+        await prisma.user.update({
+          where: { id },
+          data: { deletedAt: new Date() }
+        });
       },
       async adjustPoints(id: string, input: { delta: number; reason: string }) {
-        // 用 CheckIn 表写一条特殊调整记录，余额计算已包含此表的 points 求和
-        await prisma.checkIn.create({
+        await prisma.pointAdjustment.create({
           data: {
             userId: id,
-            checkInDate: `admin_adj_${Date.now()}`,
-            points: input.delta
+            amountCents: input.delta,
+            reason: input.reason,
+            createdBy: "admin"
           }
         });
       }
@@ -496,7 +495,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         return records.map(mapWithdrawal);
       },
       async getAvailableBalance(userId: string) {
-        const [earned, points, requestedResult] = await Promise.all([
+        const [earned, points, adjustment, requestedResult] = await Promise.all([
           prisma.commissionLedger.aggregate({
             where: { userId, status: "available" },
             _sum: { amountCents: true }
@@ -505,13 +504,20 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             where: { userId },
             _sum: { points: true }
           }),
+          prisma.pointAdjustment.aggregate({
+            where: { userId },
+            _sum: { amountCents: true }
+          }),
           prisma.withdrawal.aggregate({
             where: { userId, status: { in: ["pending", "paid"] } },
             _sum: { amountCents: true }
           })
         ]);
-        // 100积分=1元，即 1积分=1分；签到积分与推广佣金合并为可提现余额
-        const total = (earned._sum.amountCents ?? 0) + (points._sum.points ?? 0);
+        // 100积分=1元，即 1积分=1分；签到积分、推广佣金、管理员调整合并为可兑换余额
+        const total =
+          (earned._sum.amountCents ?? 0) +
+          (points._sum.points ?? 0) +
+          (adjustment._sum.amountCents ?? 0);
         const requested = requestedResult._sum.amountCents ?? 0;
         return Math.max(0, total - requested);
       },

@@ -32,6 +32,8 @@ export function createRepositories(): Repositories {
   const checkIns = new Map<string, CheckInRecord>();
   const deals = new Map<string, DealPostRecord>();
   const withdrawalMap = new Map<string, WithdrawalRecord>();
+  const deletedUserIds = new Set<string>();
+  const pointAdjustments = new Map<string, { id: string; userId: string; amountCents: number }>();
   const subscribeGrants = new Map<
     string,
     { id: string; userId: string; templateId: string; used: boolean }
@@ -46,6 +48,7 @@ export function createRepositories(): Repositories {
           if (!existing.unionid && input.unionid) {
             existing.unionid = input.unionid;
           }
+          deletedUserIds.delete(existingId);
           return existing;
         }
 
@@ -61,9 +64,11 @@ export function createRepositories(): Repositories {
         };
         users.set(id, user);
         usersByOpenid.set(openid, id);
+        deletedUserIds.delete(id);
         return user;
       },
       async findById(id: string) {
+        if (deletedUserIds.has(id)) return undefined;
         return users.get(id);
       },
       async updateStatus(id: string, status) {
@@ -84,18 +89,21 @@ export function createRepositories(): Repositories {
         return user;
       },
       async list(): Promise<AdminUserRecord[]> {
-        return [...users.values()].map((user) => ({
-          ...user,
-          conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
-          copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
-          claimCount: [...claims.values()].filter((record) => record.userId === user.id).length
-        }));
+        return [...users.values()]
+          .filter((user) => !deletedUserIds.has(user.id))
+          .map((user) => ({
+            ...user,
+            conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
+            copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
+            claimCount: [...claims.values()].filter((record) => record.userId === user.id).length
+          }));
       },
       async deleteUser(id: string) {
-        users.delete(id);
+        deletedUserIds.add(id);
       },
-      async adjustPoints(_id: string, _input: { delta: number; reason: string }) {
-        // no-op in memory store
+      async adjustPoints(id: string, input: { delta: number; reason: string }) {
+        const adjId = `adj-${pointAdjustments.size + 1}`;
+        pointAdjustments.set(adjId, { id: adjId, userId: id, amountCents: input.delta });
       }
     },
     conversions: {
@@ -432,10 +440,13 @@ export function createRepositories(): Repositories {
         const points = [...checkIns.values()]
           .filter((r) => r.userId === userId)
           .reduce((sum, r) => sum + r.points, 0);
+        const adjustment = [...pointAdjustments.values()]
+          .filter((r) => r.userId === userId)
+          .reduce((sum, r) => sum + r.amountCents, 0);
         const requested = [...withdrawalMap.values()]
           .filter((r) => r.userId === userId && (r.status === "pending" || r.status === "paid"))
           .reduce((sum, r) => sum + r.amountCents, 0);
-        return Math.max(0, earned + points - requested);
+        return Math.max(0, earned + points + adjustment - requested);
       },
       async list(status?: string) {
         const records = [...withdrawalMap.values()]
