@@ -180,7 +180,7 @@ export function App() {
       const result = await fetchAdminApi<{ ok: boolean; taobao: { synced: number; attributed: number }; jd: { synced: number; attributed: number } }>(
         "/api/jobs/sync-tbk-orders",
         adminToken,
-        { method: "POST" }
+        { method: "POST", body: "{}", headers: { "content-type": "application/json" } }
       );
       toast(`同步完成：淘宝 ${result.taobao.synced} 单，京东 ${result.jd.synced} 单`);
       await loadData(adminToken, { silent: true });
