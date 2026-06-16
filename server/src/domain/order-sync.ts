@@ -1,8 +1,33 @@
-import { matchOrderAttribution } from "./attribution.js";
+import { matchOrderAttribution, type AttributionResult } from "./attribution.js";
 import { buildCommissionLedgerEntry, resolveSharingRatio, type OrderCommissionStatus } from "./commission.js";
 import type { JdOrderClient } from "../integrations/jd/orders.js";
 import type { TaobaoOrderClient } from "../integrations/taobao/orders.js";
-import type { Repositories } from "../repositories/types.js";
+import type { OrderRecord, Repositories } from "../repositories/types.js";
+
+// 归因：优先用「复制事件」（强信号）；无复制候选时回退到「查询/转链记录」（弱信号），
+// 解决"用户查过但没点复制"也能归因。多候选会进待复核，避免热门商品误判。
+async function resolveOrderAttribution(
+  repositories: Repositories,
+  order: OrderRecord,
+  windowHours: number | undefined
+): Promise<AttributionResult> {
+  const orderRef = { id: order.id, itemId: order.itemId, paidAt: order.payTime };
+  const copyEvents = await repositories.copyEvents.listByItem(order.itemId);
+  const attribution = matchOrderAttribution(orderRef, copyEvents, { windowHours });
+  if (attribution.status !== "unmatched") return attribution;
+
+  const conversions = await repositories.conversions.listByItem(order.itemId);
+  if (conversions.length === 0) return attribution;
+  const candidates = conversions.map((c) => ({
+    id: c.id,
+    userId: c.userId,
+    conversionId: c.id,
+    itemId: c.itemId,
+    copiedAt: c.createdAt
+  }));
+  const fallback = matchOrderAttribution(orderRef, candidates, { windowHours });
+  return fallback.status === "unmatched" ? attribution : fallback;
+}
 
 export type SyncOrdersOptions = {
   startTime?: Date;
@@ -28,16 +53,7 @@ export async function syncJdOrders(
     const page = await orderClient.fetchJdOrders({ startTime, endTime, pageIndex, pageSize });
     for (const incoming of page.orders) {
       const order = await repositories.orders.upsert(incoming);
-      const copyEvents = await repositories.copyEvents.listByItem(order.itemId);
-      const attribution = matchOrderAttribution(
-        {
-          id: order.id,
-          itemId: order.itemId,
-          paidAt: order.payTime
-        },
-        copyEvents,
-        { windowHours: options.attributionWindowHours }
-      );
+      const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
 
       await repositories.orders.upsertAttribution({
         tbkOrderId: order.tbkOrderId,
@@ -97,12 +113,7 @@ export async function syncTaobaoOrders(
     const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, positionIndex, pageSize });
     for (const incoming of page.orders) {
       const order = await repositories.orders.upsert(incoming);
-      const copyEvents = await repositories.copyEvents.listByItem(order.itemId);
-      const attribution = matchOrderAttribution(
-        { id: order.id, itemId: order.itemId, paidAt: order.payTime },
-        copyEvents,
-        { windowHours: options.attributionWindowHours }
-      );
+      const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
 
       await repositories.orders.upsertAttribution({
         tbkOrderId: order.tbkOrderId,

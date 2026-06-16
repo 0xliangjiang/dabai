@@ -215,6 +215,7 @@ export type Repositories = {
     create(input: Omit<ConversionRecord, "id" | "createdAt">): Promise<ConversionRecord>;
     findById(id: string): Promise<ConversionRecord | undefined>;
     listByUser(userId: string): Promise<ConversionRecord[]>;
+    listByItem(itemId: string): Promise<ConversionRecord[]>;
   };
   copyEvents: {
     create(input: Omit<CopyEventRecord, "id" | "copiedAt">): Promise<CopyEventRecord>;

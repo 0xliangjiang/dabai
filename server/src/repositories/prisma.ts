@@ -143,6 +143,13 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           orderBy: { createdAt: "desc" }
         });
         return records.map(mapConversion);
+      },
+      async listByItem(itemId: string) {
+        const records = await prisma.conversion.findMany({
+          where: { itemId },
+          orderBy: { createdAt: "desc" }
+        });
+        return records.map(mapConversion);
       }
     },
     copyEvents: {

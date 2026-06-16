@@ -142,6 +142,9 @@ export function createRepositories(): Repositories {
       },
       async listByUser(userId: string) {
         return [...conversions.values()].filter((record) => record.userId === userId);
+      },
+      async listByItem(itemId: string) {
+        return [...conversions.values()].filter((record) => record.itemId === itemId);
       }
     },
     copyEvents: {
