@@ -72,6 +72,7 @@ Page({
 
 const STATUS_LABEL = {
   paid: "已付款",
+  received: "已收货",
   settled: "已结算",
   refunded: "已退款",
   invalid: "已失效"
@@ -79,6 +80,7 @@ const STATUS_LABEL = {
 
 const STATUS_CLASS = {
   paid: "orange",
+  received: "blue",
   settled: "green",
   refunded: "gray",
   invalid: "gray"

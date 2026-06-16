@@ -216,6 +216,13 @@ export function createRepositories(): Repositories {
         attributionsByTbkOrderId.set(orderId, record.id);
         return record;
       },
+      async getAttribution(tbkOrderId: string) {
+        const orderId = ordersByTbkOrderId.get(tbkOrderId);
+        if (!orderId) return null;
+        const attrId = attributionsByTbkOrderId.get(orderId);
+        const attr = attrId ? attributions.get(attrId) : undefined;
+        return attr ? { status: attr.status, userId: attr.userId } : null;
+      },
       async listPendingAttributions() {
         return [...attributions.values()]
           .filter((record) => record.status === "pending_review" || record.status === "unmatched")

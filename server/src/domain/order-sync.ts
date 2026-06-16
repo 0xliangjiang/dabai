@@ -29,6 +29,48 @@ async function resolveOrderAttribution(
   return fallback.status === "unmatched" ? attribution : fallback;
 }
 
+// 单个订单的归因 + 台账处理（JD / 淘宝共用）：
+// - 人工归因（manual_matched）不被自动同步覆盖
+// - 只要有归属用户，就按订单当前状态写台账，让"已收货→已结算"流转到积分
+async function processOrder(
+  repositories: Repositories,
+  order: OrderRecord,
+  options: SyncOrdersOptions
+): Promise<{ attributed: boolean }> {
+  const existing = await repositories.orders.getAttribution(order.tbkOrderId);
+  let attributedUserId: string | null = null;
+
+  if (existing && existing.status === "manual_matched") {
+    attributedUserId = existing.userId;
+  } else {
+    const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
+    await repositories.orders.upsertAttribution({
+      tbkOrderId: order.tbkOrderId,
+      status: attribution.status,
+      confidence: attribution.confidence,
+      reason: attribution.reason,
+      userId: "userId" in attribution ? attribution.userId : null,
+      conversionId: "conversionId" in attribution ? attribution.conversionId : null,
+      copyEventId: "copyEventId" in attribution ? attribution.copyEventId : null
+    });
+    if (attribution.status === "auto_matched") attributedUserId = attribution.userId;
+  }
+
+  if (!attributedUserId) return { attributed: false };
+
+  const attrUser = await repositories.users.findById(attributedUserId);
+  const entry = buildCommissionLedgerEntry({
+    userId: attributedUserId,
+    tbkOrderId: order.id,
+    orderStatus: normalizeCommissionStatus(order.orderStatus),
+    estimatedCommissionCents: order.estimatedCommissionCents,
+    settledCommissionCents: order.settledCommissionCents,
+    sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)
+  });
+  await repositories.commissionLedger.upsert(entry);
+  return { attributed: true };
+}
+
 export type SyncOrdersOptions = {
   startTime?: Date;
   endTime?: Date;
@@ -53,32 +95,8 @@ export async function syncJdOrders(
     const page = await orderClient.fetchJdOrders({ startTime, endTime, pageIndex, pageSize });
     for (const incoming of page.orders) {
       const order = await repositories.orders.upsert(incoming);
-      const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
-
-      await repositories.orders.upsertAttribution({
-        tbkOrderId: order.tbkOrderId,
-        status: attribution.status,
-        confidence: attribution.confidence,
-        reason: attribution.reason,
-        userId: "userId" in attribution ? attribution.userId : null,
-        conversionId: "conversionId" in attribution ? attribution.conversionId : null,
-        copyEventId: "copyEventId" in attribution ? attribution.copyEventId : null
-      });
-
-      if (attribution.status === "auto_matched") {
-        attributed += 1;
-        const attrUser = await repositories.users.findById(attribution.userId);
-        const entry = buildCommissionLedgerEntry({
-          userId: attribution.userId,
-          tbkOrderId: order.id,
-          orderStatus: normalizeCommissionStatus(order.orderStatus),
-          estimatedCommissionCents: order.estimatedCommissionCents,
-          settledCommissionCents: order.settledCommissionCents,
-          sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)
-        });
-        await repositories.commissionLedger.upsert(entry);
-      }
-
+      const result = await processOrder(repositories, order, options);
+      if (result.attributed) attributed += 1;
       synced += 1;
     }
 
@@ -110,35 +128,11 @@ export async function syncTaobaoOrders(
   let attributed = 0;
 
   while (true) {
-    const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, positionIndex, pageSize });
+    const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, positionIndex, pageSize, queryType: 4 });
     for (const incoming of page.orders) {
       const order = await repositories.orders.upsert(incoming);
-      const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
-
-      await repositories.orders.upsertAttribution({
-        tbkOrderId: order.tbkOrderId,
-        status: attribution.status,
-        confidence: attribution.confidence,
-        reason: attribution.reason,
-        userId: "userId" in attribution ? attribution.userId : null,
-        conversionId: "conversionId" in attribution ? attribution.conversionId : null,
-        copyEventId: "copyEventId" in attribution ? attribution.copyEventId : null
-      });
-
-      if (attribution.status === "auto_matched") {
-        attributed += 1;
-        const attrUser = await repositories.users.findById(attribution.userId);
-        const entry = buildCommissionLedgerEntry({
-          userId: attribution.userId,
-          tbkOrderId: order.id,
-          orderStatus: normalizeCommissionStatus(order.orderStatus),
-          estimatedCommissionCents: order.estimatedCommissionCents,
-          settledCommissionCents: order.settledCommissionCents,
-          sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)
-        });
-        await repositories.commissionLedger.upsert(entry);
-      }
-
+      const result = await processOrder(repositories, order, options);
+      if (result.attributed) attributed += 1;
       synced += 1;
     }
 

@@ -16,6 +16,8 @@ export type TaobaoOrderClient = {
     endTime: Date;
     positionIndex?: string;
     pageSize?: number;
+    // 查询时间类型：1创建 2付款 3结算 4更新；默认 4（按更新时间，能捕获收货/结算/退款状态变化）
+    queryType?: number;
   }): Promise<{ orders: TaobaoOrder[]; hasNext: boolean; positionIndex?: string }>;
 };
 
@@ -42,6 +44,7 @@ export function createTaobaoOrderClient(
         sid: config.sid,
         start_time: formatBeijingTime(input.startTime),
         end_time: formatBeijingTime(input.endTime),
+        query_type: String(input.queryType ?? 4),
         signurl: "1",
         page_size: String(pageSize),
         page_no: "1"
@@ -123,6 +126,7 @@ function normalizeOrder(row: Record<string, unknown>): TaobaoOrder | null {
 function mapTkStatus(status: number): string {
   if (status === 3) return "settled";
   if (status === 13) return "refunded";
+  if (status === 14) return "received";
   return "paid";
 }
 

@@ -537,8 +537,8 @@ export function App() {
               </TableHeader>
               <TableBody>
                 {orders.items.map((order) => {
-                  const statusLabel = order.orderStatus === "settled" ? "已结算" : order.orderStatus === "refunded" ? "已关闭" : "已付款";
-                  const statusVariant = order.orderStatus === "settled" ? "success" : order.orderStatus === "refunded" ? "danger" : "secondary";
+                  const statusLabel = order.orderStatus === "settled" ? "已结算" : order.orderStatus === "refunded" ? "已关闭" : order.orderStatus === "received" ? "已收货" : "已付款";
+                  const statusVariant = order.orderStatus === "settled" ? "success" : order.orderStatus === "refunded" ? "danger" : order.orderStatus === "received" ? "warning" : "secondary";
                   const attrLabel = order.attribution?.status === "auto_matched" ? "自动匹配" : order.attribution?.status === "manual_matched" ? "人工匹配" : order.attribution?.status === "pending_review" ? "待复核" : order.attribution?.status === "unmatched" ? "未匹配" : "无归因";
                   const attrVariant = (order.attribution?.status === "auto_matched" || order.attribution?.status === "manual_matched") ? "success" : order.attribution?.status === "pending_review" ? "warning" : "secondary";
                   return (

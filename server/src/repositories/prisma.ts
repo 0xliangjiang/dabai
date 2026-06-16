@@ -256,6 +256,12 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return mapAttribution(record);
       },
+      async getAttribution(tbkOrderId: string) {
+        const order = await prisma.tbkOrder.findUnique({ where: { tbkOrderId } });
+        if (!order) return null;
+        const attribution = await prisma.orderAttribution.findUnique({ where: { tbkOrderId: order.id } });
+        return attribution ? { status: attribution.status, userId: attribution.userId } : null;
+      },
       async listPendingAttributions() {
         const records = await prisma.orderAttribution.findMany({
           where: { status: { in: ["pending_review", "unmatched"] } },
