@@ -47,11 +47,11 @@ Page({
       });
       wx.showModal({
         title: "绑定成功",
-        content: `「${res.order?.itemTitle || "订单"}」已绑定到您的账户，预计返利已入账。`,
+        content: `「${res.order?.itemTitle || "订单"}」已绑定到您的账户，预计积分已入账。`,
         showCancel: false,
         confirmText: "查看订单",
         success: () => {
-          wx.switchTab({ url: "/pages/profile/index" });
+          wx.switchTab({ url: "/pages/orders/index" });
         }
       });
     } catch (error) {

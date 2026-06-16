@@ -2,7 +2,7 @@
   <view class="hero hero-slim anim-up"></view>
 
   <view class="cu-card cu-form floating-stack anim-up delay-1">
-    <view class="margin-bottom-sm muted text-sm">输入淘宝或京东的订单号，系统自动匹配并绑定返利。</view>
+    <view class="margin-bottom-sm muted text-sm">输入淘宝或京东的订单号，系统自动匹配并绑定积分。</view>
     <view>
       <view class="cu-label margin-bottom-sm">订单号</view>
       <input
