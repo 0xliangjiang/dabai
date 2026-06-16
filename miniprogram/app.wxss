@@ -870,31 +870,20 @@ button.contact-item {
   box-shadow: none;
 }
 
-.logout-btn {
+/* 退出登录：收进编辑面板，低调文字链接，避免误触 */
+.logout-row {
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid rgba(10, 60, 42, 0.08);
   display: flex;
-  align-items: center;
   justify-content: center;
-  margin: 10rpx 0 0;
-  padding: 0;
-  width: 100%;
-  height: 92rpx;
-  border-radius: 26rpx;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1rpx solid rgba(10, 60, 42, 0.08);
-  color: #8aa093;
-  font-size: 28rpx;
+}
+
+.logout-link {
+  padding: 8rpx 24rpx;
+  color: #b08a8a;
+  font-size: 26rpx;
   font-weight: 600;
-  line-height: 1;
-  box-sizing: border-box;
-}
-
-.logout-btn::after {
-  border: 0;
-}
-
-.logout-btn-pressed {
-  background: #eef3f0;
-  color: #6b7f74;
 }
 
 .balance-card {

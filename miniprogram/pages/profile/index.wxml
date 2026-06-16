@@ -34,6 +34,9 @@
         <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="cancelEditProfile">取消</button>
         <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{savingProfile}}" disabled="{{savingProfile}}" bindtap="saveProfile">{{savingProfile ? '保存中…' : '保存'}}</button>
       </view>
+      <view class="logout-row">
+        <text class="logout-link" bindtap="logout">退出登录</text>
+      </view>
     </view>
 
     <view class="cu-card points-card anim-up delay-2">
@@ -113,7 +116,6 @@
       </view>
     </view>
 
-    <button wx:if="{{isLoggedIn}}" class="logout-btn anim-up delay-4" hover-class="logout-btn-pressed" bindtap="logout">退出登录</button>
   </view>
 
   <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />

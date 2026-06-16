@@ -269,9 +269,19 @@ Page({
   },
 
   logout() {
-    logout();
-    this.refreshUser();
-    wx.showToast({ title: "已退出", icon: "none" });
+    wx.showModal({
+      title: "退出登录",
+      content: "确定要退出当前账号吗？",
+      confirmText: "退出",
+      confirmColor: "#c0392b",
+      success: (res) => {
+        if (!res.confirm) return;
+        logout();
+        this.setData({ editingProfile: false });
+        this.refreshUser();
+        wx.showToast({ title: "已退出", icon: "none" });
+      }
+    });
   }
 });
 
