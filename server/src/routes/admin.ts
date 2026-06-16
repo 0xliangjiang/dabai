@@ -30,14 +30,41 @@ export async function registerAdminRoutes(
     users: await repositories.users.list()
   }));
 
-  app.get("/api/admin/config", async () => ({
-    config: {
-      zhetaokePid: config.zhetaokePid,
-      commissionSharingRatio: config.commissionSharingRatio,
-      attributionWindowHours: 24,
-      highValueReviewThresholdCents: 5000
+  app.get("/api/admin/config", async () => {
+    const dbRatio = await repositories.settings.getCommissionSharingRatio();
+    return {
+      config: {
+        zhetaokePid: config.zhetaokePid,
+        commissionSharingRatio: dbRatio ?? config.commissionSharingRatio,
+        attributionWindowHours: 24,
+        highValueReviewThresholdCents: 5000
+      }
+    };
+  });
+
+  app.post<{ Body: { commissionSharingRatio?: number } }>(
+    "/api/admin/config/commission-ratio",
+    async (request, reply) => {
+      const ratio = request.body?.commissionSharingRatio;
+      if (typeof ratio !== "number" || !Number.isFinite(ratio) || ratio < 0 || ratio > 1) {
+        return reply.code(400).send({ error: "比例需为 0~1 之间的数字" });
+      }
+      await repositories.settings.setCommissionSharingRatio(ratio);
+      return { ok: true, commissionSharingRatio: ratio };
     }
-  }));
+  );
+
+  app.post<{ Params: { id: string }; Body: { ratio?: number | null } }>(
+    "/api/admin/users/:id/rebate-ratio",
+    async (request, reply) => {
+      const ratio = request.body?.ratio;
+      if (ratio !== null && (typeof ratio !== "number" || !Number.isFinite(ratio) || ratio < 0 || ratio > 1)) {
+        return reply.code(400).send({ error: "比例需为 0~1 之间的数字，或留空表示用全局" });
+      }
+      const user = await repositories.users.setRebateRatio(request.params.id, ratio ?? null);
+      return { ok: true, user };
+    }
+  );
 
   app.get<{ Querystring: { page?: string; pageSize?: string; orderStatus?: string; attributionStatus?: string } }>(
     "/api/admin/orders",

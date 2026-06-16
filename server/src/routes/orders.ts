@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { buildCommissionLedgerEntry } from "../domain/commission.js";
+import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerOrderRoutes(
@@ -48,14 +48,16 @@ export async function registerOrderRoutes(
       copyEventId: null
     });
 
-    // 更新 commission 台账
+    // 更新 commission 台账（用户级比例优先，否则全局/env）
+    const globalRatio = (await repositories.settings.getCommissionSharingRatio()) ?? commissionSharingRatio;
+    const bindUser = await repositories.users.findById(request.userId);
     const entry = buildCommissionLedgerEntry({
       userId: request.userId,
       tbkOrderId: order.id,
       orderStatus: normalizeStatus(order.orderStatus),
       estimatedCommissionCents: order.estimatedCommissionCents,
       settledCommissionCents: order.settledCommissionCents,
-      sharingRatio: commissionSharingRatio
+      sharingRatio: resolveSharingRatio(bindUser?.rebateRatio, globalRatio)
     });
     await repositories.commissionLedger.upsert(entry);
 

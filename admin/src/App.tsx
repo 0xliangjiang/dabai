@@ -91,17 +91,24 @@ export function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [pointsModal, setPointsModal] = useState<{ userId: string; nickname: string } | null>(null);
   const [pointsDelta, setPointsDelta] = useState("");
+  const [ratioModal, setRatioModal] = useState<{ userId: string; nickname: string } | null>(null);
+  const [ratioInput, setRatioInput] = useState("");
+  const [globalRatioInput, setGlobalRatioInput] = useState("");
+  const [savingGlobalRatio, setSavingGlobalRatio] = useState(false);
 
   const configItems = useMemo(
     () => [
       ["淘宝推广位 PID", data.config.zhetaokePid || "未配置"],
-      ["用户分成比例", `${Math.round(data.config.commissionSharingRatio * 100)}%`],
       ["自动归因窗口", `复制后 ${data.config.attributionWindowHours} 小时`],
       ["高额复核阈值", formatMoney(data.config.highValueReviewThresholdCents)],
       ["API 地址", apiBaseUrl]
     ],
     [data]
   );
+
+  useEffect(() => {
+    setGlobalRatioInput(String(Math.round(data.config.commissionSharingRatio * 100)));
+  }, [data.config.commissionSharingRatio]);
 
   async function loadData(token = adminToken, options: { silent?: boolean } = {}) {
     if (!token.trim()) return false;
@@ -220,6 +227,49 @@ export function App() {
     toast(`已为「${pointsModal.nickname}」${delta > 0 ? "增加" : "扣除"} ${Math.abs(delta)} 积分`);
     setPointsModal(null);
     setPointsDelta("");
+  }
+
+  async function saveGlobalRatio() {
+    const pct = parseFloat(globalRatioInput);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      toast("请输入 0~100 的百分比", "error");
+      return;
+    }
+    setSavingGlobalRatio(true);
+    try {
+      await fetchAdminApi("/api/admin/config/commission-ratio", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ commissionSharingRatio: pct / 100 })
+      });
+      toast(`全局返利比例已设为 ${pct}%`);
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("保存失败，请重试", "error");
+    } finally {
+      setSavingGlobalRatio(false);
+    }
+  }
+
+  async function submitRebateRatio() {
+    if (!ratioModal) return;
+    const raw = ratioInput.trim();
+    let ratio: number | null = null;
+    if (raw !== "") {
+      const pct = parseFloat(raw);
+      if (isNaN(pct) || pct < 0 || pct > 100) {
+        toast("请输入 0~100 的百分比，或留空用全局", "error");
+        return;
+      }
+      ratio = pct / 100;
+    }
+    await fetchAdminApi(`/api/admin/users/${ratioModal.userId}/rebate-ratio`, adminToken, {
+      method: "POST",
+      body: JSON.stringify({ ratio })
+    });
+    toast(ratio === null ? `「${ratioModal.nickname}」改用全局比例` : `「${ratioModal.nickname}」返利比例设为 ${Math.round(ratio * 100)}%`);
+    setRatioModal(null);
+    setRatioInput("");
+    await loadData(adminToken, { silent: true });
   }
 
   async function syncOrders() {
@@ -392,6 +442,7 @@ export function App() {
                   <TableHead>转化</TableHead>
                   <TableHead>复制</TableHead>
                   <TableHead>申诉</TableHead>
+                  <TableHead>返利比例</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
@@ -417,12 +468,22 @@ export function App() {
                     <TableCell>{user.copyEventCount}</TableCell>
                     <TableCell>{user.claimCount}</TableCell>
                     <TableCell>
+                      {user.rebateRatio != null ? (
+                        <Badge variant="warning">{Math.round(user.rebateRatio * 100)}%</Badge>
+                      ) : (
+                        <span className="text-xs text-slate-400">全局</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <Badge variant={user.status === "banned" ? "danger" : "success"}>
                         {user.status === "banned" ? "已封禁" : "正常"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { setRatioModal({ userId: user.id, nickname: user.nickname ?? user.id }); setRatioInput(user.rebateRatio != null ? String(Math.round(user.rebateRatio * 100)) : ""); }}>
+                          返利%
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => { setPointsModal({ userId: user.id, nickname: user.nickname ?? user.id }); setPointsDelta(""); }}>
                           调积分
                         </Button>
@@ -436,7 +497,7 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.users.length === 0 ? <EmptyRow colSpan={8} text="暂无用户数据" /> : null}
+                {data.users.length === 0 ? <EmptyRow colSpan={9} text="暂无用户数据" /> : null}
               </TableBody>
             </Table>
           </SectionCard>
@@ -651,14 +712,34 @@ export function App() {
             </Table>
           </SectionCard>
 
-          <SectionCard id="config" title="系统配置" subtitle="当前生产关键配置（只读）">
-            <div className="grid grid-cols-2 gap-3 p-5">
-              {configItems.map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3.5">
-                  <div className="text-xs font-medium text-slate-400">{label}</div>
-                  <div className="mt-1 truncate text-sm font-medium text-slate-700">{value}</div>
+          <SectionCard id="config" title="系统配置" subtitle="全局返利比例可在线修改，其余为只读">
+            <div className="p-5">
+              <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3.5">
+                <div className="text-xs font-medium text-slate-500">全局返利比例（用户分到佣金的比例）</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    className="h-9 w-24 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={globalRatioInput}
+                    onChange={(e) => setGlobalRatioInput(e.target.value)}
+                  />
+                  <span className="text-sm text-slate-500">%</span>
+                  <Button size="sm" disabled={savingGlobalRatio} onClick={() => void saveGlobalRatio()}>
+                    {savingGlobalRatio ? "保存中…" : "保存"}
+                  </Button>
+                  <span className="ml-1 text-xs text-slate-400">仅对修改后新同步的订单生效</span>
                 </div>
-              ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {configItems.map(([label, value]) => (
+                  <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3.5">
+                    <div className="text-xs font-medium text-slate-400">{label}</div>
+                    <div className="mt-1 truncate text-sm font-medium text-slate-700">{value}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </SectionCard>
         </section>
@@ -681,6 +762,34 @@ export function App() {
             <div className="mt-4 flex gap-2">
               <Button className="flex-1" onClick={() => void submitAdjustPoints()}>确认</Button>
               <Button className="flex-1" variant="outline" onClick={() => setPointsModal(null)}>取消</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {ratioModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setRatioModal(null)}>
+          <div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold">设置返利比例</h3>
+            <p className="mt-1 text-sm text-slate-500">用户：{ratioModal.nickname}</p>
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                autoFocus
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
+                placeholder="百分比，留空表示用全局"
+                type="number"
+                min={0}
+                max={100}
+                value={ratioInput}
+                onChange={(e) => setRatioInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void submitRebateRatio(); }}
+              />
+              <span className="text-sm text-slate-500">%</span>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">留空并确认 = 改回用全局比例。仅对之后新订单生效。</p>
+            <div className="mt-4 flex gap-2">
+              <Button className="flex-1" onClick={() => void submitRebateRatio()}>确认</Button>
+              <Button className="flex-1" variant="outline" onClick={() => setRatioModal(null)}>取消</Button>
             </div>
           </div>
         </div>

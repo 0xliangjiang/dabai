@@ -56,6 +56,16 @@ export function buildCommissionLedgerEntry(input: BuildCommissionInput): Commiss
   };
 }
 
+// 用户级比例优先，否则用全局比例；钳制到 [0, 1]
+export function resolveSharingRatio(
+  userRebateRatio: number | null | undefined,
+  globalRatio: number
+): number {
+  const ratio = userRebateRatio ?? globalRatio;
+  if (!Number.isFinite(ratio)) return 0;
+  return Math.min(1, Math.max(0, ratio));
+}
+
 function calculateShare(amountCents: number, sharingRatio: number): number {
   return Math.round(amountCents * sharingRatio);
 }

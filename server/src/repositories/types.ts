@@ -9,6 +9,7 @@ export type UserRecord = {
   nickname: string | null;
   avatarUrl: string | null;
   status: string;
+  rebateRatio: number | null;
   createdAt: Date;
 };
 
@@ -204,6 +205,11 @@ export type Repositories = {
     list(): Promise<AdminUserRecord[]>;
     deleteUser(id: string): Promise<void>;
     adjustPoints(id: string, input: { delta: number; reason: string }): Promise<void>;
+    setRebateRatio(id: string, ratio: number | null): Promise<UserRecord>;
+  };
+  settings: {
+    getCommissionSharingRatio(): Promise<number | null>;
+    setCommissionSharingRatio(ratio: number): Promise<void>;
   };
   conversions: {
     create(input: Omit<ConversionRecord, "id" | "createdAt">): Promise<ConversionRecord>;

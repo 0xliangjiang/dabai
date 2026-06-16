@@ -1,5 +1,5 @@
 import { matchOrderAttribution } from "./attribution.js";
-import { buildCommissionLedgerEntry, type OrderCommissionStatus } from "./commission.js";
+import { buildCommissionLedgerEntry, resolveSharingRatio, type OrderCommissionStatus } from "./commission.js";
 import type { JdOrderClient } from "../integrations/jd/orders.js";
 import type { TaobaoOrderClient } from "../integrations/taobao/orders.js";
 import type { Repositories } from "../repositories/types.js";
@@ -51,13 +51,14 @@ export async function syncJdOrders(
 
       if (attribution.status === "auto_matched") {
         attributed += 1;
+        const attrUser = await repositories.users.findById(attribution.userId);
         const entry = buildCommissionLedgerEntry({
           userId: attribution.userId,
           tbkOrderId: order.id,
           orderStatus: normalizeCommissionStatus(order.orderStatus),
           estimatedCommissionCents: order.estimatedCommissionCents,
           settledCommissionCents: order.settledCommissionCents,
-          sharingRatio: options.commissionSharingRatio
+          sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)
         });
         await repositories.commissionLedger.upsert(entry);
       }
@@ -115,13 +116,14 @@ export async function syncTaobaoOrders(
 
       if (attribution.status === "auto_matched") {
         attributed += 1;
+        const attrUser = await repositories.users.findById(attribution.userId);
         const entry = buildCommissionLedgerEntry({
           userId: attribution.userId,
           tbkOrderId: order.id,
           orderStatus: normalizeCommissionStatus(order.orderStatus),
           estimatedCommissionCents: order.estimatedCommissionCents,
           settledCommissionCents: order.settledCommissionCents,
-          sharingRatio: options.commissionSharingRatio
+          sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)
         });
         await repositories.commissionLedger.upsert(entry);
       }

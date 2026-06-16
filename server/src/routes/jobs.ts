@@ -19,13 +19,15 @@ export async function registerJobRoutes(
       return reply.code(401).send({ error: "unauthorized" });
     }
 
+    const globalRatio =
+      (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
     const [taobao, jd] = await Promise.all([
       syncTaobaoOrders(repositories, taobaoOrderClient, {
-        commissionSharingRatio: config.commissionSharingRatio,
+        commissionSharingRatio: globalRatio,
         attributionWindowHours: 24
       }),
       syncJdOrders(repositories, orderClient, {
-        commissionSharingRatio: config.commissionSharingRatio,
+        commissionSharingRatio: globalRatio,
         attributionWindowHours: 24
       })
     ]);

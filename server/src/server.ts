@@ -23,9 +23,11 @@ if (syncEnabled) {
     syncing = true;
     try {
       const startTime = new Date(Date.now() - syncIntervalMinutes * 2 * 60 * 1000);
+      const globalRatio =
+        (await app.deps.repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
       const syncOptions = {
         startTime,
-        commissionSharingRatio: config.commissionSharingRatio,
+        commissionSharingRatio: globalRatio,
         attributionWindowHours: 24
       };
       const [taobao, jd] = await Promise.all([

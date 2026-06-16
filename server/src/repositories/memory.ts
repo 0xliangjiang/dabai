@@ -18,6 +18,8 @@ import type {
   WithdrawalRecord
 } from "./types.js";
 
+const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
+
 export function createRepositories(): Repositories {
   const users = new Map<string, UserRecord>();
   const usersByOpenid = new Map<string, string>();
@@ -34,6 +36,7 @@ export function createRepositories(): Repositories {
   const withdrawalMap = new Map<string, WithdrawalRecord>();
   const deletedUserIds = new Set<string>();
   const pointAdjustments = new Map<string, { id: string; userId: string; amountCents: number }>();
+  const settingsMap = new Map<string, string>();
   const subscribeGrants = new Map<
     string,
     { id: string; userId: string; templateId: string; used: boolean }
@@ -60,6 +63,7 @@ export function createRepositories(): Repositories {
           nickname: null,
           avatarUrl: null,
           status: "active",
+          rebateRatio: null,
           createdAt: new Date()
         };
         users.set(id, user);
@@ -104,6 +108,23 @@ export function createRepositories(): Repositories {
       async adjustPoints(id: string, input: { delta: number; reason: string }) {
         const adjId = `adj-${pointAdjustments.size + 1}`;
         pointAdjustments.set(adjId, { id: adjId, userId: id, amountCents: input.delta });
+      },
+      async setRebateRatio(id: string, ratio: number | null) {
+        const user = users.get(id);
+        if (!user) throw new Error(`user not found: ${id}`);
+        user.rebateRatio = ratio;
+        return user;
+      }
+    },
+    settings: {
+      async getCommissionSharingRatio() {
+        const v = settingsMap.get(COMMISSION_RATIO_KEY);
+        if (v === undefined) return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      },
+      async setCommissionSharingRatio(ratio: number) {
+        settingsMap.set(COMMISSION_RATIO_KEY, String(ratio));
       }
     },
     conversions: {

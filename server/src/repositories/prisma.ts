@@ -16,6 +16,8 @@ import type {
   WithdrawalRecord
 } from "./types.js";
 
+const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
+
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
   return {
@@ -88,6 +90,25 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             reason: input.reason,
             createdBy: "admin"
           }
+        });
+      },
+      async setRebateRatio(id: string, ratio: number | null) {
+        const user = await prisma.user.update({ where: { id }, data: { rebateRatio: ratio } });
+        return mapUser(user);
+      }
+    },
+    settings: {
+      async getCommissionSharingRatio() {
+        const row = await prisma.setting.findUnique({ where: { key: COMMISSION_RATIO_KEY } });
+        if (!row) return null;
+        const n = Number(row.value);
+        return Number.isFinite(n) ? n : null;
+      },
+      async setCommissionSharingRatio(ratio: number) {
+        await prisma.setting.upsert({
+          where: { key: COMMISSION_RATIO_KEY },
+          create: { key: COMMISSION_RATIO_KEY, value: String(ratio) },
+          update: { value: String(ratio) }
         });
       }
     },
@@ -584,6 +605,7 @@ function mapUser(user: {
   nickname: string | null;
   avatarUrl: string | null;
   status: string;
+  rebateRatio: number | null;
   createdAt: Date;
 }): UserRecord {
   return {
@@ -593,6 +615,7 @@ function mapUser(user: {
     nickname: user.nickname,
     avatarUrl: user.avatarUrl,
     status: user.status,
+    rebateRatio: user.rebateRatio,
     createdAt: user.createdAt
   };
 }

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { resolveSharingRatio } from "../domain/commission.js";
 import { ConversionValidationError, createConversion } from "../domain/conversion.js";
 import { ConversionApiError, UnsupportedPlatformError, type TaobaoClient } from "../integrations/taobao/client.js";
 import type { Repositories } from "../repositories/types.js";
@@ -11,6 +12,9 @@ export async function registerConversionRoutes(
 ) {
   app.post<{ Body: { rawContent?: string } }>("/api/conversions", async (request, reply) => {
     try {
+      const globalRatio = (await repositories.settings.getCommissionSharingRatio()) ?? commissionSharingRatio;
+      const user = await repositories.users.findById(request.userId);
+      const effectiveRatio = resolveSharingRatio(user?.rebateRatio, globalRatio);
       return await createConversion(
         {
           userId: request.userId,
@@ -18,7 +22,7 @@ export async function registerConversionRoutes(
         },
         taobaoClient,
         repositories,
-        { commissionSharingRatio }
+        { commissionSharingRatio: effectiveRatio }
       );
     } catch (error) {
       if (error instanceof ConversionValidationError) {

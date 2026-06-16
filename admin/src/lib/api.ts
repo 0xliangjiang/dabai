@@ -15,6 +15,7 @@ export type AdminUser = {
   nickname: string | null;
   avatarUrl: string | null;
   status: string;
+  rebateRatio: number | null;
   conversionCount: number;
   copyEventCount: number;
   claimCount: number;
