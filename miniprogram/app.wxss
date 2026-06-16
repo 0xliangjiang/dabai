@@ -707,44 +707,74 @@ button.contact-item {
   min-height: 150rpx;
 }
 
+/* ---- 头像：会员勋章式（香槟金描边 + 白色间隙 + 活跃点） ---- */
+
+.avatar-ring {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 4rpx;
+  border-radius: 999rpx;
+  background: #e7efe9;
+}
+
+.avatar-ring.is-member {
+  padding: 5rpx;
+  background: linear-gradient(140deg, #f6e6b8 0%, #e8c476 46%, #cda44a 100%);
+  box-shadow:
+    0 8rpx 18rpx -8rpx rgba(176, 138, 60, 0.5),
+    inset 0 1rpx 1rpx rgba(255, 255, 255, 0.6);
+}
+
 .profile-avatar {
+  display: block;
   width: 92rpx;
   height: 92rpx;
-  flex: 0 0 92rpx;
   border-radius: 999rpx;
-  background: linear-gradient(160deg, #13c489 0%, #07684a 100%);
+  border: 3rpx solid #ffffff;
+  box-sizing: border-box;
+  background: linear-gradient(155deg, #16cf90 0%, #0a7a52 55%, #07543c 100%);
   color: #ffffff;
-  font-size: 34rpx;
+  font-size: 36rpx;
   font-weight: 900;
-  line-height: 92rpx;
+  line-height: 86rpx;
   text-align: center;
-  box-shadow:
-    inset 0 2rpx 0 rgba(255, 255, 255, 0.25),
-    0 10rpx 22rpx -6rpx rgba(9, 110, 76, 0.5);
+  text-shadow: 0 1rpx 2rpx rgba(4, 50, 34, 0.35);
 }
 
 .profile-avatar-img {
+  display: block;
   width: 92rpx;
   height: 92rpx;
-  flex: 0 0 92rpx;
   border-radius: 999rpx;
+  border: 3rpx solid #ffffff;
+  box-sizing: border-box;
   background: #ecf3ee;
-  box-shadow: 0 0 0 4rpx rgba(16, 185, 129, 0.14);
+}
+
+.avatar-dot {
+  position: absolute;
+  right: 2rpx;
+  bottom: 2rpx;
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 999rpx;
+  border: 3rpx solid #ffffff;
+  background: linear-gradient(150deg, #28e29c 0%, #0aa56e 100%);
+  box-shadow: 0 2rpx 6rpx -1rpx rgba(9, 110, 76, 0.55);
 }
 
 .avatar-picker {
-  width: 132rpx;
-  height: 132rpx;
-  flex: 0 0 132rpx;
+  position: relative;
+  width: 136rpx;
+  height: 136rpx;
+  flex: 0 0 136rpx;
   margin: 0;
-  padding: 0;
+  padding: 5rpx;
   border-radius: 999rpx;
-  background: #f4faf7;
-  border: 2rpx dashed rgba(10, 122, 82, 0.34);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: linear-gradient(140deg, #f6e6b8 0%, #e8c476 46%, #cda44a 100%);
+  box-shadow: 0 8rpx 18rpx -8rpx rgba(176, 138, 60, 0.45);
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .avatar-picker::after {
@@ -754,12 +784,35 @@ button.contact-item {
 .avatar-picker-img {
   width: 100%;
   height: 100%;
+  border-radius: 999rpx;
+  border: 3rpx solid #ffffff;
+  box-sizing: border-box;
+  background: #f4faf7;
 }
 
 .avatar-picker-empty {
+  width: 100%;
+  height: 100%;
+  border-radius: 999rpx;
+  border: 3rpx solid #ffffff;
+  box-sizing: border-box;
+  background: #f4faf7;
   color: #0a7a52;
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+}
+
+.avatar-picker-empty::before {
+  content: "+";
+  font-size: 40rpx;
+  font-weight: 400;
+  line-height: 1;
+  color: #0a7a52;
 }
 
 /* 积分卡：白卡 + 渐变大数字 */

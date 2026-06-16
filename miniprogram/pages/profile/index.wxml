@@ -4,8 +4,11 @@
   <view class="content-stack floating-stack">
     <view class="cu-card profile-card flex align-center justify-between gap anim-up delay-1">
       <view class="flex align-center gap-sm flex-sub">
-        <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" />
-        <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '匠'}}</view>
+        <view class="avatar-ring {{isLoggedIn ? 'is-member' : ''}}">
+          <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" />
+          <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '匠'}}</view>
+          <view wx:if="{{isLoggedIn}}" class="avatar-dot"></view>
+        </view>
         <view class="flex-sub">
           <view class="section-title">{{loginTitle}}</view>
           <view wx:if="{{loginDesc}}" class="section-desc">{{loginDesc}}</view>
