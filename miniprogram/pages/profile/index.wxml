@@ -34,9 +34,6 @@
         <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="cancelEditProfile">取消</button>
         <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{savingProfile}}" disabled="{{savingProfile}}" bindtap="saveProfile">{{savingProfile ? '保存中…' : '保存'}}</button>
       </view>
-      <view class="logout-row">
-        <text class="logout-link" bindtap="logout">退出登录</text>
-      </view>
     </view>
 
     <view class="cu-card points-card anim-up delay-2">
@@ -98,21 +95,30 @@
           <view class="cu-arrow">›</view>
         </navigator>
       </block>
+      <view wx:if="{{isLoggedIn}}" class="cu-item logout-item flex align-center justify-between" hover-class="item-pressed" bindtap="logout">
+        <view class="cu-label logout-label">退出登录</view>
+        <view class="cu-arrow">›</view>
+      </view>
+    </view>
+
+    <!-- 客服支持卡 -->
+    <view class="cu-card support-card anim-up delay-3">
       <button
-        class="cu-item contact-item flex align-center justify-between" hover-class="item-pressed"
+        class="support-entry pressable" hover-class="pressed"
         open-type="contact"
         show-message-card="true"
         send-message-title="捷径一生工具箱客服"
         send-message-path="/pages/home/index"
       >
-<view class="cu-label">客服入口</view>
+        <view class="support-icon">💬</view>
+        <view class="support-text flex-sub">
+          <view class="support-title">在线客服</view>
+          <view class="support-desc">兑换、订单有疑问，点这里找我们</view>
+        </view>
         <view class="cu-arrow">›</view>
       </button>
-      <view class="cu-item flex align-center justify-between">
-<view>
-          <view class="cu-label">服务时间</view>
-          <view class="section-desc">工作日 09:00-18:00</view>
-        </view>
+      <view class="support-hours">
+        <text class="support-dot"></text>服务时间 工作日 09:00–18:00
       </view>
     </view>
 
