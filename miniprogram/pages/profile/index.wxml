@@ -95,25 +95,23 @@
           <view class="cu-arrow">›</view>
         </navigator>
       </block>
-      <view wx:if="{{isLoggedIn}}" class="cu-item logout-item flex align-center justify-between" hover-class="item-pressed" bindtap="logout">
+      <view wx:if="{{isLoggedIn}}" class="cu-item logout-item flex align-center justify-between line" hover-class="item-pressed" bindtap="logout">
         <view class="cu-label logout-label">退出登录</view>
         <view class="cu-arrow">›</view>
       </view>
+      <button
+        class="cu-item contact-item flex align-center justify-between" hover-class="item-pressed"
+        open-type="contact"
+        show-message-card="true"
+        send-message-title="捷径一生工具箱客服"
+        send-message-path="/pages/home/index"
+      >
+        <view class="cu-label">联系客服</view>
+        <view class="cu-arrow">›</view>
+      </button>
     </view>
 
   </view>
-
-  <!-- 悬浮客服按钮 -->
-  <button
-    class="fab-contact" hover-class="fab-contact-pressed"
-    open-type="contact"
-    show-message-card="true"
-    send-message-title="捷径一生工具箱客服"
-    send-message-path="/pages/home/index"
-  >
-    <view class="fab-icon">💬</view>
-    <view class="fab-label">客服</view>
-  </button>
 
   <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
 </view>
