@@ -30,6 +30,7 @@ import {
   type AdminConfig,
   type AdminOrder,
   type AdminOverview,
+  type AdminSetting,
   type AdminUser,
   type AdminWithdrawal,
   type PendingAttribution
@@ -76,6 +77,7 @@ const NAV_ITEMS = [
   { id: "attribution", label: "待复核", icon: ClipboardCheck },
   { id: "claims", label: "申诉审核", icon: ShieldQuestion },
   { id: "withdrawals", label: "提现审核", icon: ArrowDownToLine },
+  { id: "settings", label: "运营设置", icon: Settings },
   { id: "config", label: "配置", icon: Settings }
 ];
 
@@ -97,6 +99,9 @@ export function App() {
   const [ratioInput, setRatioInput] = useState("");
   const [globalRatioInput, setGlobalRatioInput] = useState("");
   const [savingGlobalRatio, setSavingGlobalRatio] = useState(false);
+  const [settings, setSettings] = useState<AdminSetting[]>([]);
+  const [settingDrafts, setSettingDrafts] = useState<Record<string, string>>({});
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const configItems = useMemo(
     () => [
@@ -139,6 +144,14 @@ export function App() {
       if (!options.silent) toast("数据已刷新");
       void fetchAdminApi<{ total: number; items: AdminOrder[] }>("/api/admin/orders?page=1&pageSize=50", token)
         .then((r) => { setOrders(r); setOrdersPage(1); })
+        .catch(() => null);
+      void fetchAdminApi<{ settings: AdminSetting[] }>("/api/admin/settings", token)
+        .then(({ settings: rows }) => {
+          setSettings(rows);
+          const drafts: Record<string, string> = {};
+          for (const s of rows) drafts[s.key] = s.secret ? "" : s.value;
+          setSettingDrafts(drafts);
+        })
         .catch(() => null);
       return true;
     } catch (_error) {
@@ -247,6 +260,41 @@ export function App() {
     toast(`已为「${pointsModal.nickname}」${delta > 0 ? "增加" : "扣除"} ${Math.abs(delta)} 积分`);
     setPointsModal(null);
     setPointsDelta("");
+  }
+
+  async function loadSettings() {
+    try {
+      const { settings: rows } = await fetchAdminApi<{ settings: AdminSetting[] }>("/api/admin/settings", adminToken);
+      setSettings(rows);
+      const drafts: Record<string, string> = {};
+      for (const s of rows) drafts[s.key] = s.secret ? "" : s.value;
+      setSettingDrafts(drafts);
+    } catch {
+      toast("运营设置加载失败", "error");
+    }
+  }
+
+  async function saveSettings() {
+    const entries = settings
+      .map((s) => ({ key: s.key, value: settingDrafts[s.key] ?? "" }))
+      // 密钥留空表示不修改，前端就不提交
+      .filter((e) => {
+        const meta = settings.find((s) => s.key === e.key);
+        return !(meta?.secret && e.value.trim() === "");
+      });
+    setSavingSettings(true);
+    try {
+      await fetchAdminApi("/api/admin/settings", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ entries })
+      });
+      toast("运营设置已保存，即时生效");
+      await loadSettings();
+    } catch {
+      toast("保存失败，请重试", "error");
+    } finally {
+      setSavingSettings(false);
+    }
   }
 
   async function saveGlobalRatio() {
@@ -754,6 +802,43 @@ export function App() {
                 {data.withdrawals.length === 0 ? <EmptyRow colSpan={8} text="暂无提现申请" /> : null}
               </TableBody>
             </Table>
+          </SectionCard>
+
+          <SectionCard
+            id="settings"
+            title="运营设置"
+            subtitle="推广位/模型/密钥等可在线修改，保存后即时生效，无需重新部署"
+            headerRight={
+              <Button size="sm" disabled={savingSettings} onClick={() => void saveSettings()}>
+                {savingSettings ? "保存中…" : "保存设置"}
+              </Button>
+            }
+          >
+            <div className="grid grid-cols-2 gap-3 p-5">
+              {settings.map((s) => (
+                <div key={s.key} className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                    {s.label}
+                    {s.secret ? (
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${s.configured ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                        {s.configured ? "已配置" : "未配置"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <input
+                    className="mt-1.5 h-9 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                    type={s.secret ? "password" : "text"}
+                    placeholder={s.secret ? "留空＝不修改，填入＝覆盖" : "留空＝回落到 env 默认"}
+                    value={settingDrafts[s.key] ?? ""}
+                    onChange={(e) => setSettingDrafts((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+              {settings.length === 0 ? <div className="col-span-2 py-6 text-center text-sm text-slate-400">加载中…</div> : null}
+            </div>
+            <div className="px-5 pb-5 text-xs text-slate-400">
+              密钥项「只写不回显」：只显示是否已配置，永不返回原值；留空保存代表不改动。订单同步间隔/窗口改完下一轮生效。
+            </div>
           </SectionCard>
 
           <SectionCard id="config" title="系统配置" subtitle="全局返利比例可在线修改，其余为只读">

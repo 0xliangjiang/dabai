@@ -7,6 +7,7 @@ import path from "node:path";
 import Fastify from "fastify";
 import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
+import { getEffectiveConfig } from "./config/runtime.js";
 import { createJdOrderClient, type JdOrderClient } from "./integrations/jd/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
 import { createTaobaoOrderClient, type TaobaoOrderClient } from "./integrations/taobao/orders.js";
@@ -20,7 +21,6 @@ import { registerWithdrawalRoutes } from "./routes/withdrawals.js";
 import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerDealRoutes } from "./routes/deals.js";
 import { createDealPublishedNotifier } from "./domain/deal-notify.js";
-import { createSubscribeMessageSender } from "./integrations/wechat/subscribe.js";
 import { registerSubscriptionRoutes } from "./routes/subscriptions.js";
 import { registerJobRoutes } from "./routes/jobs.js";
 import { registerOrderRoutes } from "./routes/orders.js";
@@ -35,8 +35,9 @@ declare module "fastify" {
     deps: {
       config: AppConfig;
       repositories: Repositories;
-      orderClient: JdOrderClient;
-      taobaoOrderClient: TaobaoOrderClient;
+      getConfig: () => Promise<AppConfig>;
+      buildTaobaoClient: () => Promise<TaobaoClient>;
+      buildOrderClients: () => Promise<{ orderClient: JdOrderClient; taobaoOrderClient: TaobaoOrderClient }>;
     };
   }
 }
@@ -66,13 +67,31 @@ export async function createApp(options: CreateAppOptions = {}) {
           }
   });
   const repositories = options.repositories ?? createDefaultRepositories(config);
-  const taobaoClient = options.taobaoClient ?? createTaobaoClient(config);
-  const orderClient = options.orderClient ?? createJdOrderClient(config);
-  const taobaoOrderClient = options.taobaoOrderClient ?? createTaobaoOrderClient({
-    apiUrl: config.zhetaokeOrderApiUrl,
-    appKey: config.zhetaokeAppKey,
-    sid: config.zhetaokeSid
-  });
+
+  // 生效配置：数据库「运营设置」覆盖 > env > 默认
+  const getConfig = () => getEffectiveConfig(config, repositories);
+  // client 构建器：测试注入优先；否则用最新生效配置动态构建（后台改配置即时生效）
+  const buildTaobaoClient = async (): Promise<TaobaoClient> =>
+    options.taobaoClient ?? createTaobaoClient(await getConfig());
+  const buildOrderClients = async () => {
+    if (options.orderClient || options.taobaoOrderClient) {
+      return {
+        orderClient: options.orderClient ?? createJdOrderClient(config),
+        taobaoOrderClient:
+          options.taobaoOrderClient ??
+          createTaobaoOrderClient({ apiUrl: config.zhetaokeOrderApiUrl, appKey: config.zhetaokeAppKey, sid: config.zhetaokeSid })
+      };
+    }
+    const cfg = await getConfig();
+    return {
+      orderClient: createJdOrderClient(cfg),
+      taobaoOrderClient: createTaobaoOrderClient({
+        apiUrl: cfg.zhetaokeOrderApiUrl,
+        appKey: cfg.zhetaokeAppKey,
+        sid: cfg.zhetaokeSid
+      })
+    };
+  };
 
   // 小程序 wx.request 不带 Origin，不受 CORS 影响；白名单只为管理后台浏览器访问
   await app.register(cors, { origin: config.corsOrigins });
@@ -96,7 +115,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   });
 
   app.decorateRequest("userId", "");
-  app.decorate("deps", { config, repositories, orderClient, taobaoOrderClient });
+  app.decorate("deps", { config, repositories, getConfig, buildTaobaoClient, buildOrderClients });
 
   app.addHook("preHandler", async (request, reply) => {
     if (request.url === "/health" || request.url === "/api/auth/wechat-login" || request.url === "/api/app-config") {
@@ -146,7 +165,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
-  await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
+  await registerConversionRoutes(app, repositories, config);
   await registerOrderRoutes(app, repositories, config.commissionSharingRatio);
   await registerUploadRoutes(app, uploadDir);
   await registerUserRoutes(app, repositories);
@@ -154,14 +173,9 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerWithdrawalRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
   await registerSubscriptionRoutes(app, config, repositories);
-  await registerJobRoutes(app, config, repositories, orderClient, taobaoOrderClient);
-  const dealNotifier = createDealPublishedNotifier(
-    config,
-    repositories,
-    createSubscribeMessageSender(config),
-    app.log
-  );
-  await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier, taobaoClient);
+  await registerJobRoutes(app, config, repositories);
+  const dealNotifier = createDealPublishedNotifier(config, repositories, app.log);
+  await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier);
 
   return app;
 }

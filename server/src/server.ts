@@ -11,16 +11,9 @@ await app.listen({
   host: "0.0.0.0"
 });
 
-// 定时订单同步：默认每 15 分钟一次。
-// 回看窗口独立配置（默认 170 分钟，控制在折淘客 3 小时上限内）——窗口必须足够宽，
-// 才能反复扫到老订单的状态变化（已收货/已结算/退款），否则窄窗口会漏掉。
-const syncIntervalMinutes = Number(process.env.ORDER_SYNC_INTERVAL_MINUTES ?? 15);
-const lookbackMinutes = Math.min(
-  175,
-  Math.max(syncIntervalMinutes * 2, Number(process.env.ORDER_SYNC_LOOKBACK_MINUTES ?? 170))
-);
-const syncEnabled =
-  process.env.ORDER_SYNC_ENABLED !== "0" && Number.isFinite(syncIntervalMinutes) && syncIntervalMinutes > 0;
+// 定时订单同步：间隔与回看窗口都从「生效配置」（后台运营设置 > env > 默认）读取，
+// 后台改完即时生效；回看窗口控制在折淘客 3 小时上限内，要够宽才能扫到状态变化。
+const syncEnabled = process.env.ORDER_SYNC_ENABLED !== "0";
 
 if (syncEnabled) {
   let syncing = false;
@@ -28,17 +21,17 @@ if (syncEnabled) {
     if (syncing) return;
     syncing = true;
     try {
-      const startTime = new Date(Date.now() - lookbackMinutes * 60 * 1000);
+      const cfg = await app.deps.getConfig();
+      const interval = cfg.orderSyncIntervalMinutes > 0 ? cfg.orderSyncIntervalMinutes : 15;
+      const lookback = Math.min(175, Math.max(interval * 2, cfg.orderSyncLookbackMinutes || 170));
+      const startTime = new Date(Date.now() - lookback * 60 * 1000);
       const globalRatio =
-        (await app.deps.repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
-      const syncOptions = {
-        startTime,
-        commissionSharingRatio: globalRatio,
-        attributionWindowHours: 24
-      };
+        (await app.deps.repositories.settings.getCommissionSharingRatio()) ?? cfg.commissionSharingRatio;
+      const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
+      const syncOptions = { startTime, commissionSharingRatio: globalRatio, attributionWindowHours: 24 };
       const [taobao, jd] = await Promise.all([
-        syncTaobaoOrders(app.deps.repositories, app.deps.taobaoOrderClient, syncOptions),
-        syncJdOrders(app.deps.repositories, app.deps.orderClient, syncOptions)
+        syncTaobaoOrders(app.deps.repositories, taobaoOrderClient, syncOptions),
+        syncJdOrders(app.deps.repositories, orderClient, syncOptions)
       ]);
       app.log.info({ taobao, jd }, "order sync completed");
     } catch (error) {
@@ -48,9 +41,13 @@ if (syncEnabled) {
     }
   };
 
-  // 不调用 timer.unref()：HTTP 服务在跑，定时器应一直存活
-  setInterval(runSync, syncIntervalMinutes * 60 * 1000);
-  // 启动后立即同步一次（延迟 3s 等连接就绪），便于立刻在日志验证调度生效
-  setTimeout(() => void runSync(), 3000);
-  app.log.info({ syncIntervalMinutes, lookbackMinutes }, "order sync scheduler started");
+  // 自重排调度：每轮按最新生效的间隔重新排期，后台改间隔无需重启
+  const loop = async () => {
+    await runSync();
+    const cfg = await app.deps.getConfig().catch(() => config);
+    const interval = cfg.orderSyncIntervalMinutes > 0 ? cfg.orderSyncIntervalMinutes : 15;
+    setTimeout(() => void loop(), interval * 60 * 1000);
+  };
+  setTimeout(() => void loop(), 3000);
+  app.log.info("order sync scheduler started");
 }

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
+import { getEffectiveConfig } from "../config/runtime.js";
 import type { Repositories } from "../repositories/types.js";
 
 function resolveTemplateId(config: AppConfig): string {
@@ -14,7 +15,7 @@ export async function registerSubscriptionRoutes(
   repositories: Repositories
 ) {
   app.get("/api/subscriptions/me", async (request) => {
-    const templateId = resolveTemplateId(config);
+    const templateId = resolveTemplateId(await getEffectiveConfig(config, repositories));
     const remaining = templateId
       ? await repositories.subscriptions.countUnused(request.userId, templateId)
       : 0;
@@ -22,7 +23,7 @@ export async function registerSubscriptionRoutes(
   });
 
   app.post("/api/subscriptions", async (request, reply) => {
-    const templateId = resolveTemplateId(config);
+    const templateId = resolveTemplateId(await getEffectiveConfig(config, repositories));
     if (!templateId) {
       return reply.code(400).send({ error: "订阅模板未配置" });
     }

@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { AppConfig } from "../config/env.js";
-import type { SubscribeMessageSender } from "../integrations/wechat/subscribe.js";
+import { getEffectiveConfig } from "../config/runtime.js";
+import { createSubscribeMessageSender } from "../integrations/wechat/subscribe.js";
 import type { DealPostRecord, Repositories } from "../repositories/types.js";
 
 export type DealPublishedNotifier = (
@@ -8,12 +9,14 @@ export type DealPublishedNotifier = (
 ) => Promise<{ sent: number; targets: number; error?: string }>;
 
 export function createDealPublishedNotifier(
-  config: AppConfig,
+  baseConfig: AppConfig,
   repositories: Repositories,
-  sender: SubscribeMessageSender,
   log?: FastifyBaseLogger
 ): DealPublishedNotifier {
   return async (deal) => {
+    // 用最新生效配置（后台可改模板/AppSecret）即时生效
+    const config = await getEffectiveConfig(baseConfig, repositories);
+    const sender = createSubscribeMessageSender(config);
     const templateId = config.wechatDealTemplateId || (config.nodeEnv === "production" ? "" : "dev-deal-template");
     if (!templateId) {
       log?.warn("deal publish: 未配置订阅模板 WECHAT_DEAL_TEMPLATE_ID，跳过推送");

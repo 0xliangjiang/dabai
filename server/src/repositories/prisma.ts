@@ -124,6 +124,21 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           create: { key: EXCHANGE_ENABLED_KEY, value: enabled ? "1" : "0" },
           update: { value: enabled ? "1" : "0" }
         });
+      },
+      async getOverrides() {
+        const rows = await prisma.setting.findMany();
+        return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+      },
+      async setMany(entries: Array<{ key: string; value: string }>) {
+        await prisma.$transaction(
+          entries.map((e) =>
+            prisma.setting.upsert({
+              where: { key: e.key },
+              create: { key: e.key, value: e.value },
+              update: { value: e.value }
+            })
+          )
+        );
       }
     },
     conversions: {

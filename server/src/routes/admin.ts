@@ -2,9 +2,9 @@ import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
+import { getEffectiveConfig, buildSettingsView, isValidSettingKey, SETTING_FIELDS } from "../config/runtime.js";
 import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
-import type { TaobaoClient } from "../integrations/taobao/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
 
@@ -13,15 +13,8 @@ export async function registerAdminRoutes(
   config: AppConfig,
   repositories: Repositories,
   uploadDir: string,
-  notifyDealPublished?: DealPublishedNotifier,
-  taobaoClient?: TaobaoClient
+  notifyDealPublished?: DealPublishedNotifier
 ) {
-  const dealAiParser = createDealAiParser({
-    apiUrl: config.minimaxApiUrl,
-    apiKey: config.minimaxApiKey,
-    model: config.minimaxModel
-  });
-
   app.addHook("preHandler", async (request, reply) => {
     if (!request.url.startsWith("/api/admin")) {
       return;
@@ -44,25 +37,31 @@ export async function registerAdminRoutes(
     "/api/admin/deals/ai-parse",
     async (request, reply) => {
       try {
+        // 用最新生效配置构建 AI 解析与转链客户端
+        const cfg = await getEffectiveConfig(config, repositories);
+        const dealAiParser = createDealAiParser({
+          apiUrl: cfg.minimaxApiUrl,
+          apiKey: cfg.minimaxApiKey,
+          model: cfg.minimaxModel
+        });
+        const taobaoClient = await app.deps.buildTaobaoClient();
         const deal = await dealAiParser.parseDealFromText(request.body?.rawContent ?? "");
         // 把识别到的淘口令/链接转成自己的（口令+链接），免手动再转一遍
         let convertedCount = 0;
-        if (taobaoClient) {
-          for (const step of deal.steps) {
-            const original = (step.copyValue ?? "").trim();
-            if (!original || (step.copyType !== "password" && step.copyType !== "link")) continue;
-            try {
-              const r = await taobaoClient.convert(original);
-              const link = r.generatedShortUrl || r.generatedClickUrl;
-              const combined = [r.generatedPassword, link].filter(Boolean).join(" ").trim();
-              if (combined) {
-                step.copyValue = combined;
-                step.copyType = "password";
-                convertedCount += 1;
-              }
-            } catch {
-              // 转链失败（非淘宝商品、无券、平台未开通等）保留原内容
+        for (const step of deal.steps) {
+          const original = (step.copyValue ?? "").trim();
+          if (!original || (step.copyType !== "password" && step.copyType !== "link")) continue;
+          try {
+            const r = await taobaoClient.convert(original);
+            const link = r.generatedShortUrl || r.generatedClickUrl;
+            const combined = [r.generatedPassword, link].filter(Boolean).join(" ").trim();
+            if (combined) {
+              step.copyValue = combined;
+              step.copyType = "password";
+              convertedCount += 1;
             }
+          } catch {
+            // 转链失败（非淘宝商品、无券、平台未开通等）保留原内容
           }
         }
         return { deal, convertedCount };
@@ -72,6 +71,28 @@ export async function registerAdminRoutes(
         }
         throw error;
       }
+    }
+  );
+
+  // 运营设置：非密钥回显当前值，密钥只给「是否已配置」
+  app.get("/api/admin/settings", async () => {
+    const overrides = await repositories.settings.getOverrides();
+    return { settings: buildSettingsView(config, overrides) };
+  });
+
+  app.post<{ Body: { entries?: Array<{ key: string; value: string }> } }>(
+    "/api/admin/settings",
+    async (request, reply) => {
+      const entries = (request.body?.entries ?? []).filter(
+        (e) => e && typeof e.key === "string" && typeof e.value === "string" && isValidSettingKey(e.key)
+      );
+      // 密钥项留空表示「不修改」，过滤掉；非密钥留空表示「清空回落 env」，保留
+      const secretKeys = new Set(SETTING_FIELDS.filter((m) => m.secret).map((m) => m.key));
+      const toSave = entries.filter((e) => !(secretKeys.has(e.key) && e.value.trim() === ""));
+      if (toSave.length > 0) {
+        await repositories.settings.setMany(toSave.map((e) => ({ key: e.key, value: e.value.trim() })));
+      }
+      return { ok: true, saved: toSave.length };
     }
   );
 

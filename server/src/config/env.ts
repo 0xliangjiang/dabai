@@ -29,6 +29,8 @@ export type AppConfig = {
   minimaxApiUrl: string;
   minimaxApiKey: string;
   minimaxModel: string;
+  orderSyncIntervalMinutes: number;
+  orderSyncLookbackMinutes: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -69,6 +71,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     minimaxApiUrl: env.MINIMAX_API_URL ?? "https://api.minimax.chat/v1/text/chatcompletion_v2",
     minimaxApiKey: env.MINIMAX_API_KEY ?? "",
     minimaxModel: env.MINIMAX_MODEL ?? "MiniMax-M3",
+    orderSyncIntervalMinutes: Number(env.ORDER_SYNC_INTERVAL_MINUTES ?? 15),
+    orderSyncLookbackMinutes: Number(env.ORDER_SYNC_LOOKBACK_MINUTES ?? 170),
   };
 }
 
@@ -91,17 +95,14 @@ export function validateProductionConfig(config: AppConfig): void {
     return;
   }
 
+  // 仅校验真正的引导项（启动/鉴权/连库必需）。
+  // ZTK_*、WECHAT_APP_SECRET、MINIMAX_* 等已支持后台「运营设置」覆盖，可不在 env 配置。
   const missing = [
     ["DATABASE_URL", config.databaseUrl],
     ["ADMIN_TOKEN", config.adminToken],
     ["SCHEDULER_TOKEN", config.schedulerToken],
     ["AUTH_TOKEN_SECRET", config.authTokenSecret],
-    ["WECHAT_APP_ID", config.wechatAppId],
-    ["WECHAT_APP_SECRET", config.wechatAppSecret],
-    ["ZTK_APP_KEY", config.zhetaokeAppKey],
-    ["ZTK_SID", config.zhetaokeSid],
-    ["ZTK_PID", config.zhetaokePid],
-    ["ZTK_JD_UNION_ID", config.zhetaokeJdUnionId]
+    ["WECHAT_APP_ID", config.wechatAppId]
   ].filter(([, value]) => !isRealConfigValue(value));
 
   if (!Number.isFinite(config.port) || config.port <= 0) {

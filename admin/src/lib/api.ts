@@ -55,6 +55,14 @@ export type AdminClaim = {
   createdAt: string;
 };
 
+export type AdminSetting = {
+  key: string;
+  label: string;
+  secret: boolean;
+  value: string;
+  configured: boolean;
+};
+
 export type AdminConfig = {
   config: {
     zhetaokePid: string;

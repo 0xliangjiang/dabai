@@ -134,6 +134,12 @@ export function createRepositories(): Repositories {
       },
       async setExchangeEnabled(enabled: boolean) {
         settingsMap.set(EXCHANGE_ENABLED_KEY, enabled ? "1" : "0");
+      },
+      async getOverrides() {
+        return Object.fromEntries(settingsMap.entries());
+      },
+      async setMany(entries: Array<{ key: string; value: string }>) {
+        for (const e of entries) settingsMap.set(e.key, e.value);
       }
     },
     conversions: {

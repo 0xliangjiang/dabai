@@ -1,18 +1,20 @@
 import type { FastifyInstance } from "fastify";
+import type { AppConfig } from "../config/env.js";
 import { resolveSharingRatio } from "../domain/commission.js";
 import { ConversionValidationError, createConversion } from "../domain/conversion.js";
-import { ConversionApiError, UnsupportedPlatformError, type TaobaoClient } from "../integrations/taobao/client.js";
+import { ConversionApiError, UnsupportedPlatformError } from "../integrations/taobao/client.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerConversionRoutes(
   app: FastifyInstance,
   repositories: Repositories,
-  taobaoClient: TaobaoClient,
-  commissionSharingRatio: number
+  config: AppConfig
 ) {
   app.post<{ Body: { rawContent?: string } }>("/api/conversions", async (request, reply) => {
     try {
-      const globalRatio = (await repositories.settings.getCommissionSharingRatio()) ?? commissionSharingRatio;
+      // 用最新生效配置构建转链客户端（后台改 PID/appKey 即时生效）
+      const taobaoClient = await app.deps.buildTaobaoClient();
+      const globalRatio = (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
       const user = await repositories.users.findById(request.userId);
       const effectiveRatio = resolveSharingRatio(user?.rebateRatio, globalRatio);
       return await createConversion(
