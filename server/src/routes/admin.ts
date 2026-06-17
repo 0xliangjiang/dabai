@@ -3,6 +3,7 @@ import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
+import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
 
@@ -13,6 +14,12 @@ export async function registerAdminRoutes(
   uploadDir: string,
   notifyDealPublished?: DealPublishedNotifier
 ) {
+  const dealAiParser = createDealAiParser({
+    apiUrl: config.minimaxApiUrl,
+    apiKey: config.minimaxApiKey,
+    model: config.minimaxModel
+  });
+
   app.addHook("preHandler", async (request, reply) => {
     if (!request.url.startsWith("/api/admin")) {
       return;
@@ -30,6 +37,21 @@ export async function registerAdminRoutes(
   app.get("/api/admin/users", async () => ({
     users: await repositories.users.list()
   }));
+
+  app.post<{ Body: { rawContent?: string } }>(
+    "/api/admin/deals/ai-parse",
+    async (request, reply) => {
+      try {
+        const deal = await dealAiParser.parseDealFromText(request.body?.rawContent ?? "");
+        return { deal };
+      } catch (error) {
+        if (error instanceof MinimaxError) {
+          return reply.code(400).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
 
   app.get("/api/admin/config", async () => {
     const [dbRatio, exchangeEnabled] = await Promise.all([

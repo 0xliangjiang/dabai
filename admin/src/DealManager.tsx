@@ -41,6 +41,8 @@ export function DealManager({ adminToken }: { adminToken: string }) {
   const [draft, setDraft] = useState<DraftDeal | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const loadDeals = useCallback(async () => {
     if (!adminToken) return;
@@ -72,6 +74,37 @@ export function DealManager({ adminToken }: { adminToken: string }) {
           ? deal.steps.map((step) => ({ ...emptyStep, ...step, images: step.images ?? [] }))
           : [{ ...emptyStep }]
     });
+  }
+
+  async function aiParse() {
+    const raw = aiText.trim();
+    if (!raw) {
+      toast("请先粘贴要识别的文案", "error");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { deal } = await fetchAdminApi<{
+        deal: { title: string; summary: string; steps: Array<{ content: string; copyType: "link" | "password" | null; copyValue: string }> };
+      }>("/api/admin/deals/ai-parse", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ rawContent: raw })
+      });
+      setDraft((prev) => ({
+        id: prev?.id ?? null,
+        title: deal.title,
+        summary: deal.summary,
+        status: prev?.status ?? "published",
+        pinned: prev?.pinned ?? false,
+        steps: deal.steps.map((s) => ({ ...emptyStep, content: s.content, copyType: s.copyType, copyValue: s.copyValue }))
+      }));
+      setAiText("");
+      toast("已识别，请检查并补充图片后发布");
+    } catch (aiError) {
+      toast(aiError instanceof Error ? aiError.message : "识别失败，请重试", "error");
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   function updateStep(index: number, patch: Partial<AdminDealStep>) {
@@ -207,6 +240,22 @@ export function DealManager({ adminToken }: { adminToken: string }) {
 
       {draft ? (
         <div className="m-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-4">
+          <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50/50 p-3">
+            <div className="mb-2 text-xs font-medium text-violet-700">✨ AI 识别（粘贴促销文案，自动生成线报）</div>
+            <textarea
+              className="h-20 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-violet-400"
+              placeholder="粘贴一段促销文案，例如：优衣库补了 ‼ 速干短袖… https://upurl.cn/xxxx"
+              value={aiText}
+              onChange={(event) => setAiText(event.target.value)}
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <Button size="sm" disabled={aiLoading} onClick={() => void aiParse()}>
+                {aiLoading ? "识别中…" : "AI 识别并填充"}
+              </Button>
+              <span className="text-xs text-slate-400">识别后会覆盖下方标题/摘要/步骤，图片仍需手动上传</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
               标题

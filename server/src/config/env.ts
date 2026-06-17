@@ -26,6 +26,9 @@ export type AppConfig = {
   jdUnionSiteId: string;
   jdUnionPositionId: string;
   jdUnionSceneId: string;
+  minimaxApiUrl: string;
+  minimaxApiKey: string;
+  minimaxModel: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -61,6 +64,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
     jdUnionPositionId: env.JD_UNION_POSITION_ID ?? "",
     jdUnionSceneId: env.JD_UNION_SCENE_ID ?? "",
+    // MiniMax（OpenAI 兼容 chat 接口）：AI 识别促销文案生成线报
+    minimaxApiUrl: env.MINIMAX_API_URL ?? "https://api.minimaxi.com/v1/chat/completions",
+    minimaxApiKey: env.MINIMAX_API_KEY ?? "",
+    minimaxModel: env.MINIMAX_MODEL ?? "MiniMax-M3",
   };
 }
 
