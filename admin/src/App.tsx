@@ -60,7 +60,8 @@ const emptyData: AdminData = {
     zhetaokePid: "",
     commissionSharingRatio: 0,
     attributionWindowHours: 24,
-    highValueReviewThresholdCents: 5000
+    highValueReviewThresholdCents: 5000,
+    exchangeEnabled: false
   },
   pendingAttributions: [],
   claims: [],
@@ -266,6 +267,19 @@ export function App() {
       toast("保存失败，请重试", "error");
     } finally {
       setSavingGlobalRatio(false);
+    }
+  }
+
+  async function toggleExchange(enabled: boolean) {
+    try {
+      await fetchAdminApi("/api/admin/config/exchange-enabled", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ enabled })
+      });
+      toast(enabled ? "已开启兑换功能（小程序显示入口）" : "已关闭兑换功能（小程序隐藏入口）");
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("操作失败，请重试", "error");
     }
   }
 
@@ -761,6 +775,20 @@ export function App() {
                   </Button>
                   <span className="ml-1 text-xs text-slate-400">仅对修改后新同步的订单生效</span>
                 </div>
+              </div>
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3.5">
+                <div>
+                  <div className="text-xs font-medium text-slate-500">兑换功能开关（审核期间关闭，过审后开启）</div>
+                  <div className="mt-1 text-sm font-medium text-slate-700">
+                    当前：{data.config.exchangeEnabled ? "已开启 · 小程序显示兑换入口" : "已关闭 · 小程序隐藏兑换入口"}
+                  </div>
+                </div>
+                <Button
+                  variant={data.config.exchangeEnabled ? "danger" : "default"}
+                  onClick={() => void toggleExchange(!data.config.exchangeEnabled)}
+                >
+                  {data.config.exchangeEnabled ? "关闭兑换" : "开启兑换"}
+                </Button>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {configItems.map(([label, value]) => (

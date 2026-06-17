@@ -59,6 +59,7 @@ export type AdminConfig = {
     commissionSharingRatio: number;
     attributionWindowHours: number;
     highValueReviewThresholdCents: number;
+    exchangeEnabled: boolean;
   };
 };
 

@@ -32,16 +32,32 @@ export async function registerAdminRoutes(
   }));
 
   app.get("/api/admin/config", async () => {
-    const dbRatio = await repositories.settings.getCommissionSharingRatio();
+    const [dbRatio, exchangeEnabled] = await Promise.all([
+      repositories.settings.getCommissionSharingRatio(),
+      repositories.settings.getExchangeEnabled()
+    ]);
     return {
       config: {
         zhetaokePid: config.zhetaokePid,
         commissionSharingRatio: dbRatio ?? config.commissionSharingRatio,
         attributionWindowHours: 24,
-        highValueReviewThresholdCents: 5000
+        highValueReviewThresholdCents: 5000,
+        exchangeEnabled
       }
     };
   });
+
+  app.post<{ Body: { enabled?: boolean } }>(
+    "/api/admin/config/exchange-enabled",
+    async (request, reply) => {
+      const enabled = request.body?.enabled;
+      if (typeof enabled !== "boolean") {
+        return reply.code(400).send({ error: "enabled 必须为 true/false" });
+      }
+      await repositories.settings.setExchangeEnabled(enabled);
+      return { ok: true, exchangeEnabled: enabled };
+    }
+  );
 
   app.post<{ Body: { commissionSharingRatio?: number } }>(
     "/api/admin/config/commission-ratio",

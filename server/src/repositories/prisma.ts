@@ -18,6 +18,7 @@ import type {
 } from "./types.js";
 
 const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
+const EXCHANGE_ENABLED_KEY = "exchange_enabled";
 
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
@@ -110,6 +111,18 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           where: { key: COMMISSION_RATIO_KEY },
           create: { key: COMMISSION_RATIO_KEY, value: String(ratio) },
           update: { value: String(ratio) }
+        });
+      },
+      async getExchangeEnabled() {
+        const row = await prisma.setting.findUnique({ where: { key: EXCHANGE_ENABLED_KEY } });
+        // 默认关闭：未配置时隐藏兑换入口，对审核安全
+        return row?.value === "1";
+      },
+      async setExchangeEnabled(enabled: boolean) {
+        await prisma.setting.upsert({
+          where: { key: EXCHANGE_ENABLED_KEY },
+          create: { key: EXCHANGE_ENABLED_KEY, value: enabled ? "1" : "0" },
+          update: { value: enabled ? "1" : "0" }
         });
       }
     },

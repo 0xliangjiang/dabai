@@ -40,13 +40,25 @@ Page({
     balanceText: "0.00",
     showWithdrawForm: false,
     withdrawAmount: "",
-    submittingWithdraw: false
+    submittingWithdraw: false,
+    exchangeEnabled: false
   },
 
   onShow() {
     syncTabBar(this);
     this.refreshUser();
     this.syncUserFromServer();
+    this.loadAppConfig();
+  },
+
+  // 拉取功能开关；兑换入口默认隐藏，开关打开才显示（审核期间关闭）
+  async loadAppConfig() {
+    try {
+      const { exchangeEnabled } = await request("/api/app-config");
+      this.setData({ exchangeEnabled: Boolean(exchangeEnabled) });
+    } catch (_error) {
+      this.setData({ exchangeEnabled: false });
+    }
   },
 
   async syncUserFromServer() {
@@ -206,6 +218,7 @@ Page({
   stopProp() {},
 
   openWithdrawForm() {
+    if (!this.data.exchangeEnabled) return;
     if (!this.data.isLoggedIn) {
       wx.showToast({ title: "请先登录", icon: "none" });
       return;

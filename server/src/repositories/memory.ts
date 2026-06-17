@@ -20,6 +20,7 @@ import type {
 } from "./types.js";
 
 const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
+const EXCHANGE_ENABLED_KEY = "exchange_enabled";
 
 export function createRepositories(): Repositories {
   const users = new Map<string, UserRecord>();
@@ -126,6 +127,12 @@ export function createRepositories(): Repositories {
       },
       async setCommissionSharingRatio(ratio: number) {
         settingsMap.set(COMMISSION_RATIO_KEY, String(ratio));
+      },
+      async getExchangeEnabled() {
+        return settingsMap.get(EXCHANGE_ENABLED_KEY) === "1";
+      },
+      async setExchangeEnabled(enabled: boolean) {
+        settingsMap.set(EXCHANGE_ENABLED_KEY, enabled ? "1" : "0");
       }
     },
     conversions: {

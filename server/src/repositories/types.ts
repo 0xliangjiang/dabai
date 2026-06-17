@@ -211,6 +211,8 @@ export type Repositories = {
   settings: {
     getCommissionSharingRatio(): Promise<number | null>;
     setCommissionSharingRatio(ratio: number): Promise<void>;
+    getExchangeEnabled(): Promise<boolean>;
+    setExchangeEnabled(enabled: boolean): Promise<void>;
   };
   conversions: {
     create(input: Omit<ConversionRecord, "id" | "createdAt">): Promise<ConversionRecord>;

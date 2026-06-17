@@ -99,7 +99,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.decorate("deps", { config, repositories, orderClient, taobaoOrderClient });
 
   app.addHook("preHandler", async (request, reply) => {
-    if (request.url === "/health" || request.url === "/api/auth/wechat-login") {
+    if (request.url === "/health" || request.url === "/api/auth/wechat-login" || request.url === "/api/app-config") {
       return;
     }
 
@@ -131,6 +131,11 @@ export async function createApp(options: CreateAppOptions = {}) {
   });
 
   app.get("/health", async () => ({ ok: true }));
+
+  // 小程序启动时拉取的功能开关（公开，无需登录），用于审核期间隐藏兑换入口
+  app.get("/api/app-config", async () => ({
+    exchangeEnabled: await repositories.settings.getExchangeEnabled()
+  }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerConversionRoutes(app, repositories, taobaoClient, config.commissionSharingRatio);
