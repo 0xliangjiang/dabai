@@ -215,7 +215,7 @@ Page({
 
     const app = this.platformLabel(result.platform);
     const content = copyType === "password"
-      ? `打开「${app}」App，会自动弹出该商品，确认下单即可返积分到账。`
+      ? `打开「${app}」App，会自动弹出该商品，确认下单即可获得返积分。`
       : `打开「${app}」App 或浏览器，粘贴刚复制的链接即可打开商品，下单后返积分。`;
     wx.showModal({
       title: `已复制，去${app}下单`,

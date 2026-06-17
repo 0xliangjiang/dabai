@@ -2,14 +2,14 @@ const { ensureLogin, request } = require("../../utils/api");
 
 const STATUS_TEXT = {
   pending: "审核中",
-  paid: "已到账",
+  paid: "已发放",
   rejected: "已驳回"
 };
 
 Page({
   data: {
     list: [],
-    balanceText: "0.00",
+    availablePoints: 0,
     loading: true,
     showEmpty: false
   },
@@ -29,14 +29,13 @@ Page({
       const { withdrawals, availableBalance } = await request("/api/withdrawals/me");
       const list = (withdrawals || []).map((w) => ({
         ...w,
-        amountText: (w.amountCents / 100).toFixed(2),
+        points: w.amountCents,
         dateText: formatDateTime(w.createdAt),
-        statusText: STATUS_TEXT[w.status] || w.status,
-        payTypeText: w.payType === "wechat" ? "微信" : "支付宝"
+        statusText: STATUS_TEXT[w.status] || w.status
       }));
       this.setData({
         list,
-        balanceText: ((availableBalance || 0) / 100).toFixed(2),
+        availablePoints: availableBalance || 0,
         loading: false,
         showEmpty: list.length === 0
       });

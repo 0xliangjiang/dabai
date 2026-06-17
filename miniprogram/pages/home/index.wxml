@@ -78,7 +78,7 @@
         </view>
       </view>
 
-      <view class="hint-bar">积分为预估参考，订单确认后到账，可联系客服了解积分权益。</view>
+      <view class="hint-bar">积分为预估参考，订单确认后发放，可联系客服了解积分权益。</view>
       <view class="flex-direction gap">
         <view wx:if="{{result.hasPassword}}">
           <view class="flex align-center justify-between">

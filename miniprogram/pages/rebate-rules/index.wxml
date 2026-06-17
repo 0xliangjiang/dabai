@@ -9,7 +9,7 @@
 
     <view class="cu-card article-card">
       <view class="section-title">积分预估</view>
-      <view class="article-text">预估积分受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终到账积分不同。取消、退款、风控、跨店活动变化等情况可能导致积分无法到账或数量调整。</view>
+      <view class="article-text">预估积分受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终结算积分不同。取消、退款、风控、跨店活动变化等情况可能导致积分无法发放或数量调整。</view>
     </view>
 
     <view class="cu-card article-card">
@@ -19,7 +19,7 @@
 
     <view class="cu-card article-card">
       <view class="section-title">积分兑换</view>
-      <view class="article-text">积分按 100 积分 = 1 元折算，累计满 1000 积分即可在「我的」页面申请兑换，提交后运营方将在 3 个工作日内安排发放。</view>
+      <view class="article-text">累计满 1000 积分即可在「我的」页面申请兑换奖励，提交后运营方将在 3 个工作日内安排发放。</view>
     </view>
   </view>
 </view>
