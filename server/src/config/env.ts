@@ -64,8 +64,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     jdUnionSiteId: env.JD_UNION_SITE_ID ?? "",
     jdUnionPositionId: env.JD_UNION_POSITION_ID ?? "",
     jdUnionSceneId: env.JD_UNION_SCENE_ID ?? "",
-    // MiniMax（OpenAI 兼容 chat 接口）：AI 识别促销文案生成线报
-    minimaxApiUrl: env.MINIMAX_API_URL ?? "https://api.minimaxi.com/v1/chat/completions",
+    // MiniMax chat 接口（API Key 直连）：AI 识别促销文案生成线报
+    // 如需 GroupId，可直接拼在 URL 上：...chatcompletion_v2?GroupId=xxxx
+    minimaxApiUrl: env.MINIMAX_API_URL ?? "https://api.minimax.chat/v1/text/chatcompletion_v2",
     minimaxApiKey: env.MINIMAX_API_KEY ?? "",
     minimaxModel: env.MINIMAX_MODEL ?? "MiniMax-M3",
   };
