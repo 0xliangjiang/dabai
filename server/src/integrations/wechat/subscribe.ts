@@ -35,9 +35,14 @@ export function createSubscribeMessageSender(
     url.searchParams.set("secret", config.wechatAppSecret);
 
     const response = await fetcher(url);
-    const payload = (await response.json()) as { access_token?: string; expires_in?: number; errmsg?: string };
+    const payload = (await response.json()) as {
+      access_token?: string;
+      expires_in?: number;
+      errcode?: number;
+      errmsg?: string;
+    };
     if (!payload.access_token) {
-      throw new Error(`get access_token failed: ${payload.errmsg ?? "unknown"}`);
+      throw new Error(`获取 access_token 失败：${payload.errcode ?? ""} ${payload.errmsg ?? "unknown"}`.trim());
     }
     cachedToken = payload.access_token;
     tokenExpiresAt = Date.now() + ((payload.expires_in ?? 7200) - 300) * 1000;

@@ -3,7 +3,9 @@ import type { AppConfig } from "../config/env.js";
 import type { SubscribeMessageSender } from "../integrations/wechat/subscribe.js";
 import type { DealPostRecord, Repositories } from "../repositories/types.js";
 
-export type DealPublishedNotifier = (deal: DealPostRecord) => Promise<{ sent: number; targets: number }>;
+export type DealPublishedNotifier = (
+  deal: DealPostRecord
+) => Promise<{ sent: number; targets: number; error?: string }>;
 
 export function createDealPublishedNotifier(
   config: AppConfig,
@@ -26,6 +28,7 @@ export function createDealPublishedNotifier(
 
     const usedGrantIds: string[] = [];
     let sent = 0;
+    let firstError: string | undefined;
     for (const target of targets) {
       try {
         const result = await sender.send({
@@ -43,16 +46,19 @@ export function createDealPublishedNotifier(
         if (result.ok) {
           sent += 1;
         } else {
+          firstError = firstError ?? `${result.errcode ?? ""} ${result.errmsg ?? "发送被拒绝"}`.trim();
           log?.warn({ errcode: result.errcode, errmsg: result.errmsg, userId: target.userId }, "subscribe send rejected");
         }
       } catch (error) {
+        // 多为获取 access_token 失败（如服务器 IP 不在微信白名单）；该额度不消耗，便于修好后重试
+        firstError = firstError ?? (error as Error).message;
         log?.error({ err: error, userId: target.userId }, "subscribe send failed");
       }
     }
 
     await repositories.subscriptions.markUsed(usedGrantIds);
-    log?.info({ dealId: deal.id, targets: targets.length, sent }, "deal publish notification done");
-    return { sent, targets: targets.length };
+    log?.info({ dealId: deal.id, targets: targets.length, sent, error: firstError }, "deal publish notification done");
+    return { sent, targets: targets.length, error: sent === 0 ? firstError : undefined };
   };
 }
 

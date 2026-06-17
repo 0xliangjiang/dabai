@@ -8,13 +8,17 @@ import { toast } from "./lib/toast";
 
 const emptyStep: AdminDealStep = { content: "", copyType: null, copyValue: "", images: [], videoUrl: "" };
 
-type DealSaveResult = AdminDeal & { notify?: { sent: number; targets: number } };
+type DealSaveResult = AdminDeal & { notify?: { sent: number; targets: number; error?: string } };
 
 // 发布后的订阅推送结果文案
-function pushSuffix(notify?: { sent: number; targets: number }): string {
+function pushSuffix(notify?: { sent: number; targets: number; error?: string }): string {
   if (!notify) return "";
   if (notify.targets === 0) return "（暂无订阅用户，未推送）";
-  if (notify.sent === 0) return `（${notify.targets} 人订阅，但发送失败，请查 IP 白名单/日志）`;
+  if (notify.sent === 0) {
+    return notify.error
+      ? `（${notify.targets} 人订阅，发送失败：${notify.error}）`
+      : `（${notify.targets} 人订阅，但发送失败，请查日志）`;
+  }
   return `，已推送 ${notify.sent} 人`;
 }
 
