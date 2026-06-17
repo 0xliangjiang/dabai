@@ -21,6 +21,9 @@
       <view class="cu-card flex-direction gap-sm anim-up">
         <view class="section-title">{{deal.title}}</view>
         <view wx:if="{{deal.summary}}" class="section-desc">{{deal.summary}}</view>
+        <button class="cu-btn share-deal-btn block pressable margin-top-sm" hover-class="pressed" bindtap="openShareModal">
+          <text class="share-deal-icon">📤</text> 分享给好友 / 朋友圈
+        </button>
       </view>
 
       <view
@@ -64,5 +67,42 @@
 
       <view class="hint-bar anim-up delay-4">按步骤操作即可，遇到问题可在「我的」页联系客服。</view>
     </block>
+  </view>
+
+  <!-- 分享弹窗 -->
+  <view wx:if="{{showShareModal}}" class="modal-overlay" bindtap="closeShareModal">
+    <view class="modal-card" catchtap="stopProp">
+      <view class="modal-title">分享这条线报</view>
+
+      <view class="share-options">
+        <button class="share-option pressable" hover-class="pressed" open-type="share" bindtap="closeShareModal">
+          <view class="share-option-icon green">👥</view>
+          <view class="share-option-text flex-sub">
+            <view class="share-option-title">微信好友 / 群</view>
+            <view class="share-option-desc">点击直接选择好友或群发送</view>
+          </view>
+          <view class="cu-arrow">›</view>
+        </button>
+
+        <view class="share-option pressable" hover-class="pressed" bindtap="showTimelineTutorial">
+          <view class="share-option-icon orange">🌅</view>
+          <view class="share-option-text flex-sub">
+            <view class="share-option-title">分享到朋友圈</view>
+            <view class="share-option-desc">查看教程，一步发到朋友圈</view>
+          </view>
+          <view class="cu-arrow">›</view>
+        </view>
+      </view>
+
+      <view wx:if="{{showTimelineGuide}}" class="timeline-guide">
+        <view class="timeline-guide-title">分享到朋友圈步骤</view>
+        <view class="timeline-step"><text class="timeline-step-num">1</text>点击屏幕<text class="timeline-strong">右上角「⋯」</text></view>
+        <view class="timeline-step"><text class="timeline-step-num">2</text>在弹出菜单里选择<text class="timeline-strong">「分享到朋友圈」</text></view>
+        <view class="timeline-step"><text class="timeline-step-num">3</text>编辑文字后发布，好友下单你得积分</view>
+        <view class="timeline-guide-tip">提示：微信规定朋友圈分享只能从「⋯」菜单发起，无法一键跳转，按上面三步即可。</view>
+      </view>
+
+      <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="closeShareModal">关闭</button>
+    </view>
   </view>
 </view>

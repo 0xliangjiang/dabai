@@ -5,7 +5,9 @@ Page({
     deal: null,
     loading: true,
     notFound: false,
-    copiedIndex: -1
+    copiedIndex: -1,
+    showShareModal: false,
+    showTimelineGuide: false
   },
 
   onShareAppMessage() {
@@ -16,10 +18,37 @@ Page({
     };
   },
 
+  // 分享到朋友圈（用户从右上角「⋯」菜单触发）
+  onShareTimeline() {
+    const title = this.data.deal ? this.data.deal.title : "优惠线报";
+    return {
+      title,
+      query: this.dealId ? `id=${this.dealId}` : ""
+    };
+  },
+
   async onLoad(options) {
     this.dealId = options.id || "";
+    // 开启「⋯」菜单里的转发与分享到朋友圈
+    if (wx.showShareMenu) {
+      wx.showShareMenu({ withShareTicket: true, menus: ["shareAppMessage", "shareTimeline"] });
+    }
     await this.fetchDeal();
   },
+
+  openShareModal() {
+    this.setData({ showShareModal: true, showTimelineGuide: false });
+  },
+
+  closeShareModal() {
+    this.setData({ showShareModal: false, showTimelineGuide: false });
+  },
+
+  showTimelineTutorial() {
+    this.setData({ showTimelineGuide: true });
+  },
+
+  stopProp() {},
 
   async fetchDeal() {
     if (!this.dealId) {

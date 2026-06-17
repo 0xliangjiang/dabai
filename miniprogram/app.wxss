@@ -964,6 +964,122 @@ page {
   margin-bottom: 10rpx;
 }
 
+/* 线报分享 */
+.share-deal-btn {
+  background: linear-gradient(150deg, #13c489 0%, #0a8f60 52%, #07684a 100%);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 10rpx 22rpx -8rpx rgba(9, 110, 76, 0.5);
+}
+
+.share-deal-icon {
+  font-size: 30rpx;
+}
+
+.share-options {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.share-option {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  width: 100%;
+  margin: 0;
+  padding: 22rpx 24rpx;
+  border: 1rpx solid rgba(10, 60, 42, 0.08);
+  border-radius: 24rpx;
+  background: #fafcfb;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.share-option::after {
+  border: 0;
+}
+
+.share-option-icon {
+  flex: 0 0 72rpx;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  font-size: 36rpx;
+  line-height: 72rpx;
+  text-align: center;
+}
+
+.share-option-icon.green {
+  background: linear-gradient(150deg, #d9f6e8 0%, #b6ecd3 100%);
+}
+
+.share-option-icon.orange {
+  background: linear-gradient(150deg, #faf0d7 0%, #f3e3b8 100%);
+}
+
+.share-option-title {
+  font-size: 29rpx;
+  font-weight: 800;
+  color: #122019;
+}
+
+.share-option-desc {
+  margin-top: 4rpx;
+  font-size: 23rpx;
+  color: #6b7f74;
+}
+
+.timeline-guide {
+  margin-top: 24rpx;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: #f4faf7;
+  border: 1rpx solid rgba(10, 122, 82, 0.12);
+}
+
+.timeline-guide-title {
+  font-size: 27rpx;
+  font-weight: 800;
+  color: #0a7a52;
+  margin-bottom: 14rpx;
+}
+
+.timeline-step {
+  display: flex;
+  align-items: center;
+  font-size: 25rpx;
+  color: #25372d;
+  line-height: 1.9;
+}
+
+.timeline-step-num {
+  flex: 0 0 36rpx;
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: 14rpx;
+  border-radius: 999rpx;
+  background: #0a7a52;
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 36rpx;
+  text-align: center;
+}
+
+.timeline-strong {
+  color: #07684a;
+  font-weight: 700;
+}
+
+.timeline-guide-tip {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #8aa093;
+  line-height: 1.6;
+}
+
 .form-tip {
   margin-bottom: 8rpx;
   line-height: 1.6;
