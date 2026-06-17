@@ -49,6 +49,23 @@ export async function registerDealRoutes(app: FastifyInstance, repositories: Rep
     }
     return { deal };
   });
+
+  // 访问上报（公开）：PV 累加 + 按设备 visitorId 去重统计 UV
+  app.post<{ Params: { id: string }; Body: { visitorId?: string } }>(
+    "/api/deals/:id/view",
+    async (request, reply) => {
+      const visitorId = (request.body?.visitorId ?? "").trim().slice(0, 64);
+      if (!visitorId) {
+        return reply.code(400).send({ error: "visitorId required" });
+      }
+      const deal = await repositories.deals.findById(request.params.id);
+      if (!deal || deal.status !== "published") {
+        return reply.code(404).send({ error: "线报不存在或已下线" });
+      }
+      await repositories.deals.recordView(request.params.id, visitorId);
+      return { ok: true };
+    }
+  );
 }
 
 export async function registerAdminDealRoutes(

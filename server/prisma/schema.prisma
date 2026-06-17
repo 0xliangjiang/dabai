@@ -210,11 +210,26 @@ model DealPost {
   status      String    @default("draft")
   pinned      Boolean   @default(false)
   steps       Json
+  viewCount   Int       @default(0)
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  visits DealVisit[]
+
   @@index([status, pinned, publishedAt])
+}
+
+model DealVisit {
+  id         String   @id @default(cuid())
+  dealId     String
+  visitorKey String   @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  deal DealPost @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, visitorKey])
+  @@index([dealId])
 }
 
 model SubscribeGrant {

@@ -100,6 +100,8 @@ export type DealPostRecord = {
   status: string;
   pinned: boolean;
   steps: DealStep[];
+  viewCount: number;
+  visitorCount: number;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -262,6 +264,7 @@ export type Repositories = {
     create(input: DealPostInput): Promise<DealPostRecord>;
     update(id: string, input: DealPostInput): Promise<DealPostRecord>;
     remove(id: string): Promise<void>;
+    recordView(id: string, visitorKey: string): Promise<void>;
   };
   checkIns: {
     findByUserAndDate(userId: string, checkInDate: string): Promise<CheckInRecord | undefined>;

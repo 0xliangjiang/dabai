@@ -409,6 +409,8 @@ export function DealManager({ adminToken }: { adminToken: string }) {
           <TableRow>
             <TableHead>标题</TableHead>
             <TableHead>步骤数</TableHead>
+            <TableHead className="text-right">点击量</TableHead>
+            <TableHead className="text-right">访问人数</TableHead>
             <TableHead>状态</TableHead>
             <TableHead>发布时间</TableHead>
             <TableHead className="text-right">操作</TableHead>
@@ -424,6 +426,8 @@ export function DealManager({ adminToken }: { adminToken: string }) {
                 </span>
               </TableCell>
               <TableCell>{deal.steps.length}</TableCell>
+              <TableCell className="text-right tabular-nums font-medium">{deal.viewCount ?? 0}</TableCell>
+              <TableCell className="text-right tabular-nums font-medium text-emerald-600">{deal.visitorCount ?? 0}</TableCell>
               <TableCell>
                 <Badge variant={deal.status === "published" ? "secondary" : "warning"}>
                   {deal.status === "published" ? "已发布" : "草稿"}
@@ -451,7 +455,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
           ))}
           {deals.length === 0 ? (
             <TableRow>
-              <TableCell className="py-8 text-center text-sm text-slate-500" colSpan={5}>
+              <TableCell className="py-8 text-center text-sm text-slate-500" colSpan={7}>
                 暂无线报，点击右上角「新建线报」开始
               </TableCell>
             </TableRow>

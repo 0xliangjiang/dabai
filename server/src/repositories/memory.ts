@@ -35,6 +35,7 @@ export function createRepositories(): Repositories {
   const claims = new Map<string, OrderClaimRecord>();
   const checkIns = new Map<string, CheckInRecord>();
   const deals = new Map<string, DealPostRecord>();
+  const dealVisits = new Set<string>();
   const withdrawalMap = new Map<string, WithdrawalRecord>();
   const deletedUserIds = new Set<string>();
   const pointAdjustments = new Map<string, { id: string; userId: string; amountCents: number }>();
@@ -401,6 +402,8 @@ export function createRepositories(): Repositories {
           status: input.status,
           pinned: input.pinned ?? false,
           steps: input.steps,
+          viewCount: 0,
+          visitorCount: 0,
           publishedAt: input.status === "published" ? new Date() : null,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -429,6 +432,16 @@ export function createRepositories(): Repositories {
       },
       async remove(id: string) {
         deals.delete(id);
+      },
+      async recordView(id: string, visitorKey: string) {
+        const deal = deals.get(id);
+        if (!deal) return;
+        deal.viewCount += 1;
+        const visitKey = `${id}:${visitorKey}`;
+        if (!dealVisits.has(visitKey)) {
+          dealVisits.add(visitKey);
+          deal.visitorCount += 1;
+        }
       }
     },
     checkIns: {

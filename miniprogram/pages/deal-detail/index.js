@@ -80,6 +80,11 @@ Page({
         videoUrl: step.videoUrl ? toDisplayUrl(step.videoUrl) : ""
       }));
       this.setData({ deal, loading: false });
+      // 上报访问（PV+UV），失败静默
+      request(`/api/deals/${this.dealId}/view`, {
+        method: "POST",
+        data: { visitorId: getVisitorId() }
+      }).catch(() => {});
     } catch (_error) {
       this.setData({ loading: false, notFound: true });
     }
@@ -127,4 +132,23 @@ Page({
 function toDisplayUrl(url) {
   if (!url) return "";
   return url.startsWith("/") ? `${getApp().globalData.apiBaseUrl}${url}` : url;
+}
+
+// 设备级访问标识（本地存储，不涉及隐私授权），用于线报访问人数去重
+function getVisitorId() {
+  let id = "";
+  try {
+    id = wx.getStorageSync("visitor_id");
+  } catch (_e) {
+    id = "";
+  }
+  if (!id) {
+    id = `v_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    try {
+      wx.setStorageSync("visitor_id", id);
+    } catch (_e) {
+      // ignore
+    }
+  }
+  return id;
 }

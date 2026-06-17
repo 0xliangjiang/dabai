@@ -37,6 +37,8 @@ export type AdminDeal = {
   status: string;
   pinned: boolean;
   steps: AdminDealStep[];
+  viewCount: number;
+  visitorCount: number;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;

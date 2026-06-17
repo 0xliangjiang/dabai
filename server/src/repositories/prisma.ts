@@ -467,12 +467,16 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async list(publishedOnly: boolean) {
         const records = await prisma.dealPost.findMany({
           where: publishedOnly ? { status: "published" } : undefined,
-          orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }]
+          orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
+          include: { _count: { select: { visits: true } } }
         });
         return records.map(mapDeal);
       },
       async findById(id: string) {
-        const record = await prisma.dealPost.findUnique({ where: { id } });
+        const record = await prisma.dealPost.findUnique({
+          where: { id },
+          include: { _count: { select: { visits: true } } }
+        });
         return record ? mapDeal(record) : undefined;
       },
       async create(input) {
@@ -506,6 +510,17 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       },
       async remove(id) {
         await prisma.dealPost.delete({ where: { id } });
+      },
+      async recordView(id: string, visitorKey: string) {
+        // PV：每次访问 +1；UV：按 (dealId, visitorKey) 去重
+        await prisma.$transaction([
+          prisma.dealPost.update({ where: { id }, data: { viewCount: { increment: 1 } } }),
+          prisma.dealVisit.upsert({
+            where: { dealId_visitorKey: { dealId: id, visitorKey } },
+            create: { dealId: id, visitorKey },
+            update: {}
+          })
+        ]);
       }
     },
     checkIns: {
@@ -759,13 +774,24 @@ function mapDeal(record: {
   status: string;
   pinned: boolean;
   steps: unknown;
+  viewCount?: number;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  _count?: { visits: number };
 }): DealPostRecord {
   return {
-    ...record,
-    steps: Array.isArray(record.steps) ? (record.steps as DealPostRecord["steps"]) : []
+    id: record.id,
+    title: record.title,
+    summary: record.summary,
+    status: record.status,
+    pinned: record.pinned,
+    steps: Array.isArray(record.steps) ? (record.steps as DealPostRecord["steps"]) : [],
+    viewCount: record.viewCount ?? 0,
+    visitorCount: record._count?.visits ?? 0,
+    publishedAt: record.publishedAt,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt
   };
 }
 
