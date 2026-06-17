@@ -99,16 +99,17 @@
         <view class="cu-label logout-label">退出登录</view>
         <view class="cu-arrow">›</view>
       </view>
-      <button
-        class="cu-item contact-item flex align-center justify-between" hover-class="item-pressed"
-        open-type="contact"
-        show-message-card="true"
-        send-message-title="捷径一生工具箱客服"
-        send-message-path="/pages/home/index"
-      >
+      <view class="cu-item contact-row flex align-center justify-between" hover-class="item-pressed">
         <view class="cu-label">联系客服</view>
         <view class="cu-arrow">›</view>
-      </button>
+        <button
+          class="contact-overlay"
+          open-type="contact"
+          show-message-card="true"
+          send-message-title="捷径一生工具箱客服"
+          send-message-path="/pages/home/index"
+        ></button>
+      </view>
     </view>
 
   </view>
