@@ -55,8 +55,9 @@ Page({
       this.setData({ loading: false, notFound: true });
       return;
     }
+    // 登录尽力而为（用于后续归因），但不阻塞线报查看——接口已公开，分享打开无需登录
+    ensureLogin().catch(() => {});
     try {
-      await ensureLogin();
       const { deal } = await request(`/api/deals/${this.dealId}`);
       deal.steps = (deal.steps || []).map((step) => ({
         ...step,

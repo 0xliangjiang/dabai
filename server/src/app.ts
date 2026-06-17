@@ -107,6 +107,11 @@ export async function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
+    // 线报查看（列表/详情）公开，便于分享到朋友圈/好友后未登录也能打开
+    if (request.method === "GET" && request.url.startsWith("/api/deals")) {
+      return;
+    }
+
     if (request.url.startsWith("/api/admin") || request.url.startsWith("/api/jobs")) {
       return;
     }

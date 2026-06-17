@@ -358,7 +358,8 @@ describe("server API", () => {
         zhetaokePid: "",
         commissionSharingRatio: 0.5,
         attributionWindowHours: 24,
-        highValueReviewThresholdCents: 5000
+        highValueReviewThresholdCents: 5000,
+        exchangeEnabled: false
       }
     });
   });

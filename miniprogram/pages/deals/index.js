@@ -84,7 +84,7 @@ Page({
 
   async fetchDeals() {
     try {
-      await ensureLogin();
+      ensureLogin().catch(() => {});
       const data = await request("/api/deals");
       this.setData({
         deals: data.deals.map((deal) => ({
