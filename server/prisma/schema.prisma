@@ -132,6 +132,7 @@ model TbkOrder {
   estimatedCommissionCents Int
   settledCommissionCents   Int?
   orderStatus              String
+  manualStatus             String?
   rawPayload               Json
   syncedAt                 DateTime @default(now())
   updatedAt                DateTime @updatedAt

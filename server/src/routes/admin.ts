@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
+import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
 
@@ -91,6 +92,38 @@ export async function registerAdminRoutes(
         userId: request.body?.userId,
         reviewedBy: "admin"
       });
+    }
+  );
+
+  app.post<{ Params: { id: string }; Body: { status?: string } }>(
+    "/api/admin/orders/:id/status",
+    async (request, reply) => {
+      const status = request.body?.status;
+      if (!["paid", "received", "settled", "refunded"].includes(status ?? "")) {
+        return reply.code(400).send({ error: "status 必须为 paid/received/settled/refunded" });
+      }
+      const order = await repositories.orders.markOrderStatus(request.params.id, status!);
+
+      // 标记结算/退款时，把积分流转到归属用户（契合手动履约）
+      if (status === "settled" || status === "refunded") {
+        const attribution = await repositories.orders.getAttribution(order.tbkOrderId);
+        if (attribution?.userId) {
+          const globalRatio =
+            (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
+          const user = await repositories.users.findById(attribution.userId);
+          const entry = buildCommissionLedgerEntry({
+            userId: attribution.userId,
+            tbkOrderId: order.id,
+            orderStatus: status,
+            estimatedCommissionCents: order.estimatedCommissionCents,
+            settledCommissionCents: order.settledCommissionCents,
+            sharingRatio: resolveSharingRatio(user?.rebateRatio, globalRatio)
+          });
+          await repositories.commissionLedger.upsert(entry);
+        }
+      }
+
+      return { ok: true, order };
     }
   );
 

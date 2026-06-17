@@ -50,6 +50,7 @@ export type OrderRecord = {
   estimatedCommissionCents: number;
   settledCommissionCents: number | null;
   orderStatus: string;
+  manualStatus: string | null;
   rawPayload: unknown;
 };
 
@@ -227,6 +228,7 @@ export type Repositories = {
     upsert(input: UpsertOrderInput): Promise<OrderRecord>;
     upsertAttribution(input: UpsertAttributionInput): Promise<AttributionRecord>;
     getAttribution(tbkOrderId: string): Promise<{ status: string; userId: string | null } | null>;
+    markOrderStatus(id: string, status: string): Promise<OrderRecord>;
     listPendingAttributions(): Promise<Array<AttributionRecord & { order: OrderRecord }>>;
     listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }): Promise<{
       total: number;

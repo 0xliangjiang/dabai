@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
@@ -187,13 +188,23 @@ export function createRepositories(): Repositories {
       },
       async upsert(input: UpsertOrderInput) {
         const existingId = ordersByTbkOrderId.get(input.tbkOrderId);
+        const manualStatus = (existingId ? orders.get(existingId)?.manualStatus : null) ?? null;
         const record: OrderRecord = {
           id: existingId ?? randomUUID(),
-          ...input
+          ...input,
+          orderStatus: resolveEffectiveStatus(input.orderStatus, manualStatus),
+          manualStatus
         };
         orders.set(record.id, record);
         ordersByTbkOrderId.set(input.tbkOrderId, record.id);
         return record;
+      },
+      async markOrderStatus(id: string, status: string) {
+        const order = orders.get(id);
+        if (!order) throw new Error(`order not found: ${id}`);
+        order.manualStatus = status;
+        order.orderStatus = status;
+        return order;
       },
       async upsertAttribution(input: UpsertAttributionInput) {
         const orderId = ordersByTbkOrderId.get(input.tbkOrderId);

@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
@@ -203,6 +204,9 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
       },
       async upsert(input: UpsertOrderInput) {
+        const existing = await prisma.tbkOrder.findUnique({ where: { tbkOrderId: input.tbkOrderId } });
+        // 手动标记的状态与折淘客状态取更靠后者，避免同步把已收货/已结算刷回已付款
+        const orderStatus = resolveEffectiveStatus(input.orderStatus, existing?.manualStatus ?? null);
         const record = await prisma.tbkOrder.upsert({
           where: { tbkOrderId: input.tbkOrderId },
           create: {
@@ -213,7 +217,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             payAmountCents: input.payAmountCents,
             estimatedCommissionCents: input.estimatedCommissionCents,
             settledCommissionCents: input.settledCommissionCents,
-            orderStatus: input.orderStatus,
+            orderStatus,
             rawPayload: toJsonValue(input.rawPayload)
           },
           update: {
@@ -223,10 +227,17 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             payAmountCents: input.payAmountCents,
             estimatedCommissionCents: input.estimatedCommissionCents,
             settledCommissionCents: input.settledCommissionCents,
-            orderStatus: input.orderStatus,
+            orderStatus,
             rawPayload: toJsonValue(input.rawPayload),
             syncedAt: new Date()
           }
+        });
+        return mapOrder(record);
+      },
+      async markOrderStatus(id: string, status: string) {
+        const record = await prisma.tbkOrder.update({
+          where: { id },
+          data: { manualStatus: status, orderStatus: status }
         });
         return mapOrder(record);
       },
@@ -683,9 +694,10 @@ function mapOrder(record: {
   estimatedCommissionCents: number;
   settledCommissionCents: number | null;
   orderStatus: string;
+  manualStatus?: string | null;
   rawPayload: unknown;
 }): OrderRecord {
-  return record;
+  return { ...record, manualStatus: record.manualStatus ?? null };
 }
 
 function mapAttribution(record: {

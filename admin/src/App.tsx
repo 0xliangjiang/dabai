@@ -89,6 +89,7 @@ export function App() {
   const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [markingOrderId, setMarkingOrderId] = useState("");
   const [pointsModal, setPointsModal] = useState<{ userId: string; nickname: string } | null>(null);
   const [pointsDelta, setPointsDelta] = useState("");
   const [ratioModal, setRatioModal] = useState<{ userId: string; nickname: string } | null>(null);
@@ -146,6 +147,24 @@ export function App() {
       return false;
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function markOrderStatus(orderId: string, status: "received" | "settled") {
+    const label = status === "received" ? "已收货" : "已结算";
+    if (status === "settled" && !window.confirm("标记已结算会把佣金积分发放到归属用户，确定吗？")) return;
+    setMarkingOrderId(orderId);
+    try {
+      await fetchAdminApi(`/api/admin/orders/${orderId}/status`, adminToken, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      });
+      toast(`已标记为${label}`);
+      await loadOrders(ordersPage);
+    } catch {
+      toast("标记失败，请重试", "error");
+    } finally {
+      setMarkingOrderId("");
     }
   }
 
@@ -533,6 +552,7 @@ export function App() {
                   <TableHead className="text-right">结算佣金</TableHead>
                   <TableHead>归因状态</TableHead>
                   <TableHead>归因用户</TableHead>
+                  <TableHead className="text-right">标记状态</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -556,10 +576,20 @@ export function App() {
                       </TableCell>
                       <TableCell><Badge variant={attrVariant}>{attrLabel}</Badge></TableCell>
                       <TableCell className="text-sm">{order.attribution?.userNickname ?? "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          {order.orderStatus !== "received" && order.orderStatus !== "settled" ? (
+                            <Button size="sm" variant="outline" disabled={markingOrderId === order.id} onClick={() => void markOrderStatus(order.id, "received")}>收货</Button>
+                          ) : null}
+                          {order.orderStatus !== "settled" ? (
+                            <Button size="sm" disabled={markingOrderId === order.id} onClick={() => void markOrderStatus(order.id, "settled")}>结算</Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
-                {orders.items.length === 0 ? <EmptyRow colSpan={9} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
+                {orders.items.length === 0 ? <EmptyRow colSpan={10} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>
