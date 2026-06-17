@@ -88,8 +88,9 @@ export function DealManager({ adminToken }: { adminToken: string }) {
     }
     setAiLoading(true);
     try {
-      const { deal } = await fetchAdminApi<{
+      const { deal, convertedCount } = await fetchAdminApi<{
         deal: { title: string; summary: string; steps: Array<{ content: string; copyType: "link" | "password" | null; copyValue: string }> };
+        convertedCount?: number;
       }>("/api/admin/deals/ai-parse", adminToken, {
         method: "POST",
         body: JSON.stringify({ rawContent: raw })
@@ -103,7 +104,11 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         steps: deal.steps.map((s) => ({ ...emptyStep, content: s.content, copyType: s.copyType, copyValue: s.copyValue }))
       }));
       setAiText("");
-      toast("已识别，请检查并补充图片后发布");
+      toast(
+        convertedCount
+          ? `已识别，并转成你的口令+链接 ${convertedCount} 条，检查后发布`
+          : "已识别，请检查并补充图片后发布"
+      );
     } catch (aiError) {
       toast(aiError instanceof Error ? aiError.message : "识别失败，请重试", "error");
     } finally {

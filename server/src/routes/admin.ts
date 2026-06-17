@@ -4,6 +4,7 @@ import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
+import type { TaobaoClient } from "../integrations/taobao/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
 
@@ -12,7 +13,8 @@ export async function registerAdminRoutes(
   config: AppConfig,
   repositories: Repositories,
   uploadDir: string,
-  notifyDealPublished?: DealPublishedNotifier
+  notifyDealPublished?: DealPublishedNotifier,
+  taobaoClient?: TaobaoClient
 ) {
   const dealAiParser = createDealAiParser({
     apiUrl: config.minimaxApiUrl,
@@ -43,7 +45,27 @@ export async function registerAdminRoutes(
     async (request, reply) => {
       try {
         const deal = await dealAiParser.parseDealFromText(request.body?.rawContent ?? "");
-        return { deal };
+        // 把识别到的淘口令/链接转成自己的（口令+链接），免手动再转一遍
+        let convertedCount = 0;
+        if (taobaoClient) {
+          for (const step of deal.steps) {
+            const original = (step.copyValue ?? "").trim();
+            if (!original || (step.copyType !== "password" && step.copyType !== "link")) continue;
+            try {
+              const r = await taobaoClient.convert(original);
+              const link = r.generatedShortUrl || r.generatedClickUrl;
+              const combined = [r.generatedPassword, link].filter(Boolean).join(" ").trim();
+              if (combined) {
+                step.copyValue = combined;
+                step.copyType = "password";
+                convertedCount += 1;
+              }
+            } catch {
+              // 转链失败（非淘宝商品、无券、平台未开通等）保留原内容
+            }
+          }
+        }
+        return { deal, convertedCount };
       } catch (error) {
         if (error instanceof MinimaxError) {
           return reply.code(400).send({ error: error.message });

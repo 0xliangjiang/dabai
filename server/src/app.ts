@@ -161,7 +161,7 @@ export async function createApp(options: CreateAppOptions = {}) {
     createSubscribeMessageSender(config),
     app.log
   );
-  await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier);
+  await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier, taobaoClient);
 
   return app;
 }
