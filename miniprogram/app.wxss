@@ -972,6 +972,25 @@ page {
   box-shadow: 0 10rpx 22rpx -8rpx rgba(9, 110, 76, 0.5);
 }
 
+/* 列表卡片上的小分享按钮 */
+.deal-share-btn {
+  margin: 0 0 0 auto;
+  padding: 0 24rpx;
+  min-height: 52rpx;
+  height: 52rpx;
+  line-height: 52rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(10, 122, 82, 0.28);
+  background: #f4faf7;
+  color: #0a7a52;
+  font-size: 23rpx;
+  font-weight: 700;
+}
+
+.deal-share-btn::after {
+  border: 0;
+}
+
 .share-deal-icon {
   font-size: 30rpx;
 }

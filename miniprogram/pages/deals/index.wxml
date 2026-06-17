@@ -43,6 +43,14 @@
         <view class="deal-meta flex align-center gap-sm">
           <view class="cu-tag blue">{{item.stepCount}} 个步骤</view>
           <view class="muted text-sm">{{item.dateText}}</view>
+          <button
+            class="deal-share-btn pressable"
+            hover-class="pressed"
+            open-type="share"
+            catchtap="noop"
+            data-id="{{item.id}}"
+            data-title="{{item.title}}"
+          >分享</button>
         </view>
       </view>
     </block>
