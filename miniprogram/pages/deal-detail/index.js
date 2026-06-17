@@ -1,4 +1,5 @@
 const { ensureLogin, request } = require("../../utils/api");
+const { setConsent } = require("../../utils/privacy");
 
 Page({
   data: {
@@ -7,7 +8,21 @@ Page({
     notFound: false,
     copiedIndex: -1,
     showShareModal: false,
-    showTimelineGuide: false
+    showTimelineGuide: false,
+    showPrivacy: false
+  },
+
+  // 复制等隐私接口被拦截时，由 app.js 触发本页弹出隐私确认
+  onPrivacyAgree() {
+    setConsent();
+    getApp().resolvePrivacy(true);
+    this.setData({ showPrivacy: false });
+  },
+
+  onPrivacyReject() {
+    getApp().resolvePrivacy(false);
+    this.setData({ showPrivacy: false });
+    wx.showToast({ title: "同意后才能复制内容", icon: "none" });
   },
 
   onShareAppMessage() {

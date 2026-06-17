@@ -105,4 +105,6 @@
       <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="closeShareModal">关闭</button>
     </view>
   </view>
+
+  <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
 </view>
