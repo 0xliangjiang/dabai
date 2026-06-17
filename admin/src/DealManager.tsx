@@ -8,6 +8,16 @@ import { toast } from "./lib/toast";
 
 const emptyStep: AdminDealStep = { content: "", copyType: null, copyValue: "", images: [], videoUrl: "" };
 
+type DealSaveResult = AdminDeal & { notify?: { sent: number; targets: number } };
+
+// 发布后的订阅推送结果文案
+function pushSuffix(notify?: { sent: number; targets: number }): string {
+  if (!notify) return "";
+  if (notify.targets === 0) return "（暂无订阅用户，未推送）";
+  if (notify.sent === 0) return `（${notify.targets} 人订阅，但发送失败，请查 IP 白名单/日志）`;
+  return `，已推送 ${notify.sent} 人`;
+}
+
 type DraftDeal = {
   id: string | null;
   title: string;
@@ -108,19 +118,17 @@ export function DealManager({ adminToken }: { adminToken: string }) {
           videoUrl: step.videoUrl || null
         }))
       };
-      if (draft.id) {
-        await fetchAdminApi(`/api/admin/deals/${draft.id}`, adminToken, {
-          method: "PUT",
-          body: JSON.stringify(payload)
-        });
-      } else {
-        await fetchAdminApi("/api/admin/deals", adminToken, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        });
-      }
+      const result = draft.id
+        ? await fetchAdminApi<DealSaveResult>(`/api/admin/deals/${draft.id}`, adminToken, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+          })
+        : await fetchAdminApi<DealSaveResult>("/api/admin/deals", adminToken, {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
       setDraft(null);
-      toast(draft.id ? "线报已更新" : "线报已创建");
+      toast(`${draft.id ? "线报已更新" : "线报已创建"}${pushSuffix(result.notify)}`);
       await loadDeals();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "保存失败");
@@ -130,17 +138,18 @@ export function DealManager({ adminToken }: { adminToken: string }) {
   }
 
   async function togglePublish(deal: AdminDeal) {
-    await fetchAdminApi(`/api/admin/deals/${deal.id}`, adminToken, {
+    const willPublish = deal.status !== "published";
+    const result = await fetchAdminApi<DealSaveResult>(`/api/admin/deals/${deal.id}`, adminToken, {
       method: "PUT",
       body: JSON.stringify({
         title: deal.title,
         summary: deal.summary,
-        status: deal.status === "published" ? "draft" : "published",
+        status: willPublish ? "published" : "draft",
         pinned: deal.pinned,
         steps: deal.steps
       })
     });
-    toast(deal.status === "published" ? "已下线" : "已发布");
+    toast(willPublish ? `已发布${pushSuffix(result.notify)}` : "已下线");
     await loadDeals();
   }
 

@@ -66,10 +66,11 @@ export async function registerAdminDealRoutes(
       return reply.code(400).send({ error: "线报内容不完整或格式不正确" });
     }
     const deal = await repositories.deals.create(parsed.data);
+    let notify: { sent: number; targets: number } | undefined;
     if (deal.status === "published" && notifyDealPublished) {
-      await notifyDealPublished(deal);
+      notify = await notifyDealPublished(deal);
     }
-    return deal;
+    return { ...deal, notify };
   });
 
   app.put<{ Params: { id: string } }>("/api/admin/deals/:id", async (request, reply) => {
@@ -80,10 +81,11 @@ export async function registerAdminDealRoutes(
     const before = await repositories.deals.findById(request.params.id);
     const deal = await repositories.deals.update(request.params.id, parsed.data);
     // 仅在状态从非发布变为发布时通知，避免编辑已发布内容重复打扰
+    let notify: { sent: number; targets: number } | undefined;
     if (deal.status === "published" && before?.status !== "published" && notifyDealPublished) {
-      await notifyDealPublished(deal);
+      notify = await notifyDealPublished(deal);
     }
-    return deal;
+    return { ...deal, notify };
   });
 
   app.delete<{ Params: { id: string } }>("/api/admin/deals/:id", async (request) => {

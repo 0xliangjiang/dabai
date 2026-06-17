@@ -3,7 +3,7 @@ import type { AppConfig } from "../config/env.js";
 import type { SubscribeMessageSender } from "../integrations/wechat/subscribe.js";
 import type { DealPostRecord, Repositories } from "../repositories/types.js";
 
-export type DealPublishedNotifier = (deal: DealPostRecord) => Promise<{ sent: number }>;
+export type DealPublishedNotifier = (deal: DealPostRecord) => Promise<{ sent: number; targets: number }>;
 
 export function createDealPublishedNotifier(
   config: AppConfig,
@@ -14,12 +14,14 @@ export function createDealPublishedNotifier(
   return async (deal) => {
     const templateId = config.wechatDealTemplateId || (config.nodeEnv === "production" ? "" : "dev-deal-template");
     if (!templateId) {
-      return { sent: 0 };
+      log?.warn("deal publish: 未配置订阅模板 WECHAT_DEAL_TEMPLATE_ID，跳过推送");
+      return { sent: 0, targets: 0 };
     }
 
     const targets = await repositories.subscriptions.listUnusedWithOpenid(templateId);
     if (targets.length === 0) {
-      return { sent: 0 };
+      log?.info({ dealId: deal.id }, "deal publish: 暂无可推送的订阅用户（一次性订阅需用户重新订阅）");
+      return { sent: 0, targets: 0 };
     }
 
     const usedGrantIds: string[] = [];
@@ -50,7 +52,7 @@ export function createDealPublishedNotifier(
 
     await repositories.subscriptions.markUsed(usedGrantIds);
     log?.info({ dealId: deal.id, targets: targets.length, sent }, "deal publish notification done");
-    return { sent };
+    return { sent, targets: targets.length };
   };
 }
 
