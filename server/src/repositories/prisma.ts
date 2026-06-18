@@ -547,6 +547,12 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           }
         });
         return mapLedger(record);
+      },
+      async reverseOrder(userId: string, tbkOrderId: string) {
+        await prisma.commissionLedger.updateMany({
+          where: { userId, tbkOrderId },
+          data: { status: "reversed" }
+        });
       }
     },
     subscriptions: {

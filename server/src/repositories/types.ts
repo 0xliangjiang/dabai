@@ -295,6 +295,8 @@ export type Repositories = {
   };
   commissionLedger: {
     upsert(input: CreateCommissionLedgerInput): Promise<CommissionLedgerRecord>;
+    // 退款/失效：把某用户在该订单下的所有台账置为 reversed，从可用余额剔除（幂等）
+    reverseOrder(userId: string, tbkOrderId: string): Promise<void>;
   };
   subscriptions: {
     addGrant(userId: string, templateId: string): Promise<void>;

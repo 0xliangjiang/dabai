@@ -540,6 +540,104 @@ describe("server API", () => {
     expect(myDownline.json().downlines[0]).toMatchObject({ id: downline.id, contributedCents: 30 });
   });
 
+  test("refund reverses a settled order's balance and the inviter's commission", async () => {
+    let refunded = false;
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return {
+          hasNext: false,
+          orders: [
+            {
+              tbkOrderId: "jd-refund-1",
+              itemId: "mock-item-100",
+              itemTitle: "结算后退款的商品",
+              payTime: new Date(),
+              payAmountCents: 5000,
+              estimatedCommissionCents: 120,
+              settledCommissionCents: 120,
+              // 第一次同步：已结算(17)；退款后再同步：失效(2)→冲销
+              orderStatus: refunded ? "invalid" : "settled",
+              rawPayload: {}
+            }
+          ]
+        };
+      }
+    };
+    const app = await createApp({ config: testConfig, taobaoClient: new MockTaobaoClient(), orderClient });
+    apps.push(app);
+
+    const inviterId = (
+      await app.inject({ method: "POST", url: "/api/auth/wechat-login", payload: { code: "mock-inv3" } })
+    ).json().user.id;
+    const downline = (
+      await app.inject({
+        method: "POST",
+        url: "/api/auth/wechat-login",
+        payload: { code: "mock-dl3", inviterId }
+      })
+    ).json().user;
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/config/referral-enabled",
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { enabled: true }
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/config/referral-ratio",
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { referralCommissionRatio: 0.5 }
+    });
+    const conv = await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: `Bearer local_${downline.id}` },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/conversions/${conv.json().id}/copy`,
+      headers: { authorization: `Bearer local_${downline.id}` },
+      payload: { copyType: "link" }
+    });
+
+    const balanceOf = async (id: string) =>
+      (
+        await app.inject({
+          method: "GET",
+          url: "/api/withdrawals/me",
+          headers: { authorization: `Bearer local_${id}` }
+        })
+      ).json().availableBalance;
+    const referralEarned = async (id: string) =>
+      (
+        await app.inject({
+          method: "GET",
+          url: "/api/users/me/referral",
+          headers: { authorization: `Bearer local_${id}` }
+        })
+      ).json().earnedCents;
+
+    // 第一次同步：结算 → 下线到手 60(分)可用，上线提成 30(分)可用
+    await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-scheduler-token": "dev-scheduler-token" }
+    });
+    expect(await balanceOf(downline.id)).toBe(60);
+    expect(await referralEarned(inviterId)).toBe(30);
+
+    // 退款后再同步 → 余额与提成都应被扣回到 0（修复前会残留）
+    refunded = true;
+    await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-scheduler-token": "dev-scheduler-token" }
+    });
+    expect(await balanceOf(downline.id)).toBe(0);
+    expect(await referralEarned(inviterId)).toBe(0);
+  });
+
   test("referral: no inviter commission when feature disabled", async () => {
     const orderClient: JdOrderClient = {
       async fetchJdOrders() {

@@ -64,10 +64,22 @@ async function processOrder(
   if (!attributedUserId) return { attributed: false };
 
   const attrUser = await repositories.users.findById(attributedUserId);
+  const orderStatus = normalizeCommissionStatus(order.orderStatus);
+
+  // 退款/失效：把该订单已记的台账（含上线提成）全部冲销为 reversed，从可用余额剔除。
+  // 这样"已结算→退款"会正确扣回；"仅付款→退款"本就未计入，冲销后仍是净 0，安全。
+  if (orderStatus === "refunded" || orderStatus === "invalid") {
+    await repositories.commissionLedger.reverseOrder(attributedUserId, order.id);
+    if (attrUser?.inviterId) {
+      await repositories.commissionLedger.reverseOrder(attrUser.inviterId, order.id);
+    }
+    return { attributed: true };
+  }
+
   const entry = buildCommissionLedgerEntry({
     userId: attributedUserId,
     tbkOrderId: order.id,
-    orderStatus: normalizeCommissionStatus(order.orderStatus),
+    orderStatus,
     estimatedCommissionCents: order.estimatedCommissionCents,
     settledCommissionCents: order.settledCommissionCents,
     sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)

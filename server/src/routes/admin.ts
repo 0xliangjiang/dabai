@@ -232,27 +232,36 @@ export async function registerAdminRoutes(
       if (status === "settled" || status === "refunded") {
         const attribution = await repositories.orders.getAttribution(order.tbkOrderId);
         if (attribution?.userId) {
-          const globalRatio =
-            (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
           const user = await repositories.users.findById(attribution.userId);
-          const entry = buildCommissionLedgerEntry({
-            userId: attribution.userId,
-            tbkOrderId: order.id,
-            orderStatus: status,
-            estimatedCommissionCents: order.estimatedCommissionCents,
-            settledCommissionCents: order.settledCommissionCents,
-            sharingRatio: resolveSharingRatio(user?.rebateRatio, globalRatio)
-          });
-          await repositories.commissionLedger.upsert(entry);
 
-          // 二级分销：手动结算/退款时同步上线提成（与订单同步路径一致）
-          const referralEnabled = await repositories.settings.getReferralEnabled();
-          const referralRatio =
-            (await repositories.settings.getReferralRatio()) ?? config.referralCommissionRatio;
-          if (referralEnabled && referralRatio > 0 && user?.inviterId) {
-            await repositories.commissionLedger.upsert(
-              buildReferralLedgerEntry(entry, user.inviterId, referralRatio)
-            );
+          // 退款：冲销该订单已记台账（含上线提成），从可用余额剔除
+          if (status === "refunded") {
+            await repositories.commissionLedger.reverseOrder(attribution.userId, order.id);
+            if (user?.inviterId) {
+              await repositories.commissionLedger.reverseOrder(user.inviterId, order.id);
+            }
+          } else {
+            const globalRatio =
+              (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
+            const entry = buildCommissionLedgerEntry({
+              userId: attribution.userId,
+              tbkOrderId: order.id,
+              orderStatus: status,
+              estimatedCommissionCents: order.estimatedCommissionCents,
+              settledCommissionCents: order.settledCommissionCents,
+              sharingRatio: resolveSharingRatio(user?.rebateRatio, globalRatio)
+            });
+            await repositories.commissionLedger.upsert(entry);
+
+            // 二级分销：手动结算时同步上线提成（与订单同步路径一致）
+            const referralEnabled = await repositories.settings.getReferralEnabled();
+            const referralRatio =
+              (await repositories.settings.getReferralRatio()) ?? config.referralCommissionRatio;
+            if (referralEnabled && referralRatio > 0 && user?.inviterId) {
+              await repositories.commissionLedger.upsert(
+                buildReferralLedgerEntry(entry, user.inviterId, referralRatio)
+              );
+            }
           }
         }
       }

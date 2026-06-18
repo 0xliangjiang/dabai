@@ -423,6 +423,13 @@ export function createRepositories(): Repositories {
         };
         ledger.set(record.id, record);
         return record;
+      },
+      async reverseOrder(userId: string, tbkOrderId: string) {
+        for (const entry of ledger.values()) {
+          if (entry.userId === userId && entry.tbkOrderId === tbkOrderId) {
+            entry.status = "reversed";
+          }
+        }
       }
     },
     subscriptions: {
