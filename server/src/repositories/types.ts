@@ -242,7 +242,7 @@ export type Repositories = {
     referralSummary(userId: string): Promise<ReferralSummary>;
     updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
     updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }): Promise<UserRecord>;
-    list(): Promise<AdminUserRecord[]>;
+    list(options?: { page?: number; pageSize?: number }): Promise<{ total: number; items: AdminUserRecord[] }>;
     listDownline(inviterId: string): Promise<DownlineRecord[]>;
     deleteUser(id: string): Promise<void>;
     adjustPoints(id: string, input: { delta: number; reason: string }): Promise<void>;

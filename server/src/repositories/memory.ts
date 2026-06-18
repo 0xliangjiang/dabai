@@ -117,9 +117,13 @@ export function createRepositories(): Repositories {
         if (input.avatarUrl !== undefined) user.avatarUrl = input.avatarUrl;
         return user;
       },
-      async list(): Promise<AdminUserRecord[]> {
-        const activeUsers = [...users.values()].filter((user) => !deletedUserIds.has(user.id));
-        return activeUsers.map((user) => ({
+      async list(options?: { page?: number; pageSize?: number }) {
+        const pageSize = Math.min(200, Math.max(1, options?.pageSize ?? 50));
+        const page = Math.max(1, options?.page ?? 1);
+        const activeUsers = [...users.values()]
+          .filter((user) => !deletedUserIds.has(user.id))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const items = activeUsers.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((user) => ({
           ...user,
           conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
           copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
@@ -127,6 +131,7 @@ export function createRepositories(): Repositories {
           inviterNickname: user.inviterId ? users.get(user.inviterId)?.nickname ?? null : null,
           downlineCount: activeUsers.filter((u) => u.inviterId === user.id).length
         }));
+        return { total: activeUsers.length, items };
       },
       async listDownline(inviterId: string): Promise<DownlineRecord[]> {
         const refEntries = [...ledger.values()].filter(

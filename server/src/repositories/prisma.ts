@@ -97,31 +97,41 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return mapUser(user);
       },
-      async list(): Promise<AdminUserRecord[]> {
-        const users = await prisma.user.findMany({
-          where: { deletedAt: null },
-          orderBy: { createdAt: "desc" },
-          include: {
-            inviter: { select: { nickname: true } },
-            _count: {
-              select: {
-                conversions: true,
-                copyEvents: true,
-                orderClaims: true,
-                invitees: { where: { deletedAt: null } }
+      async list(options?: { page?: number; pageSize?: number }) {
+        const pageSize = Math.min(200, Math.max(1, options?.pageSize ?? 50));
+        const page = Math.max(1, options?.page ?? 1);
+        const [total, users] = await Promise.all([
+          prisma.user.count({ where: { deletedAt: null } }),
+          prisma.user.findMany({
+            where: { deletedAt: null },
+            orderBy: { createdAt: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            include: {
+              inviter: { select: { nickname: true } },
+              _count: {
+                select: {
+                  conversions: true,
+                  copyEvents: true,
+                  orderClaims: true,
+                  invitees: { where: { deletedAt: null } }
+                }
               }
             }
-          }
-        });
+          })
+        ]);
 
-        return users.map((user) => ({
-          ...mapUser(user),
-          conversionCount: user._count.conversions,
-          copyEventCount: user._count.copyEvents,
-          claimCount: user._count.orderClaims,
-          inviterNickname: user.inviter?.nickname ?? null,
-          downlineCount: user._count.invitees
-        }));
+        return {
+          total,
+          items: users.map((user) => ({
+            ...mapUser(user),
+            conversionCount: user._count.conversions,
+            copyEventCount: user._count.copyEvents,
+            claimCount: user._count.orderClaims,
+            inviterNickname: user.inviter?.nickname ?? null,
+            downlineCount: user._count.invitees
+          }))
+        };
       },
       async listDownline(inviterId: string): Promise<DownlineRecord[]> {
         const downlines = await prisma.user.findMany({
@@ -271,7 +281,8 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async listByUser(userId: string) {
         const records = await prisma.conversion.findMany({
           where: { userId },
-          orderBy: { createdAt: "desc" }
+          orderBy: { createdAt: "desc" },
+          take: 200 // 仅展示最近 200 条，避免重度用户拉取过大
         });
         return records.map(mapConversion);
       },
@@ -412,7 +423,8 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const records = await prisma.orderAttribution.findMany({
           where: { status: { in: ["pending_review", "unmatched"] } },
           orderBy: { createdAt: "desc" },
-          include: { tbkOrder: true }
+          include: { tbkOrder: true },
+          take: 500
         });
         return records.map((record) => ({
           ...mapAttribution(record),
@@ -515,7 +527,8 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const records = await prisma.orderClaim.findMany({
           where: status ? { status } : undefined,
           orderBy: { createdAt: "desc" },
-          include: { user: { select: { openid: true } } }
+          include: { user: { select: { openid: true } } },
+          take: 500
         });
         return records.map((record) => ({
           ...mapClaim(record),
@@ -767,7 +780,8 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const records = await prisma.withdrawal.findMany({
           where: status ? { status } : undefined,
           orderBy: { createdAt: "desc" },
-          include: { user: { select: { openid: true, nickname: true } } }
+          include: { user: { select: { openid: true, nickname: true } } },
+          take: 500
         });
         return records.map((record): AdminWithdrawalRecord => ({
           ...mapWithdrawal(record),

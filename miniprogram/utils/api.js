@@ -62,7 +62,9 @@ function wxLogin() {
   });
 }
 
-async function loginWithWechat() {
+let inflightLogin = null;
+
+async function doLogin() {
   const code = await wxLogin();
   // 二级分销：把暂存的邀请人带上（仅新用户首次注册会被后端绑定）
   const inviterId = wx.getStorageSync("pending_inviter") || "";
@@ -80,6 +82,15 @@ async function loginWithWechat() {
     // ignore
   }
   return data;
+}
+
+// 去抖：多个页面/请求同时 401 时只发起一次登录，其余复用同一次结果
+function loginWithWechat() {
+  if (inflightLogin) return inflightLogin;
+  inflightLogin = doLogin().finally(() => {
+    inflightLogin = null;
+  });
+  return inflightLogin;
 }
 
 async function ensureLogin() {

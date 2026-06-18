@@ -162,8 +162,9 @@ export async function runOrderSync(
 
   try {
     await repositories.syncRuns.record({ trigger, ...result });
-  } catch {
-    // 记录落库失败不应影响同步主流程；调用方会有日志
+  } catch (error) {
+    // 记录落库失败不应影响同步主流程，但不能完全静默（否则后台监控盲区）
+    console.error("[order-sync] 写同步记录失败:", error);
   }
 
   return result;

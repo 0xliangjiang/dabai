@@ -100,6 +100,9 @@ export function App() {
   const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [markingOrderId, setMarkingOrderId] = useState("");
   const [pointsModal, setPointsModal] = useState<{ userId: string; nickname: string } | null>(null);
   const [pointsDelta, setPointsDelta] = useState("");
@@ -141,7 +144,7 @@ export function App() {
     try {
       const [overview, usersResponse, configResponse, pendingResponse, claimsResponse, withdrawalsResponse] = await Promise.all([
         fetchAdminApi<AdminOverview>("/api/admin/overview", token),
-        fetchAdminApi<{ users: AdminUser[] }>("/api/admin/users", token),
+        fetchAdminApi<{ users: AdminUser[]; total: number }>("/api/admin/users?page=1&pageSize=50", token),
         fetchAdminApi<AdminConfig>("/api/admin/config", token),
         fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token),
         fetchAdminApi<{ claims: AdminClaim[] }>("/api/admin/claims", token),
@@ -155,6 +158,8 @@ export function App() {
         claims: claimsResponse.claims,
         withdrawals: withdrawalsResponse.withdrawals
       });
+      setUsersTotal(usersResponse.total ?? usersResponse.users.length);
+      setUsersPage(1);
       localStorage.setItem("dabai-admin-token", token);
       setAdminToken(token);
       setAuthed(true);
@@ -215,6 +220,23 @@ export function App() {
       toast("订单加载失败", "error");
     } finally {
       setOrdersLoading(false);
+    }
+  }
+
+  async function loadUsers(page = usersPage) {
+    setUsersLoading(true);
+    try {
+      const r = await fetchAdminApi<{ users: AdminUser[]; total: number }>(
+        `/api/admin/users?page=${page}&pageSize=50`,
+        adminToken
+      );
+      setData((prev) => ({ ...prev, users: r.users }));
+      setUsersTotal(r.total);
+      setUsersPage(page);
+    } catch {
+      toast("用户加载失败", "error");
+    } finally {
+      setUsersLoading(false);
     }
   }
 
@@ -586,7 +608,25 @@ export function App() {
 
           <DealManager adminToken={adminToken} />
 
-          <SectionCard id="users" title="用户" subtitle="昵称、推广数据与账号状态">
+          <SectionCard
+            id="users"
+            title="用户"
+            subtitle={`共 ${usersTotal} 人，每页 50 条`}
+            headerRight={
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" disabled={usersPage <= 1 || usersLoading} onClick={() => void loadUsers(usersPage - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-slate-500">第 {usersPage} / {Math.max(1, Math.ceil(usersTotal / 50))} 页</span>
+                <Button size="sm" variant="ghost" disabled={usersPage >= Math.ceil(usersTotal / 50) || usersLoading} onClick={() => void loadUsers(usersPage + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" disabled={usersLoading} onClick={() => void loadUsers(usersPage)}>
+                  <RefreshCw className={`h-4 w-4 ${usersLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>
