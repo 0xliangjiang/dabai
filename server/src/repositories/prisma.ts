@@ -294,6 +294,45 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           take: 1000
         });
         return records.map(mapConversion);
+      },
+      async listForAdmin(options) {
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
+        const page = Math.max(1, options?.page ?? 1);
+        const search = options?.search?.trim();
+        const where: Prisma.ConversionWhereInput = search
+          ? {
+              OR: [
+                { itemTitle: { contains: search } },
+                { itemId: { contains: search } },
+                { user: { is: { nickname: { contains: search } } } },
+                { user: { is: { openid: { contains: search } } } }
+              ]
+            }
+          : {};
+        const [total, records] = await Promise.all([
+          prisma.conversion.count({ where }),
+          prisma.conversion.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            include: { user: { select: { nickname: true, openid: true } } }
+          })
+        ]);
+        return {
+          total,
+          items: records.map((record) => ({
+            id: record.id,
+            userId: record.userId,
+            userNickname: record.user?.nickname ?? null,
+            userOpenid: record.user?.openid ?? "",
+            itemId: record.itemId,
+            itemTitle: record.itemTitle,
+            platform: record.platform,
+            estimatedRebateCents: record.estimatedRebateCents,
+            createdAt: record.createdAt
+          }))
+        };
       }
     },
     copyEvents: {

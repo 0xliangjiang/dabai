@@ -51,6 +51,18 @@ export type Downline = {
   contributedCents: number;
 };
 
+export type AdminConversion = {
+  id: string;
+  userId: string;
+  userNickname: string | null;
+  userOpenid: string;
+  itemId: string;
+  itemTitle: string;
+  platform: string;
+  estimatedRebateCents: number;
+  createdAt: string;
+};
+
 export type AdminDealStep = {
   content: string;
   copyType?: "link" | "password" | null;

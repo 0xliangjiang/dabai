@@ -13,6 +13,7 @@ import {
   PackageSearch,
   RefreshCw,
   RotateCcw,
+  Search,
   Settings,
   ShieldQuestion,
   Users,
@@ -36,6 +37,7 @@ import {
   type AdminSetting,
   type AdminUser,
   type AdminWithdrawal,
+  type AdminConversion,
   type Downline,
   type PendingAttribution,
   type SyncStatus
@@ -81,6 +83,7 @@ const NAV_ITEMS = [
   { id: "deals", label: "线报管理", icon: Megaphone },
   { id: "users", label: "用户", icon: Users },
   { id: "all-orders", label: "全部订单", icon: PackageSearch },
+  { id: "conversions", label: "查询历史", icon: Search },
   { id: "attribution", label: "待复核", icon: ClipboardCheck },
   { id: "claims", label: "申诉审核", icon: ShieldQuestion },
   { id: "withdrawals", label: "提现审核", icon: ArrowDownToLine },
@@ -103,6 +106,11 @@ export function App() {
   const [usersTotal, setUsersTotal] = useState(0);
   const [usersPage, setUsersPage] = useState(1);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [conversions, setConversions] = useState<AdminConversion[]>([]);
+  const [conversionsTotal, setConversionsTotal] = useState(0);
+  const [conversionsPage, setConversionsPage] = useState(1);
+  const [conversionsSearch, setConversionsSearch] = useState("");
+  const [conversionsLoading, setConversionsLoading] = useState(false);
   const [markingOrderId, setMarkingOrderId] = useState("");
   const [pointsModal, setPointsModal] = useState<{ userId: string; nickname: string } | null>(null);
   const [pointsDelta, setPointsDelta] = useState("");
@@ -170,6 +178,12 @@ export function App() {
       void fetchAdminApi<SyncStatus>("/api/admin/sync-status", token)
         .then(setSyncStatus)
         .catch(() => null);
+      void fetchAdminApi<{ conversions: AdminConversion[]; total: number }>(
+        "/api/admin/conversions?page=1&pageSize=50",
+        token
+      )
+        .then((r) => { setConversions(r.conversions); setConversionsTotal(r.total); setConversionsPage(1); })
+        .catch(() => null);
       void fetchAdminApi<{ settings: AdminSetting[] }>("/api/admin/settings", token)
         .then(({ settings: rows }) => {
           setSettings(rows);
@@ -220,6 +234,25 @@ export function App() {
       toast("订单加载失败", "error");
     } finally {
       setOrdersLoading(false);
+    }
+  }
+
+  async function loadConversions(page = 1, search = conversionsSearch) {
+    setConversionsLoading(true);
+    try {
+      const q = new URLSearchParams({ page: String(page), pageSize: "50" });
+      if (search.trim()) q.set("search", search.trim());
+      const r = await fetchAdminApi<{ conversions: AdminConversion[]; total: number }>(
+        `/api/admin/conversions?${q.toString()}`,
+        adminToken
+      );
+      setConversions(r.conversions);
+      setConversionsTotal(r.total);
+      setConversionsPage(page);
+    } catch {
+      toast("查询历史加载失败", "error");
+    } finally {
+      setConversionsLoading(false);
     }
   }
 
@@ -786,6 +819,64 @@ export function App() {
                   );
                 })}
                 {orders.items.length === 0 ? <EmptyRow colSpan={10} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
+              </TableBody>
+            </Table>
+          </SectionCard>
+
+          <SectionCard
+            id="conversions"
+            title="查询历史"
+            subtitle="按商品标题/itemId/用户搜索；找到是谁查的，再去「全部订单」手动归因"
+            headerRight={
+              <div className="flex items-center gap-2">
+                <input
+                  className="h-8 w-56 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                  placeholder="搜商品标题 / itemId / 昵称"
+                  value={conversionsSearch}
+                  onChange={(e) => setConversionsSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void loadConversions(1, conversionsSearch); }}
+                />
+                <Button size="sm" variant="outline" disabled={conversionsLoading} onClick={() => void loadConversions(1, conversionsSearch)}>
+                  搜索
+                </Button>
+                <Button size="sm" variant="ghost" disabled={conversionsPage <= 1 || conversionsLoading} onClick={() => void loadConversions(conversionsPage - 1, conversionsSearch)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-slate-500">第 {conversionsPage} / {Math.max(1, Math.ceil(conversionsTotal / 50))} 页</span>
+                <Button size="sm" variant="ghost" disabled={conversionsPage >= Math.ceil(conversionsTotal / 50) || conversionsLoading} onClick={() => void loadConversions(conversionsPage + 1, conversionsSearch)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            }
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>用户</TableHead>
+                  <TableHead>商品标题</TableHead>
+                  <TableHead>itemId</TableHead>
+                  <TableHead>平台</TableHead>
+                  <TableHead className="text-right">预估返利</TableHead>
+                  <TableHead>查询时间</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {conversions.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-medium">
+                      <div>{c.userNickname || "未设置"}</div>
+                      <div className="font-mono text-xs text-slate-400">{c.userId}</div>
+                    </TableCell>
+                    <TableCell className="max-w-72 truncate">{c.itemTitle}</TableCell>
+                    <TableCell className="font-mono text-xs text-slate-500">{c.itemId}</TableCell>
+                    <TableCell>{c.platform}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatMoney(c.estimatedRebateCents)}</TableCell>
+                    <TableCell className="text-xs text-slate-400">
+                      {new Date(c.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {conversions.length === 0 ? <EmptyRow colSpan={6} text={conversionsLoading ? "加载中…" : "暂无查询记录"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>

@@ -700,6 +700,33 @@ describe("server API", () => {
     expect(referral.json()).toMatchObject({ enabled: false, downlineCount: 1, earnedCents: 0, pendingCents: 0 });
   });
 
+  test("GET /api/admin/conversions lists query history and supports search", async () => {
+    const app = await buildTestApp();
+    await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+
+    const all = await app.inject({
+      method: "GET",
+      url: "/api/admin/conversions",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(all.statusCode).toBe(200);
+    expect(all.json().conversions.length).toBeGreaterThanOrEqual(1);
+    expect(all.json().conversions[0]).toMatchObject({ userId: "user-1" });
+
+    // 搜不到的关键词 → 空
+    const none = await app.inject({
+      method: "GET",
+      url: "/api/admin/conversions?search=zzz-not-exist",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(none.json().conversions).toHaveLength(0);
+  });
+
   test("GET /api/admin/users lists mini program users", async () => {
     const app = await buildTestApp();
 

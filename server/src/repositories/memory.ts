@@ -237,6 +237,38 @@ export function createRepositories(): Repositories {
       },
       async listByItem(itemId: string) {
         return [...conversions.values()].filter((record) => record.itemId === itemId);
+      },
+      async listForAdmin(options) {
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
+        const page = Math.max(1, options?.page ?? 1);
+        const search = options?.search?.trim().toLowerCase();
+        let all = [...conversions.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        if (search) {
+          all = all.filter((c) => {
+            const u = users.get(c.userId);
+            return (
+              c.itemTitle.toLowerCase().includes(search) ||
+              c.itemId.toLowerCase().includes(search) ||
+              (u?.nickname ?? "").toLowerCase().includes(search) ||
+              (u?.openid ?? "").toLowerCase().includes(search)
+            );
+          });
+        }
+        const items = all.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((c) => {
+          const u = users.get(c.userId);
+          return {
+            id: c.id,
+            userId: c.userId,
+            userNickname: u?.nickname ?? null,
+            userOpenid: u?.openid ?? "",
+            itemId: c.itemId,
+            itemTitle: c.itemTitle,
+            platform: c.platform,
+            estimatedRebateCents: c.estimatedRebateCents,
+            createdAt: c.createdAt
+          };
+        });
+        return { total: all.length, items };
       }
     },
     copyEvents: {

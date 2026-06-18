@@ -20,6 +20,18 @@ export type ReferralSummary = {
   pendingCents: number;
 };
 
+export type ConversionAdminRecord = {
+  id: string;
+  userId: string;
+  userNickname: string | null;
+  userOpenid: string;
+  itemId: string;
+  itemTitle: string;
+  platform: string;
+  estimatedRebateCents: number;
+  createdAt: Date;
+};
+
 export type ConversionRecord = {
   id: string;
   userId: string;
@@ -265,6 +277,12 @@ export type Repositories = {
     findById(id: string): Promise<ConversionRecord | undefined>;
     listByUser(userId: string): Promise<ConversionRecord[]>;
     listByItem(itemId: string): Promise<ConversionRecord[]>;
+    // 后台「查询历史」：按 商品标题/itemId/用户昵称 搜索，分页，便于人工归因兜底
+    listForAdmin(options?: {
+      search?: string;
+      page?: number;
+      pageSize?: number;
+    }): Promise<{ total: number; items: ConversionAdminRecord[] }>;
   };
   copyEvents: {
     create(input: Omit<CopyEventRecord, "id" | "copiedAt">): Promise<CopyEventRecord>;
