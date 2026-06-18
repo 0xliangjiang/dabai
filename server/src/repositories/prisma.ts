@@ -10,6 +10,7 @@ import type {
   CopyEventRecord,
   OrderClaimRecord,
   OrderRecord,
+  ReferralSummary,
   Repositories,
   UpsertAttributionInput,
   UpsertOrderInput,
@@ -19,16 +20,28 @@ import type {
 
 const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
 const EXCHANGE_ENABLED_KEY = "exchange_enabled";
+const REFERRAL_RATIO_KEY = "referral_commission_ratio";
+const REFERRAL_ENABLED_KEY = "referral_enabled";
 
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
   return {
     users: {
-      async findOrCreateByOpenid(openid: string, input: { unionid?: string | null } = {}) {
+      async findOrCreateByOpenid(
+        openid: string,
+        input: { unionid?: string | null; inviterId?: string | null } = {}
+      ) {
+        // 二级分销绑定只在「新用户首次注册」时生效：放进 create 分支，update 不动。
+        // 先校验邀请人存在且未软删，无效则置 null（避免 FK 报错导致登录失败）。
+        let inviterId: string | null = null;
+        if (input.inviterId) {
+          const inviter = await prisma.user.findUnique({ where: { id: input.inviterId } });
+          if (inviter && !inviter.deletedAt) inviterId = inviter.id;
+        }
         // 软删除用户重新登录时复活账号（清除 deletedAt），保留历史数据
         const user = await prisma.user.upsert({
           where: { openid },
-          create: { openid, unionid: input.unionid ?? null },
+          create: { openid, unionid: input.unionid ?? null, inviterId },
           update: {
             ...(input.unionid ? { unionid: input.unionid } : {}),
             deletedAt: null
@@ -40,6 +53,24 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const user = await prisma.user.findUnique({ where: { id } });
         // 软删除用户视为不存在
         return user && !user.deletedAt ? mapUser(user) : undefined;
+      },
+      async referralSummary(userId: string): Promise<ReferralSummary> {
+        const [downlineCount, earned, pending] = await Promise.all([
+          prisma.user.count({ where: { inviterId: userId, deletedAt: null } }),
+          prisma.commissionLedger.aggregate({
+            where: { userId, status: "available", ledgerType: { startsWith: "referral_" } },
+            _sum: { amountCents: true }
+          }),
+          prisma.commissionLedger.aggregate({
+            where: { userId, status: "pending", ledgerType: { startsWith: "referral_" } },
+            _sum: { amountCents: true }
+          })
+        ]);
+        return {
+          downlineCount,
+          earnedCents: earned._sum.amountCents ?? 0,
+          pendingCents: pending._sum.amountCents ?? 0
+        };
       },
       async updateStatus(id: string, status) {
         const user = await prisma.user.update({ where: { id }, data: { status } });
@@ -122,6 +153,31 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         await prisma.setting.upsert({
           where: { key: EXCHANGE_ENABLED_KEY },
           create: { key: EXCHANGE_ENABLED_KEY, value: enabled ? "1" : "0" },
+          update: { value: enabled ? "1" : "0" }
+        });
+      },
+      async getReferralRatio() {
+        const row = await prisma.setting.findUnique({ where: { key: REFERRAL_RATIO_KEY } });
+        if (!row) return null;
+        const n = Number(row.value);
+        return Number.isFinite(n) ? n : null;
+      },
+      async setReferralRatio(ratio: number) {
+        await prisma.setting.upsert({
+          where: { key: REFERRAL_RATIO_KEY },
+          create: { key: REFERRAL_RATIO_KEY, value: String(ratio) },
+          update: { value: String(ratio) }
+        });
+      },
+      async getReferralEnabled() {
+        const row = await prisma.setting.findUnique({ where: { key: REFERRAL_ENABLED_KEY } });
+        // 默认关闭：配好比例后再手动开
+        return row?.value === "1";
+      },
+      async setReferralEnabled(enabled: boolean) {
+        await prisma.setting.upsert({
+          where: { key: REFERRAL_ENABLED_KEY },
+          create: { key: REFERRAL_ENABLED_KEY, value: enabled ? "1" : "0" },
           update: { value: enabled ? "1" : "0" }
         });
       },
@@ -682,6 +738,7 @@ function mapUser(user: {
   avatarUrl: string | null;
   status: string;
   rebateRatio: number | null;
+  inviterId: string | null;
   createdAt: Date;
 }): UserRecord {
   return {
@@ -692,6 +749,7 @@ function mapUser(user: {
     avatarUrl: user.avatarUrl,
     status: user.status,
     rebateRatio: user.rebateRatio,
+    inviterId: user.inviterId,
     createdAt: user.createdAt
   };
 }

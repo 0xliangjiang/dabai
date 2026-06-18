@@ -88,6 +88,8 @@ export type AdminConfig = {
     attributionWindowHours: number;
     highValueReviewThresholdCents: number;
     exchangeEnabled: boolean;
+    referralCommissionRatio: number;
+    referralEnabled: boolean;
   };
 };
 

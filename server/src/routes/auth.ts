@@ -16,16 +16,18 @@ export async function registerAuthRoutes(
   config: AppConfig,
   wechatAuthFetch: typeof fetch = fetch
 ) {
-  app.post<{ Body: { code?: string } }>("/api/auth/wechat-login", async (request, reply) => {
+  app.post<{ Body: { code?: string; inviterId?: string } }>("/api/auth/wechat-login", async (request, reply) => {
     const code = request.body.code?.trim();
     if (!code) {
       return reply.code(400).send({ error: "code is required" });
     }
+    const inviterId = request.body.inviterId?.trim() || null;
 
     try {
       const session = await resolveWechatSession(code, config, wechatAuthFetch);
       const user = await repositories.users.findOrCreateByOpenid(session.openid, {
-        unionid: session.unionid
+        unionid: session.unionid,
+        inviterId
       });
       return {
         token: signUserToken(user.id, config.authTokenSecret),

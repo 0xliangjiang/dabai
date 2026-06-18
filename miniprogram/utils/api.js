@@ -64,13 +64,21 @@ function wxLogin() {
 
 async function loginWithWechat() {
   const code = await wxLogin();
+  // 二级分销：把暂存的邀请人带上（仅新用户首次注册会被后端绑定）
+  const inviterId = wx.getStorageSync("pending_inviter") || "";
   const data = await request("/api/auth/wechat-login", {
     method: "POST",
-    data: { code },
+    data: inviterId ? { code, inviterId } : { code },
     header: { authorization: "" }
   });
   wx.setStorageSync("token", data.token);
   wx.setStorageSync("user", data.user);
+  // 用过即清，避免后续登录重复携带
+  try {
+    wx.removeStorageSync("pending_inviter");
+  } catch (_e) {
+    // ignore
+  }
   return data;
 }
 

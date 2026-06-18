@@ -27,8 +27,17 @@ if (syncEnabled) {
       const startTime = new Date(Date.now() - lookback * 60 * 1000);
       const globalRatio =
         (await app.deps.repositories.settings.getCommissionSharingRatio()) ?? cfg.commissionSharingRatio;
+      const referralEnabled = await app.deps.repositories.settings.getReferralEnabled();
+      const referralRatio =
+        (await app.deps.repositories.settings.getReferralRatio()) ?? cfg.referralCommissionRatio;
       const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
-      const syncOptions = { startTime, commissionSharingRatio: globalRatio, attributionWindowHours: 24 };
+      const syncOptions = {
+        startTime,
+        commissionSharingRatio: globalRatio,
+        attributionWindowHours: 24,
+        referralEnabled,
+        referralRatio
+      };
       const result = await runOrderSync(
         app.deps.repositories,
         { taobaoOrderClient, orderClient },

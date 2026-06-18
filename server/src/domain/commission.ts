@@ -13,10 +13,36 @@ export type CommissionLedgerEntry = {
   userId: string;
   tbkOrderId: string;
   amountCents: number;
-  ledgerType: "estimated" | "settled" | "reversal";
+  ledgerType: "estimated" | "settled" | "reversal" | "referral_estimated" | "referral_settled" | "referral_reversal";
   status: "pending" | "available" | "reversed";
   reason: string;
 };
+
+// 二级分销提成：镜像下线那条台账的状态/类型，金额按下线到手返利 × 二级比例。
+// 状态完全跟随下线（pending→available→reversed），所以结算、退款冲销都自动同步。
+export function buildReferralLedgerEntry(
+  downlineEntry: CommissionLedgerEntry,
+  inviterId: string,
+  referralRatio: number
+): CommissionLedgerEntry {
+  if (referralRatio < 0 || referralRatio > 1) {
+    throw new Error("referralRatio must be between 0 and 1");
+  }
+  const referralType = {
+    estimated: "referral_estimated",
+    settled: "referral_settled",
+    reversal: "referral_reversal"
+  }[downlineEntry.ledgerType as "estimated" | "settled" | "reversal"] as CommissionLedgerEntry["ledgerType"];
+
+  return {
+    userId: inviterId,
+    tbkOrderId: downlineEntry.tbkOrderId,
+    amountCents: calculateShare(downlineEntry.amountCents, referralRatio),
+    ledgerType: referralType,
+    status: downlineEntry.status,
+    reason: "referral_commission"
+  };
+}
 
 export function buildCommissionLedgerEntry(input: BuildCommissionInput): CommissionLedgerEntry {
   if (input.sharingRatio < 0 || input.sharingRatio > 1) {

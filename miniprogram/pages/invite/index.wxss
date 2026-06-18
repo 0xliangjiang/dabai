@@ -1,0 +1,30 @@
+.invite-stats {
+  display: flex;
+  gap: 16rpx;
+}
+
+.invite-stat {
+  flex: 1;
+  text-align: center;
+  background: #f3f7f4;
+  border-radius: 16rpx;
+  padding: 24rpx 8rpx;
+}
+
+.invite-stat-value {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #0a7a52;
+}
+
+.invite-stat-label {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a8f99;
+}
+
+.invite-tip {
+  font-size: 24rpx;
+  color: #8a8f99;
+  line-height: 1.5;
+}

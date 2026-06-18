@@ -66,7 +66,9 @@ const emptyData: AdminData = {
     commissionSharingRatio: 0,
     attributionWindowHours: 24,
     highValueReviewThresholdCents: 5000,
-    exchangeEnabled: false
+    exchangeEnabled: false,
+    referralCommissionRatio: 0.2,
+    referralEnabled: false
   },
   pendingAttributions: [],
   claims: [],
@@ -104,6 +106,8 @@ export function App() {
   const [ratioInput, setRatioInput] = useState("");
   const [globalRatioInput, setGlobalRatioInput] = useState("");
   const [savingGlobalRatio, setSavingGlobalRatio] = useState(false);
+  const [referralRatioInput, setReferralRatioInput] = useState("");
+  const [savingReferralRatio, setSavingReferralRatio] = useState(false);
   const [settings, setSettings] = useState<AdminSetting[]>([]);
   const [settingDrafts, setSettingDrafts] = useState<Record<string, string>>({});
   const [savingSettings, setSavingSettings] = useState(false);
@@ -121,6 +125,10 @@ export function App() {
   useEffect(() => {
     setGlobalRatioInput(String(Math.round(data.config.commissionSharingRatio * 100)));
   }, [data.config.commissionSharingRatio]);
+
+  useEffect(() => {
+    setReferralRatioInput(String(Math.round((data.config.referralCommissionRatio ?? 0) * 100)));
+  }, [data.config.referralCommissionRatio]);
 
   async function loadData(token = adminToken, options: { silent?: boolean } = {}) {
     if (!token.trim()) return false;
@@ -333,6 +341,40 @@ export function App() {
         body: JSON.stringify({ enabled })
       });
       toast(enabled ? "已开启兑换功能（小程序显示入口）" : "已关闭兑换功能（小程序隐藏入口）");
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("操作失败，请重试", "error");
+    }
+  }
+
+  async function saveReferralRatio() {
+    const pct = parseFloat(referralRatioInput);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      toast("请输入 0~100 的百分比", "error");
+      return;
+    }
+    setSavingReferralRatio(true);
+    try {
+      await fetchAdminApi("/api/admin/config/referral-ratio", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ referralCommissionRatio: pct / 100 })
+      });
+      toast(`二级分销比例已设为 ${pct}%`);
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("保存失败，请重试", "error");
+    } finally {
+      setSavingReferralRatio(false);
+    }
+  }
+
+  async function toggleReferral(enabled: boolean) {
+    try {
+      await fetchAdminApi("/api/admin/config/referral-enabled", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ enabled })
+      });
+      toast(enabled ? "已开启二级分销（小程序显示邀请入口）" : "已关闭二级分销（不再绑新下线/计提成）");
       await loadData(adminToken, { silent: true });
     } catch {
       toast("操作失败，请重试", "error");
@@ -870,6 +912,38 @@ export function App() {
                   </Button>
                   <span className="ml-1 text-xs text-slate-400">仅对修改后新同步的订单生效</span>
                 </div>
+              </div>
+              <div className="mb-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3.5">
+                <div className="text-xs font-medium text-slate-500">二级分销比例（上线吃下线返利的比例）</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    className="h-9 w-24 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={referralRatioInput}
+                    onChange={(e) => setReferralRatioInput(e.target.value)}
+                  />
+                  <span className="text-sm text-slate-500">%</span>
+                  <Button size="sm" disabled={savingReferralRatio} onClick={() => void saveReferralRatio()}>
+                    {savingReferralRatio ? "保存中…" : "保存"}
+                  </Button>
+                  <span className="ml-1 text-xs text-slate-400">平台额外出，下线返利不减</span>
+                </div>
+              </div>
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-3.5">
+                <div>
+                  <div className="text-xs font-medium text-slate-500">二级分销开关（配好比例后再开启）</div>
+                  <div className="mt-1 text-sm font-medium text-slate-700">
+                    当前：{data.config.referralEnabled ? "已开启 · 绑新下线并计提成、显示邀请入口" : "已关闭 · 不绑新下线、不计提成、隐藏入口"}
+                  </div>
+                </div>
+                <Button
+                  variant={data.config.referralEnabled ? "danger" : "default"}
+                  onClick={() => void toggleReferral(!data.config.referralEnabled)}
+                >
+                  {data.config.referralEnabled ? "关闭分销" : "开启分销"}
+                </Button>
               </div>
               <div className="mb-3 flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3.5">
                 <div>

@@ -1,24 +1,30 @@
-const { ensureLogin, request } = require("../../utils/api");
+const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
+const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 Page({
   onShareAppMessage(res) {
+    const me = getCurrentUser();
     // 卡片上的「分享」按钮触发：分享对应的那条线报
     if (res && res.from === "button" && res.target) {
       const { id, title } = res.target.dataset;
       if (id) {
-        return { title: title || "优惠线报", path: `/pages/deal-detail/index?id=${id}` };
+        return {
+          title: title || "优惠线报",
+          path: `/pages/deal-detail/index?id=${id}${inviterSuffix(me, true)}`
+        };
       }
     }
     return {
       title: "最新优惠线报，按步骤照着做就行",
-      path: "/pages/deals/index"
+      path: `/pages/deals/index${inviterSuffix(me)}`
     };
   },
 
   onShareTimeline() {
     return {
-      title: "最新优惠线报，按步骤照着做就行"
+      title: "最新优惠线报，按步骤照着做就行",
+      query: inviterQuery(getCurrentUser())
     };
   },
 

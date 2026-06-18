@@ -1,18 +1,20 @@
 const { ensureLogin, getCurrentUser, loginWithWechat, logout, request, uploadFile } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
+const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 Page({
   onShareAppMessage() {
     return {
       title: "查优惠神器，粘贴商品就能看预估优惠",
-      path: "/pages/home/index"
+      path: `/pages/home/index${inviterSuffix(getCurrentUser())}`
     };
   },
 
   onShareTimeline() {
     return {
-      title: "查优惠神器，粘贴商品就能看预估优惠"
+      title: "查优惠神器，粘贴商品就能看预估优惠",
+      query: inviterQuery(getCurrentUser())
     };
   },
 
@@ -41,7 +43,8 @@ Page({
     showWithdrawForm: false,
     withdrawAmount: "",
     submittingWithdraw: false,
-    exchangeEnabled: false
+    exchangeEnabled: false,
+    referralEnabled: false
   },
 
   onShow() {
@@ -54,11 +57,22 @@ Page({
   // 拉取功能开关；兑换入口默认隐藏，开关打开才显示（审核期间关闭）
   async loadAppConfig() {
     try {
-      const { exchangeEnabled } = await request("/api/app-config");
-      this.setData({ exchangeEnabled: Boolean(exchangeEnabled) });
+      const { exchangeEnabled, referralEnabled } = await request("/api/app-config");
+      this.setData({
+        exchangeEnabled: Boolean(exchangeEnabled),
+        referralEnabled: Boolean(referralEnabled)
+      });
     } catch (_error) {
-      this.setData({ exchangeEnabled: false });
+      this.setData({ exchangeEnabled: false, referralEnabled: false });
     }
+  },
+
+  goInvite() {
+    if (!this.data.isLoggedIn) {
+      wx.showToast({ title: "请先登录", icon: "none" });
+      return;
+    }
+    wx.navigateTo({ url: "/pages/invite/index" });
   },
 
   async syncUserFromServer() {

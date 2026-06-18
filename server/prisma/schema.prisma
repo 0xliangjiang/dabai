@@ -15,6 +15,7 @@ model User {
   avatarUrl   String?   @db.VarChar(512)
   status      String    @default("active")
   rebateRatio Float?
+  inviterId   String?
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -28,6 +29,12 @@ model User {
   subscribeGrants   SubscribeGrant[]
   withdrawals       Withdrawal[]
   pointAdjustments  PointAdjustment[]
+
+  // 二级分销：邀请人（上线），仅新用户首次注册时绑定，永久不变
+  inviter  User?  @relation("Referral", fields: [inviterId], references: [id])
+  invitees User[] @relation("Referral")
+
+  @@index([inviterId])
 }
 
 model Setting {

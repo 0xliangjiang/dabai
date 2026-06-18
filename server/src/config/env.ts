@@ -12,6 +12,7 @@ export type AppConfig = {
   wechatAppSecret: string;
   wechatDealTemplateId: string;
   commissionSharingRatio: number;
+  referralCommissionRatio: number;
   zhetaokeApiUrl: string;
   zhetaokeAppKey: string;
   zhetaokeSid: string;
@@ -49,6 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     wechatAppSecret: env.WECHAT_APP_SECRET ?? "",
     wechatDealTemplateId: env.WECHAT_DEAL_TEMPLATE_ID ?? "",
     commissionSharingRatio: Number(env.COMMISSION_SHARING_RATIO ?? 0.5),
+    referralCommissionRatio: Number(env.REFERRAL_COMMISSION_RATIO ?? 0.2),
     zhetaokeApiUrl:
       env.ZTK_API_URL ?? "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
     zhetaokeAppKey: env.ZTK_APP_KEY ?? "",

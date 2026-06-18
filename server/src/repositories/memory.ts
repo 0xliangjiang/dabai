@@ -22,6 +22,8 @@ import type {
 
 const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
 const EXCHANGE_ENABLED_KEY = "exchange_enabled";
+const REFERRAL_RATIO_KEY = "referral_commission_ratio";
+const REFERRAL_ENABLED_KEY = "referral_enabled";
 
 export function createRepositories(): Repositories {
   const users = new Map<string, UserRecord>();
@@ -49,7 +51,10 @@ export function createRepositories(): Repositories {
 
   return {
     users: {
-      async findOrCreateByOpenid(openid: string, input: { unionid?: string | null } = {}) {
+      async findOrCreateByOpenid(
+        openid: string,
+        input: { unionid?: string | null; inviterId?: string | null } = {}
+      ) {
         const existingId = usersByOpenid.get(openid);
         if (existingId) {
           const existing = users.get(existingId)!;
@@ -58,6 +63,12 @@ export function createRepositories(): Repositories {
           }
           deletedUserIds.delete(existingId);
           return existing;
+        }
+
+        // 二级分销绑定仅新用户首次注册生效：校验邀请人存在且未软删，无效则置 null
+        let inviterId: string | null = null;
+        if (input.inviterId && users.has(input.inviterId) && !deletedUserIds.has(input.inviterId)) {
+          inviterId = input.inviterId;
         }
 
         const id = `user-${users.size + 1}`;
@@ -69,6 +80,7 @@ export function createRepositories(): Repositories {
           avatarUrl: null,
           status: "active",
           rebateRatio: null,
+          inviterId,
           createdAt: new Date()
         };
         users.set(id, user);
@@ -119,6 +131,17 @@ export function createRepositories(): Repositories {
         if (!user) throw new Error(`user not found: ${id}`);
         user.rebateRatio = ratio;
         return user;
+      },
+      async referralSummary(userId: string) {
+        const downlineCount = [...users.values()].filter(
+          (u) => u.inviterId === userId && !deletedUserIds.has(u.id)
+        ).length;
+        const entries = [...ledger.values()].filter(
+          (e) => e.userId === userId && e.ledgerType.startsWith("referral_")
+        );
+        const sum = (status: string) =>
+          entries.filter((e) => e.status === status).reduce((t, e) => t + e.amountCents, 0);
+        return { downlineCount, earnedCents: sum("available"), pendingCents: sum("pending") };
       }
     },
     settings: {
@@ -136,6 +159,21 @@ export function createRepositories(): Repositories {
       },
       async setExchangeEnabled(enabled: boolean) {
         settingsMap.set(EXCHANGE_ENABLED_KEY, enabled ? "1" : "0");
+      },
+      async getReferralRatio() {
+        const v = settingsMap.get(REFERRAL_RATIO_KEY);
+        if (v === undefined) return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      },
+      async setReferralRatio(ratio: number) {
+        settingsMap.set(REFERRAL_RATIO_KEY, String(ratio));
+      },
+      async getReferralEnabled() {
+        return settingsMap.get(REFERRAL_ENABLED_KEY) === "1";
+      },
+      async setReferralEnabled(enabled: boolean) {
+        settingsMap.set(REFERRAL_ENABLED_KEY, enabled ? "1" : "0");
       },
       async getOverrides() {
         return Object.fromEntries(settingsMap.entries());

@@ -10,7 +10,14 @@ export type UserRecord = {
   avatarUrl: string | null;
   status: string;
   rebateRatio: number | null;
+  inviterId: string | null;
   createdAt: Date;
+};
+
+export type ReferralSummary = {
+  downlineCount: number;
+  earnedCents: number;
+  pendingCents: number;
 };
 
 export type ConversionRecord = {
@@ -214,8 +221,12 @@ export type CreateCommissionLedgerInput = {
 
 export type Repositories = {
   users: {
-    findOrCreateByOpenid(openid: string, input?: { unionid?: string | null }): Promise<UserRecord>;
+    findOrCreateByOpenid(
+      openid: string,
+      input?: { unionid?: string | null; inviterId?: string | null }
+    ): Promise<UserRecord>;
     findById(id: string): Promise<UserRecord | undefined>;
+    referralSummary(userId: string): Promise<ReferralSummary>;
     updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
     updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }): Promise<UserRecord>;
     list(): Promise<AdminUserRecord[]>;
@@ -228,6 +239,10 @@ export type Repositories = {
     setCommissionSharingRatio(ratio: number): Promise<void>;
     getExchangeEnabled(): Promise<boolean>;
     setExchangeEnabled(enabled: boolean): Promise<void>;
+    getReferralRatio(): Promise<number | null>;
+    setReferralRatio(ratio: number): Promise<void>;
+    getReferralEnabled(): Promise<boolean>;
+    setReferralEnabled(enabled: boolean): Promise<void>;
     getOverrides(): Promise<Record<string, string>>;
     setMany(entries: Array<{ key: string; value: string }>): Promise<void>;
   };

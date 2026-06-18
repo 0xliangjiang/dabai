@@ -9,7 +9,8 @@
     "pages/agreement/index",
     "pages/profile/index",
     "pages/withdrawals/index",
-    "pages/deal-detail/index"
+    "pages/deal-detail/index",
+    "pages/invite/index"
   ],
   "window": {
     "navigationBarTitleText": "捷径一生工具箱",

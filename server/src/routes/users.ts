@@ -18,6 +18,15 @@ export async function registerUserRoutes(app: FastifyInstance, repositories: Rep
     user: await repositories.users.findById(request.userId)
   }));
 
+  // 二级分销：我的邀请概况（下线数、已到账/待结算提成、是否启用）
+  app.get("/api/users/me/referral", async (request) => {
+    const [summary, enabled] = await Promise.all([
+      repositories.users.referralSummary(request.userId),
+      repositories.settings.getReferralEnabled()
+    ]);
+    return { enabled, ...summary };
+  });
+
   app.post<{ Body: { nickname?: string; avatarUrl?: string } }>(
     "/api/users/me/profile",
     async (request, reply) => {

@@ -17,11 +17,14 @@ export async function registerJobRoutes(
 
     const globalRatio =
       (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
+    const referralEnabled = await repositories.settings.getReferralEnabled();
+    const referralRatio =
+      (await repositories.settings.getReferralRatio()) ?? config.referralCommissionRatio;
     const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
     const result = await runOrderSync(
       repositories,
       { taobaoOrderClient, orderClient },
-      { commissionSharingRatio: globalRatio, attributionWindowHours: 24 },
+      { commissionSharingRatio: globalRatio, attributionWindowHours: 24, referralEnabled, referralRatio },
       "manual"
     );
 

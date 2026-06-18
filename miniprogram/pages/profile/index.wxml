@@ -52,6 +52,17 @@
       </view>
     </view>
 
+    <!-- 邀请好友入口（二级分销开启时显示） -->
+    <view wx:if="{{referralEnabled}}" class="cu-card anim-up delay-2" bindtap="goInvite">
+      <view class="flex align-center justify-between">
+        <view class="flex-sub">
+          <view class="section-title">邀请好友赚提成</view>
+          <view class="section-desc">好友通过你的分享下单，你额外得提成</view>
+        </view>
+        <view class="cu-arrow">›</view>
+      </view>
+    </view>
+
     <!-- 兑换申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">

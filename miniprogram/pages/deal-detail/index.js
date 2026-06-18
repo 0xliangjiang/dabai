@@ -1,5 +1,6 @@
 const { ensureLogin, getCurrentUser, getToken, request } = require("../../utils/api");
 const { setConsent } = require("../../utils/privacy");
+const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 Page({
   data: {
@@ -28,9 +29,12 @@ Page({
 
   onShareAppMessage() {
     const title = this.data.deal ? this.data.deal.title : "优惠线报";
+    const me = getCurrentUser();
     return {
       title,
-      path: this.dealId ? `/pages/deal-detail/index?id=${this.dealId}` : "/pages/deals/index"
+      path: this.dealId
+        ? `/pages/deal-detail/index?id=${this.dealId}${inviterSuffix(me, true)}`
+        : `/pages/deals/index${inviterSuffix(me)}`
     };
   },
 
@@ -39,7 +43,7 @@ Page({
     const title = this.data.deal ? this.data.deal.title : "优惠线报";
     return {
       title,
-      query: this.dealId ? `id=${this.dealId}` : ""
+      query: inviterQuery(getCurrentUser(), this.dealId ? `id=${this.dealId}` : "")
     };
   },
 

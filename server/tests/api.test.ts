@@ -18,6 +18,7 @@ describe("server API", () => {
     wechatAppSecret: "",
     wechatDealTemplateId: "",
     commissionSharingRatio: 0.5,
+    referralCommissionRatio: 0.2,
     zhetaokeApiUrl: "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
   zhetaokeAppKey: "",
   zhetaokeSid: "",
@@ -410,6 +411,165 @@ describe("server API", () => {
     expect(latest.jdSynced).toBe(0);
   });
 
+  test("referral: binds new downline and pays inviter a commission cut", async () => {
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return {
+          hasNext: false,
+          orders: [
+            {
+              tbkOrderId: "jd-referral-1",
+              itemId: "mock-item-100",
+              itemTitle: "下线下单的商品",
+              payTime: new Date(),
+              payAmountCents: 5000,
+              estimatedCommissionCents: 120,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: {}
+            }
+          ]
+        };
+      }
+    };
+    const app = await createApp({ config: testConfig, taobaoClient: new MockTaobaoClient(), orderClient });
+    apps.push(app);
+
+    // 上线 A 登录
+    const inviterLogin = await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "mock-inviter" }
+    });
+    const inviterId = inviterLogin.json().user.id;
+
+    // 新用户 B 带 inviter 注册 → 绑定为 A 的下线
+    const downlineLogin = await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "mock-downline", inviterId }
+    });
+    const downline = downlineLogin.json().user;
+    expect(downline.inviterId).toBe(inviterId);
+
+    // 老用户 A 再点别人的邀请链接 → 不改绑
+    const reLoginInviter = await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "mock-inviter", inviterId: downline.id }
+    });
+    expect(reLoginInviter.json().user.inviterId).toBeNull();
+
+    // 开启二级分销，比例 50%
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/config/referral-enabled",
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { enabled: true }
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/config/referral-ratio",
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { referralCommissionRatio: 0.5 }
+    });
+
+    // 下线 B 查询并复制（建立归因信号）
+    const conversion = await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: `Bearer local_${downline.id}` },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/conversions/${conversion.json().id}/copy`,
+      headers: { authorization: `Bearer local_${downline.id}` },
+      payload: { copyType: "link" }
+    });
+
+    // 同步订单：下线返利 = 120×0.5 = 60(分,pending)；上线提成 = 60×0.5 = 30(分,pending)
+    await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-scheduler-token": "dev-scheduler-token" }
+    });
+
+    const referral = await app.inject({
+      method: "GET",
+      url: "/api/users/me/referral",
+      headers: { authorization: `Bearer local_${inviterId}` }
+    });
+    expect(referral.json()).toMatchObject({
+      enabled: true,
+      downlineCount: 1,
+      earnedCents: 0,
+      pendingCents: 30
+    });
+  });
+
+  test("referral: no inviter commission when feature disabled", async () => {
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return {
+          hasNext: false,
+          orders: [
+            {
+              tbkOrderId: "jd-referral-off-1",
+              itemId: "mock-item-100",
+              itemTitle: "商品",
+              payTime: new Date(),
+              payAmountCents: 5000,
+              estimatedCommissionCents: 120,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: {}
+            }
+          ]
+        };
+      }
+    };
+    const app = await createApp({ config: testConfig, taobaoClient: new MockTaobaoClient(), orderClient });
+    apps.push(app);
+
+    const inviterId = (
+      await app.inject({ method: "POST", url: "/api/auth/wechat-login", payload: { code: "mock-inv2" } })
+    ).json().user.id;
+    const downline = (
+      await app.inject({
+        method: "POST",
+        url: "/api/auth/wechat-login",
+        payload: { code: "mock-dl2", inviterId }
+      })
+    ).json().user;
+
+    // 开关默认关闭，不设置 → 同步后上线无提成
+    const conversion = await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: `Bearer local_${downline.id}` },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/conversions/${conversion.json().id}/copy`,
+      headers: { authorization: `Bearer local_${downline.id}` },
+      payload: { copyType: "link" }
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-scheduler-token": "dev-scheduler-token" }
+    });
+
+    const referral = await app.inject({
+      method: "GET",
+      url: "/api/users/me/referral",
+      headers: { authorization: `Bearer local_${inviterId}` }
+    });
+    expect(referral.json()).toMatchObject({ enabled: false, downlineCount: 1, earnedCents: 0, pendingCents: 0 });
+  });
+
   test("GET /api/admin/users lists mini program users", async () => {
     const app = await buildTestApp();
 
@@ -452,7 +612,9 @@ describe("server API", () => {
         commissionSharingRatio: 0.5,
         attributionWindowHours: 24,
         highValueReviewThresholdCents: 5000,
-        exchangeEnabled: false
+        exchangeEnabled: false,
+        referralCommissionRatio: 0.2,
+        referralEnabled: false
       }
     });
   });

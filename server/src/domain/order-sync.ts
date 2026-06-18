@@ -1,5 +1,10 @@
 import { matchOrderAttribution, type AttributionResult } from "./attribution.js";
-import { buildCommissionLedgerEntry, resolveSharingRatio, type OrderCommissionStatus } from "./commission.js";
+import {
+  buildCommissionLedgerEntry,
+  buildReferralLedgerEntry,
+  resolveSharingRatio,
+  type OrderCommissionStatus
+} from "./commission.js";
 import type { JdOrderClient } from "../integrations/jd/orders.js";
 import type { TaobaoOrderClient } from "../integrations/taobao/orders.js";
 import type { OrderRecord, Repositories } from "../repositories/types.js";
@@ -68,6 +73,13 @@ async function processOrder(
     sharingRatio: resolveSharingRatio(attrUser?.rebateRatio, options.commissionSharingRatio)
   });
   await repositories.commissionLedger.upsert(entry);
+
+  // 二级分销：下线有上线且开关开 → 给上线额外记一条提成（平台出，镜像下线状态）
+  if (options.referralEnabled && options.referralRatio && options.referralRatio > 0 && attrUser?.inviterId) {
+    const referralEntry = buildReferralLedgerEntry(entry, attrUser.inviterId, options.referralRatio);
+    await repositories.commissionLedger.upsert(referralEntry);
+  }
+
   return { attributed: true };
 }
 
@@ -77,6 +89,8 @@ export type SyncOrdersOptions = {
   pageSize?: number;
   attributionWindowHours?: number;
   commissionSharingRatio: number;
+  referralEnabled?: boolean;
+  referralRatio?: number;
 };
 
 export type OrderSyncRunResult = {

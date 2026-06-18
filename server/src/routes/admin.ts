@@ -3,7 +3,7 @@ import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import { getEffectiveConfig, buildSettingsView, isValidSettingKey, SETTING_FIELDS } from "../config/runtime.js";
-import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
+import { buildCommissionLedgerEntry, buildReferralLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
@@ -107,9 +107,11 @@ export async function registerAdminRoutes(
   );
 
   app.get("/api/admin/config", async () => {
-    const [dbRatio, exchangeEnabled] = await Promise.all([
+    const [dbRatio, exchangeEnabled, referralRatio, referralEnabled] = await Promise.all([
       repositories.settings.getCommissionSharingRatio(),
-      repositories.settings.getExchangeEnabled()
+      repositories.settings.getExchangeEnabled(),
+      repositories.settings.getReferralRatio(),
+      repositories.settings.getReferralEnabled()
     ]);
     return {
       config: {
@@ -117,7 +119,9 @@ export async function registerAdminRoutes(
         commissionSharingRatio: dbRatio ?? config.commissionSharingRatio,
         attributionWindowHours: 24,
         highValueReviewThresholdCents: 5000,
-        exchangeEnabled
+        exchangeEnabled,
+        referralCommissionRatio: referralRatio ?? config.referralCommissionRatio,
+        referralEnabled
       }
     };
   });
@@ -143,6 +147,30 @@ export async function registerAdminRoutes(
       }
       await repositories.settings.setCommissionSharingRatio(ratio);
       return { ok: true, commissionSharingRatio: ratio };
+    }
+  );
+
+  app.post<{ Body: { referralCommissionRatio?: number } }>(
+    "/api/admin/config/referral-ratio",
+    async (request, reply) => {
+      const ratio = request.body?.referralCommissionRatio;
+      if (typeof ratio !== "number" || !Number.isFinite(ratio) || ratio < 0 || ratio > 1) {
+        return reply.code(400).send({ error: "比例需为 0~1 之间的数字" });
+      }
+      await repositories.settings.setReferralRatio(ratio);
+      return { ok: true, referralCommissionRatio: ratio };
+    }
+  );
+
+  app.post<{ Body: { enabled?: boolean } }>(
+    "/api/admin/config/referral-enabled",
+    async (request, reply) => {
+      const enabled = request.body?.enabled;
+      if (typeof enabled !== "boolean") {
+        return reply.code(400).send({ error: "enabled 必须为 true/false" });
+      }
+      await repositories.settings.setReferralEnabled(enabled);
+      return { ok: true, referralEnabled: enabled };
     }
   );
 
@@ -211,6 +239,16 @@ export async function registerAdminRoutes(
             sharingRatio: resolveSharingRatio(user?.rebateRatio, globalRatio)
           });
           await repositories.commissionLedger.upsert(entry);
+
+          // 二级分销：手动结算/退款时同步上线提成（与订单同步路径一致）
+          const referralEnabled = await repositories.settings.getReferralEnabled();
+          const referralRatio =
+            (await repositories.settings.getReferralRatio()) ?? config.referralCommissionRatio;
+          if (referralEnabled && referralRatio > 0 && user?.inviterId) {
+            await repositories.commissionLedger.upsert(
+              buildReferralLedgerEntry(entry, user.inviterId, referralRatio)
+            );
+          }
         }
       }
 
