@@ -289,7 +289,9 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async listByItem(itemId: string) {
         const records = await prisma.conversion.findMany({
           where: { itemId },
-          orderBy: { createdAt: "desc" }
+          orderBy: { createdAt: "desc" },
+          // 归因只看最近的候选（窗口内+最近一条窗外回退都在最新里），封顶避免热门商品每单 load 海量历史
+          take: 1000
         });
         return records.map(mapConversion);
       }
@@ -312,7 +314,9 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async listByItem(itemId: string) {
         const records = await prisma.copyEvent.findMany({
           where: { itemId },
-          orderBy: { copiedAt: "desc" }
+          orderBy: { copiedAt: "desc" },
+          // 同上：归因只需最近候选，封顶避免热门商品每单 load 海量复制事件
+          take: 1000
         });
         return records.map(mapCopyEvent);
       }
