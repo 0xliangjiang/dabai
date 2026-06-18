@@ -144,6 +144,19 @@ export type AdminWithdrawalRecord = WithdrawalRecord & {
   userOpenid: string;
 };
 
+export type OrderSyncRunRecord = {
+  id: string;
+  trigger: string;
+  ok: boolean;
+  taobaoSynced: number;
+  taobaoAttributed: number;
+  jdSynced: number;
+  jdAttributed: number;
+  errorMessage: string | null;
+  durationMs: number;
+  createdAt: Date;
+};
+
 export type OrderSummary = {
   id: string;
   itemTitle: string;
@@ -286,6 +299,10 @@ export type Repositories = {
     getAvailableBalance(userId: string): Promise<number>;
     list(status?: string): Promise<AdminWithdrawalRecord[]>;
     review(id: string, input: { status: "paid" | "rejected"; reviewedBy?: string; notes?: string | null }): Promise<WithdrawalRecord>;
+  };
+  syncRuns: {
+    record(input: Omit<OrderSyncRunRecord, "id" | "createdAt">): Promise<void>;
+    getLatest(): Promise<OrderSyncRunRecord | null>;
   };
   admin: {
     overview(): Promise<{

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
-import { syncJdOrders, syncTaobaoOrders } from "../domain/order-sync.js";
+import { runOrderSync } from "../domain/order-sync.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerJobRoutes(
@@ -18,17 +18,19 @@ export async function registerJobRoutes(
     const globalRatio =
       (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
     const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
-    const [taobao, jd] = await Promise.all([
-      syncTaobaoOrders(repositories, taobaoOrderClient, {
-        commissionSharingRatio: globalRatio,
-        attributionWindowHours: 24
-      }),
-      syncJdOrders(repositories, orderClient, {
-        commissionSharingRatio: globalRatio,
-        attributionWindowHours: 24
-      })
-    ]);
+    const result = await runOrderSync(
+      repositories,
+      { taobaoOrderClient, orderClient },
+      { commissionSharingRatio: globalRatio, attributionWindowHours: 24 },
+      "manual"
+    );
 
-    return { ok: true, taobao, jd };
+    // 返回体兼容后台「同步订单」按钮原有读取（taobao/jd.synced）
+    return {
+      ok: result.ok,
+      taobao: { synced: result.taobaoSynced, attributed: result.taobaoAttributed },
+      jd: { synced: result.jdSynced, attributed: result.jdAttributed },
+      errorMessage: result.errorMessage
+    };
   });
 }

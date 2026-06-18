@@ -79,6 +79,75 @@ export type SyncOrdersOptions = {
   commissionSharingRatio: number;
 };
 
+export type OrderSyncRunResult = {
+  ok: boolean;
+  taobaoSynced: number;
+  taobaoAttributed: number;
+  jdSynced: number;
+  jdAttributed: number;
+  errorMessage: string | null;
+  durationMs: number;
+};
+
+// 跑一轮订单同步（淘宝 + 京东）并落一条同步记录，定时循环与手动接口共用。
+// - allSettled：单平台失败不影响另一平台计数照常入账
+// - 任一平台失败 → ok=false，errorMessage 汇总失败平台与原因（失败才是最该看到的）
+// - 记录写库失败只吞掉（记录功能不能拖垮同步本身），交由调用方记日志
+export async function runOrderSync(
+  repositories: Repositories,
+  clients: { taobaoOrderClient: TaobaoOrderClient; orderClient: JdOrderClient },
+  options: SyncOrdersOptions,
+  trigger: "auto" | "manual"
+): Promise<OrderSyncRunResult> {
+  const startedAt = Date.now();
+  const [taobao, jd] = await Promise.allSettled([
+    syncTaobaoOrders(repositories, clients.taobaoOrderClient, options),
+    syncJdOrders(repositories, clients.orderClient, options)
+  ]);
+
+  const errors: string[] = [];
+  let taobaoSynced = 0;
+  let taobaoAttributed = 0;
+  let jdSynced = 0;
+  let jdAttributed = 0;
+
+  if (taobao.status === "fulfilled") {
+    taobaoSynced = taobao.value.synced;
+    taobaoAttributed = taobao.value.attributed;
+  } else {
+    errors.push(`淘宝同步失败：${errorText(taobao.reason)}`);
+  }
+  if (jd.status === "fulfilled") {
+    jdSynced = jd.value.synced;
+    jdAttributed = jd.value.attributed;
+  } else {
+    errors.push(`京东同步失败：${errorText(jd.reason)}`);
+  }
+
+  const result: OrderSyncRunResult = {
+    ok: errors.length === 0,
+    taobaoSynced,
+    taobaoAttributed,
+    jdSynced,
+    jdAttributed,
+    errorMessage: errors.length > 0 ? errors.join("；").slice(0, 1024) : null,
+    durationMs: Date.now() - startedAt
+  };
+
+  try {
+    await repositories.syncRuns.record({ trigger, ...result });
+  } catch {
+    // 记录落库失败不应影响同步主流程；调用方会有日志
+  }
+
+  return result;
+}
+
+function errorText(reason: unknown): string {
+  if (reason instanceof Error) return reason.message;
+  return String(reason);
+}
+
 export async function syncJdOrders(
   repositories: Repositories,
   orderClient: JdOrderClient,

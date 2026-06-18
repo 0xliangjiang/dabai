@@ -637,6 +637,15 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         return mapWithdrawal(record);
       }
     },
+    syncRuns: {
+      async record(input) {
+        await prisma.orderSyncRun.create({ data: input });
+      },
+      async getLatest() {
+        const record = await prisma.orderSyncRun.findFirst({ orderBy: { createdAt: "desc" } });
+        return record ?? null;
+      }
+    },
     admin: {
       async overview() {
         const [

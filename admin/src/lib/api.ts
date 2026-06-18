@@ -8,6 +8,24 @@ export type AdminOverview = {
   };
 };
 
+export type SyncRun = {
+  id: string;
+  trigger: string;
+  ok: boolean;
+  taobaoSynced: number;
+  taobaoAttributed: number;
+  jdSynced: number;
+  jdAttributed: number;
+  errorMessage: string | null;
+  durationMs: number;
+  createdAt: string;
+};
+
+export type SyncStatus = {
+  latest: SyncRun | null;
+  intervalMinutes: number;
+};
+
 export type AdminUser = {
   id: string;
   openid: string;

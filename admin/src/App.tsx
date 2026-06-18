@@ -1,6 +1,8 @@
 import {
+  AlertTriangle,
   ArrowDownToLine,
   Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -14,7 +16,8 @@ import {
   Settings,
   ShieldQuestion,
   Users,
-  WalletCards
+  WalletCards,
+  XCircle
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "./components/ui/badge";
@@ -33,7 +36,8 @@ import {
   type AdminSetting,
   type AdminUser,
   type AdminWithdrawal,
-  type PendingAttribution
+  type PendingAttribution,
+  type SyncStatus
 } from "./lib/api";
 import { toast } from "./lib/toast";
 
@@ -88,6 +92,7 @@ export function App() {
   const [data, setData] = useState<AdminData>(emptyData);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [activeNav, setActiveNav] = useState("overview");
   const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
   const [ordersPage, setOrdersPage] = useState(1);
@@ -144,6 +149,9 @@ export function App() {
       if (!options.silent) toast("数据已刷新");
       void fetchAdminApi<{ total: number; items: AdminOrder[] }>("/api/admin/orders?page=1&pageSize=50", token)
         .then((r) => { setOrders(r); setOrdersPage(1); })
+        .catch(() => null);
+      void fetchAdminApi<SyncStatus>("/api/admin/sync-status", token)
+        .then(setSyncStatus)
         .catch(() => null);
       void fetchAdminApi<{ settings: AdminSetting[] }>("/api/admin/settings", token)
         .then(({ settings: rows }) => {
@@ -510,6 +518,8 @@ export function App() {
             />
             <MetricCard icon={<ShieldQuestion className="h-4 w-4" />} label="申诉记录" value={metrics.orderClaimCount} note="用户提交" />
           </section>
+
+          <SyncStatusCard status={syncStatus} />
 
           <DealManager adminToken={adminToken} />
 
@@ -996,6 +1006,94 @@ function MetricCard({
       <div className="mt-3 text-2xl font-semibold tabular-nums">{value}</div>
       <div className="mt-0.5 text-xs text-slate-400">{note}</div>
     </div>
+  );
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "刚刚";
+  if (mins < 60) return `${mins} 分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  return `${Math.floor(hours / 24)} 天前`;
+}
+
+function SyncStatusCard({ status }: { status: SyncStatus | null }) {
+  if (!status) return null;
+  const { latest, intervalMinutes } = status;
+
+  // 静默卡死不会有失败记录，只能靠「最新记录距今 > 2×间隔」判断
+  const stale =
+    latest != null && Date.now() - new Date(latest.createdAt).getTime() > intervalMinutes * 2 * 60 * 1000;
+
+  let tone: "ok" | "warn" | "error";
+  let badge: string;
+  let Icon: typeof CheckCircle2;
+  if (!latest) {
+    tone = "warn";
+    badge = "尚无同步记录";
+    Icon = AlertTriangle;
+  } else if (!latest.ok) {
+    tone = "error";
+    badge = "失败";
+    Icon = XCircle;
+  } else if (stale) {
+    tone = "warn";
+    badge = "同步可能已停止";
+    Icon = AlertTriangle;
+  } else {
+    tone = "ok";
+    badge = "正常";
+    Icon = CheckCircle2;
+  }
+
+  const toneClass = {
+    ok: "border-emerald-200 bg-emerald-50/40 text-emerald-700",
+    warn: "border-amber-200 bg-amber-50/50 text-amber-700",
+    error: "border-rose-200 bg-rose-50/50 text-rose-700"
+  }[tone];
+
+  return (
+    <section className="mt-5 scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h2 className="font-semibold">订单同步</h2>
+          <p className="mt-0.5 text-sm text-slate-400">最近一次同步状态（每 {intervalMinutes} 分钟自动跑一次）</p>
+        </div>
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}>
+          <Icon className="h-3.5 w-3.5" />
+          {badge}
+        </span>
+      </div>
+      <div className="px-5 py-4 text-sm">
+        {latest ? (
+          <>
+            <div className="text-slate-600">
+              上次同步：{formatRelativeTime(latest.createdAt)}
+              （{latest.trigger === "manual" ? "手动" : "自动"}） · 耗时 {(latest.durationMs / 1000).toFixed(1)}s
+            </div>
+            <div className="mt-1.5 text-slate-500">
+              抓取：淘宝 <span className="font-medium text-slate-700">{latest.taobaoSynced}</span> 单 · 京东{" "}
+              <span className="font-medium text-slate-700">{latest.jdSynced}</span> 单 · 归因{" "}
+              <span className="font-medium text-slate-700">{latest.taobaoAttributed + latest.jdAttributed}</span> 单
+            </div>
+            {latest.errorMessage ? (
+              <div className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600">
+                原因：{latest.errorMessage}
+              </div>
+            ) : null}
+            {stale && latest.ok ? (
+              <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-600">
+                已超过 {intervalMinutes * 2} 分钟没有新同步记录，定时任务可能已停止，请检查服务。
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="text-slate-500">系统启动后还没有跑过同步，可点右上角「同步订单」手动触发一次。</div>
+        )}
+      </div>
+    </section>
   );
 }
 

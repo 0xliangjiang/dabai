@@ -317,6 +317,99 @@ describe("server API", () => {
     });
   });
 
+  test("sync records a run; GET /api/admin/sync-status returns the latest", async () => {
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return {
+          hasNext: false,
+          orders: [
+            {
+              tbkOrderId: "jd-sync-status-1",
+              itemId: "mock-item-200",
+              itemTitle: "状态测试商品",
+              payTime: new Date(),
+              payAmountCents: 1000,
+              estimatedCommissionCents: 50,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: {}
+            }
+          ]
+        };
+      }
+    };
+    const app = await createApp({ config: testConfig, taobaoClient: new MockTaobaoClient(), orderClient });
+    apps.push(app);
+
+    // 同步前：无记录
+    const before = await app.inject({
+      method: "GET",
+      url: "/api/admin/sync-status",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(before.statusCode).toBe(200);
+    expect(before.json().latest).toBeNull();
+    expect(before.json().intervalMinutes).toBeGreaterThan(0);
+
+    await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+
+    const after = await app.inject({
+      method: "GET",
+      url: "/api/admin/sync-status",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(after.statusCode).toBe(200);
+    expect(after.json().latest).toMatchObject({
+      trigger: "manual",
+      ok: true,
+      jdSynced: 1,
+      errorMessage: null
+    });
+  });
+
+  test("sync records a failure when a platform throws", async () => {
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return { hasNext: false, orders: [] };
+      }
+    };
+    // 淘宝订单客户端抛错：整体应记为失败，但京东计数仍入账
+    const taobaoOrderClient = {
+      async fetchTaobaoOrders() {
+        throw new Error("折淘客订单接口 401");
+      }
+    };
+    const app = await createApp({
+      config: testConfig,
+      taobaoClient: new MockTaobaoClient(),
+      orderClient,
+      taobaoOrderClient
+    });
+    apps.push(app);
+
+    const sync = await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(sync.statusCode).toBe(200);
+    expect(sync.json()).toMatchObject({ ok: false });
+
+    const status = await app.inject({
+      method: "GET",
+      url: "/api/admin/sync-status",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    const latest = status.json().latest;
+    expect(latest.ok).toBe(false);
+    expect(latest.errorMessage).toContain("淘宝");
+    expect(latest.jdSynced).toBe(0);
+  });
+
   test("GET /api/admin/users lists mini program users", async () => {
     const app = await buildTestApp();
 

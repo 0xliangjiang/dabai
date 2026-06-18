@@ -12,6 +12,7 @@ import type {
   CopyEventRecord,
   OrderClaimRecord,
   OrderRecord,
+  OrderSyncRunRecord,
   Repositories,
   UpsertAttributionInput,
   UpsertOrderInput,
@@ -44,6 +45,7 @@ export function createRepositories(): Repositories {
     string,
     { id: string; userId: string; templateId: string; used: boolean }
   >();
+  const syncRunList: OrderSyncRunRecord[] = [];
 
   return {
     users: {
@@ -545,6 +547,14 @@ export function createRepositories(): Repositories {
         };
         withdrawalMap.set(id, updated);
         return updated;
+      }
+    },
+    syncRuns: {
+      async record(input) {
+        syncRunList.push({ ...input, id: randomUUID(), createdAt: new Date() });
+      },
+      async getLatest() {
+        return syncRunList.length > 0 ? syncRunList[syncRunList.length - 1] : null;
       }
     },
     admin: {

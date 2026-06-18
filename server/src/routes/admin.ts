@@ -29,6 +29,16 @@ export async function registerAdminRoutes(
     metrics: await repositories.admin.overview()
   }));
 
+  // 最近一次订单同步状态：含生效同步间隔，供前端判断「太久没跑」
+  app.get("/api/admin/sync-status", async () => {
+    const cfg = await getEffectiveConfig(config, repositories);
+    const interval = cfg.orderSyncIntervalMinutes > 0 ? cfg.orderSyncIntervalMinutes : 15;
+    return {
+      latest: await repositories.syncRuns.getLatest(),
+      intervalMinutes: interval
+    };
+  });
+
   app.get("/api/admin/users", async () => ({
     users: await repositories.users.list()
   }));

@@ -68,6 +68,22 @@ model Withdrawal {
   @@index([status, createdAt])
 }
 
+// 订单同步记录：每次同步（自动/手动）跑完追加一条，后台只读最新一条看「在不在跑/成败/抓了多少」
+model OrderSyncRun {
+  id               String   @id @default(cuid())
+  trigger          String   // auto(定时) | manual(后台手动)
+  ok               Boolean
+  taobaoSynced     Int      @default(0)
+  taobaoAttributed Int      @default(0)
+  jdSynced         Int      @default(0)
+  jdAttributed     Int      @default(0)
+  errorMessage     String?  @db.VarChar(1024)
+  durationMs       Int
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model CheckIn {
   id          String   @id @default(cuid())
   userId      String

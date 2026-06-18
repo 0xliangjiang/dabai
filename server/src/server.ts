@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { loadConfig, validateProductionConfig } from "./config/env.js";
-import { syncJdOrders, syncTaobaoOrders } from "./domain/order-sync.js";
+import { runOrderSync } from "./domain/order-sync.js";
 
 const config = loadConfig();
 validateProductionConfig(config);
@@ -29,11 +29,17 @@ if (syncEnabled) {
         (await app.deps.repositories.settings.getCommissionSharingRatio()) ?? cfg.commissionSharingRatio;
       const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
       const syncOptions = { startTime, commissionSharingRatio: globalRatio, attributionWindowHours: 24 };
-      const [taobao, jd] = await Promise.all([
-        syncTaobaoOrders(app.deps.repositories, taobaoOrderClient, syncOptions),
-        syncJdOrders(app.deps.repositories, orderClient, syncOptions)
-      ]);
-      app.log.info({ taobao, jd }, "order sync completed");
+      const result = await runOrderSync(
+        app.deps.repositories,
+        { taobaoOrderClient, orderClient },
+        syncOptions,
+        "auto"
+      );
+      if (result.ok) {
+        app.log.info({ result }, "order sync completed");
+      } else {
+        app.log.error({ result }, "order sync completed with errors");
+      }
     } catch (error) {
       app.log.error({ err: error }, "order sync failed");
     } finally {
