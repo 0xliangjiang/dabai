@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "线报详情",
   "usingComponents": {
-    "privacy-consent": "/components/privacy-consent/index"
+    "privacy-consent": "/components/privacy-consent/index",
+    "copy-gate": "/components/copy-gate/index"
   }
 }

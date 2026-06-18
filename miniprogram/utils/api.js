@@ -130,6 +130,7 @@ module.exports = {
   request,
   uploadFile,
   ensureLogin,
+  getToken,
   getCurrentUser,
   loginWithWechat,
   logout

@@ -1,4 +1,4 @@
-const { ensureLogin, request } = require("../../utils/api");
+const { ensureLogin, getCurrentUser, getToken, request } = require("../../utils/api");
 const { setConsent } = require("../../utils/privacy");
 
 Page({
@@ -9,7 +9,8 @@ Page({
     copiedIndex: -1,
     showShareModal: false,
     showTimelineGuide: false,
-    showPrivacy: false
+    showPrivacy: false,
+    showCopyGate: false
   },
 
   // 复制等隐私接口被拦截时，由 app.js 触发本页弹出隐私确认
@@ -92,6 +93,34 @@ Page({
 
   copyStep(event) {
     const index = Number(event.currentTarget.dataset.index);
+    const step = this.data.deal.steps[index];
+    if (!step || !step.copyValue) return;
+
+    // 复制前拦一道：未登录或没设昵称 → 走 copy-gate（登录+完善资料），完成后再复制
+    const user = getCurrentUser();
+    if (!getToken() || !user || !user.nickname) {
+      this.pendingCopyIndex = index;
+      this.setData({ showCopyGate: true });
+      return;
+    }
+
+    this.doCopy(index);
+  },
+
+  // copy-gate 走完（已登录且昵称齐全）→ 复制刚才那一步
+  onCopyGatePass() {
+    const index = this.pendingCopyIndex;
+    this.pendingCopyIndex = -1;
+    this.setData({ showCopyGate: false });
+    if (typeof index === "number" && index >= 0) this.doCopy(index);
+  },
+
+  onCopyGateClose() {
+    this.pendingCopyIndex = -1;
+    this.setData({ showCopyGate: false });
+  },
+
+  doCopy(index) {
     const step = this.data.deal.steps[index];
     if (!step || !step.copyValue) return;
 
