@@ -8,6 +8,7 @@ import type {
   CommissionLedgerRecord,
   ConversionRecord,
   CopyEventRecord,
+  DownlineRecord,
   OrderClaimRecord,
   OrderRecord,
   ReferralSummary,
@@ -101,11 +102,13 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           include: {
+            inviter: { select: { nickname: true } },
             _count: {
               select: {
                 conversions: true,
                 copyEvents: true,
-                orderClaims: true
+                orderClaims: true,
+                invitees: { where: { deletedAt: null } }
               }
             }
           }
@@ -115,7 +118,40 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           ...mapUser(user),
           conversionCount: user._count.conversions,
           copyEventCount: user._count.copyEvents,
-          claimCount: user._count.orderClaims
+          claimCount: user._count.orderClaims,
+          inviterNickname: user.inviter?.nickname ?? null,
+          downlineCount: user._count.invitees
+        }));
+      },
+      async listDownline(inviterId: string): Promise<DownlineRecord[]> {
+        const downlines = await prisma.user.findMany({
+          where: { inviterId, deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, nickname: true, openid: true, createdAt: true }
+        });
+        if (downlines.length === 0) return [];
+
+        // 上级的二级提成台账（referral_*），经 订单→归因 关联到具体下线，按下线累加
+        const entries = await prisma.commissionLedger.findMany({
+          where: { userId: inviterId, ledgerType: { startsWith: "referral_" } },
+          select: {
+            amountCents: true,
+            tbkOrder: { select: { attribution: { select: { userId: true } } } }
+          }
+        });
+        const contributedByUser = new Map<string, number>();
+        for (const entry of entries) {
+          const downlineId = entry.tbkOrder?.attribution?.userId;
+          if (!downlineId) continue;
+          contributedByUser.set(downlineId, (contributedByUser.get(downlineId) ?? 0) + entry.amountCents);
+        }
+
+        return downlines.map((d) => ({
+          id: d.id,
+          nickname: d.nickname,
+          openid: d.openid,
+          createdAt: d.createdAt,
+          contributedCents: contributedByUser.get(d.id) ?? 0
         }));
       },
       async deleteUser(id: string) {

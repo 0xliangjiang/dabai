@@ -4,6 +4,7 @@ import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
   AttributionRecord,
+  DownlineRecord,
   CheckInRecord,
   DealPostInput,
   DealPostRecord,
@@ -117,13 +118,37 @@ export function createRepositories(): Repositories {
         return user;
       },
       async list(): Promise<AdminUserRecord[]> {
+        const activeUsers = [...users.values()].filter((user) => !deletedUserIds.has(user.id));
+        return activeUsers.map((user) => ({
+          ...user,
+          conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
+          copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
+          claimCount: [...claims.values()].filter((record) => record.userId === user.id).length,
+          inviterNickname: user.inviterId ? users.get(user.inviterId)?.nickname ?? null : null,
+          downlineCount: activeUsers.filter((u) => u.inviterId === user.id).length
+        }));
+      },
+      async listDownline(inviterId: string): Promise<DownlineRecord[]> {
+        const refEntries = [...ledger.values()].filter(
+          (e) => e.userId === inviterId && e.ledgerType.startsWith("referral_")
+        );
+        const contributedByUser = new Map<string, number>();
+        for (const e of refEntries) {
+          // 提成台账的 tbkOrderId 存的是内部 order.id；attributionsByTbkOrderId 也按内部 id 索引
+          const attrId = attributionsByTbkOrderId.get(e.tbkOrderId);
+          const downlineId = attrId ? attributions.get(attrId)?.userId : undefined;
+          if (!downlineId) continue;
+          contributedByUser.set(downlineId, (contributedByUser.get(downlineId) ?? 0) + e.amountCents);
+        }
         return [...users.values()]
-          .filter((user) => !deletedUserIds.has(user.id))
-          .map((user) => ({
-            ...user,
-            conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
-            copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
-            claimCount: [...claims.values()].filter((record) => record.userId === user.id).length
+          .filter((u) => u.inviterId === inviterId && !deletedUserIds.has(u.id))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .map((u) => ({
+            id: u.id,
+            nickname: u.nickname,
+            openid: u.openid,
+            createdAt: u.createdAt,
+            contributedCents: contributedByUser.get(u.id) ?? 0
           }));
       },
       async deleteUser(id: string) {

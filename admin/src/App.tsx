@@ -36,6 +36,7 @@ import {
   type AdminSetting,
   type AdminUser,
   type AdminWithdrawal,
+  type Downline,
   type PendingAttribution,
   type SyncStatus
 } from "./lib/api";
@@ -104,6 +105,9 @@ export function App() {
   const [pointsDelta, setPointsDelta] = useState("");
   const [ratioModal, setRatioModal] = useState<{ userId: string; nickname: string } | null>(null);
   const [ratioInput, setRatioInput] = useState("");
+  const [downlineModal, setDownlineModal] = useState<{ nickname: string } | null>(null);
+  const [downlines, setDownlines] = useState<Downline[]>([]);
+  const [downlineLoading, setDownlineLoading] = useState(false);
   const [globalRatioInput, setGlobalRatioInput] = useState("");
   const [savingGlobalRatio, setSavingGlobalRatio] = useState(false);
   const [referralRatioInput, setReferralRatioInput] = useState("");
@@ -381,6 +385,23 @@ export function App() {
     }
   }
 
+  async function openDownline(userId: string, nickname: string) {
+    setDownlineModal({ nickname });
+    setDownlines([]);
+    setDownlineLoading(true);
+    try {
+      const { downlines: rows } = await fetchAdminApi<{ downlines: Downline[] }>(
+        `/api/admin/users/${userId}/downline`,
+        adminToken
+      );
+      setDownlines(rows);
+    } catch {
+      toast("加载下线失败，请重试", "error");
+    } finally {
+      setDownlineLoading(false);
+    }
+  }
+
   async function submitRebateRatio() {
     if (!ratioModal) return;
     const raw = ratioInput.trim();
@@ -575,6 +596,8 @@ export function App() {
                   <TableHead>转化</TableHead>
                   <TableHead>复制</TableHead>
                   <TableHead>申诉</TableHead>
+                  <TableHead>上级</TableHead>
+                  <TableHead>下级</TableHead>
                   <TableHead>返利比例</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead className="text-right">操作</TableHead>
@@ -600,6 +623,25 @@ export function App() {
                     <TableCell>{user.conversionCount}</TableCell>
                     <TableCell>{user.copyEventCount}</TableCell>
                     <TableCell>{user.claimCount}</TableCell>
+                    <TableCell>
+                      {user.inviterId ? (
+                        <span className="text-xs text-slate-600">{user.inviterNickname || user.inviterId.slice(0, 8)}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {user.downlineCount > 0 ? (
+                        <button
+                          className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100"
+                          onClick={() => void openDownline(user.id, user.nickname ?? user.id)}
+                        >
+                          {user.downlineCount} 人 ›
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">0</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {user.rebateRatio != null ? (
                         <Badge variant="warning">{Math.round(user.rebateRatio * 100)}%</Badge>
@@ -630,7 +672,7 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.users.length === 0 ? <EmptyRow colSpan={9} text="暂无用户数据" /> : null}
+                {data.users.length === 0 ? <EmptyRow colSpan={11} text="暂无用户数据" /> : null}
               </TableBody>
             </Table>
           </SectionCard>
@@ -1017,6 +1059,46 @@ export function App() {
             <div className="mt-4 flex gap-2">
               <Button className="flex-1" onClick={() => void submitRebateRatio()}>确认</Button>
               <Button className="flex-1" variant="outline" onClick={() => setRatioModal(null)}>取消</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {downlineModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDownlineModal(null)}>
+          <div className="max-h-[80vh] w-[34rem] overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div>
+                <h3 className="font-semibold">下线明细</h3>
+                <p className="mt-0.5 text-sm text-slate-500">{downlineModal.nickname} 的直接下线</p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setDownlineModal(null)}>关闭</Button>
+            </div>
+            <div className="max-h-[60vh] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>昵称</TableHead>
+                    <TableHead>加入时间</TableHead>
+                    <TableHead className="text-right">贡献提成</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {downlineLoading ? (
+                    <EmptyRow colSpan={3} text="加载中…" />
+                  ) : downlines.length === 0 ? (
+                    <EmptyRow colSpan={3} text="暂无下线" />
+                  ) : (
+                    downlines.map((d) => (
+                      <TableRow key={d.id}>
+                        <TableCell className="font-medium">{d.nickname || "未设置"}</TableCell>
+                        <TableCell className="text-xs text-slate-500">{new Date(d.createdAt).toLocaleString()}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatMoney(d.contributedCents)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>

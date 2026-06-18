@@ -179,6 +179,16 @@ export type AdminUserRecord = UserRecord & {
   conversionCount: number;
   copyEventCount: number;
   claimCount: number;
+  inviterNickname: string | null;
+  downlineCount: number;
+};
+
+export type DownlineRecord = {
+  id: string;
+  nickname: string | null;
+  openid: string;
+  createdAt: Date;
+  contributedCents: number; // 该下线为上级贡献的二级提成累计
 };
 
 export type AdminConfigRecord = {
@@ -233,6 +243,7 @@ export type Repositories = {
     updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
     updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }): Promise<UserRecord>;
     list(): Promise<AdminUserRecord[]>;
+    listDownline(inviterId: string): Promise<DownlineRecord[]>;
     deleteUser(id: string): Promise<void>;
     adjustPoints(id: string, input: { delta: number; reason: string }): Promise<void>;
     setRebateRatio(id: string, ratio: number | null): Promise<UserRecord>;

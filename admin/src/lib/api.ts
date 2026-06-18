@@ -37,7 +37,18 @@ export type AdminUser = {
   conversionCount: number;
   copyEventCount: number;
   claimCount: number;
+  inviterId: string | null;
+  inviterNickname: string | null;
+  downlineCount: number;
   createdAt: string;
+};
+
+export type Downline = {
+  id: string;
+  nickname: string | null;
+  openid: string;
+  createdAt: string;
+  contributedCents: number;
 };
 
 export type AdminDealStep = {

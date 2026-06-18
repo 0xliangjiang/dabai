@@ -43,6 +43,11 @@ export async function registerAdminRoutes(
     users: await repositories.users.list()
   }));
 
+  // 某会员的下线明细（昵称、加入时间、累计为上级贡献的提成）
+  app.get<{ Params: { id: string } }>("/api/admin/users/:id/downline", async (request) => ({
+    downlines: await repositories.users.listDownline(request.params.id)
+  }));
+
   app.post<{ Body: { rawContent?: string } }>(
     "/api/admin/deals/ai-parse",
     async (request, reply) => {

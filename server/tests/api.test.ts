@@ -506,6 +506,29 @@ describe("server API", () => {
       earnedCents: 0,
       pendingCents: 30
     });
+
+    // 后台用户列表能看到上下级关系
+    const adminUsers = await app.inject({
+      method: "GET",
+      url: "/api/admin/users",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    const downlineRow = adminUsers.json().users.find((u: { id: string }) => u.id === downline.id);
+    const inviterRow = adminUsers.json().users.find((u: { id: string }) => u.id === inviterId);
+    expect(downlineRow.inviterId).toBe(inviterId);
+    expect(inviterRow.downlineCount).toBe(1);
+
+    // 下钻：上级的下线明细，含该下线贡献的提成（30 分）
+    const downlineDetail = await app.inject({
+      method: "GET",
+      url: `/api/admin/users/${inviterId}/downline`,
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(downlineDetail.json().downlines).toHaveLength(1);
+    expect(downlineDetail.json().downlines[0]).toMatchObject({
+      id: downline.id,
+      contributedCents: 30
+    });
   });
 
   test("referral: no inviter commission when feature disabled", async () => {
