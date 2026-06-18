@@ -107,6 +107,19 @@ export function validateProductionConfig(config: AppConfig): void {
     ["WECHAT_APP_ID", config.wechatAppId]
   ].filter(([, value]) => !isRealConfigValue(value));
 
+  // 生产环境拒绝弱默认密钥：未设置环境变量时会回落到 dev-* 默认值，
+  // 而这些默认值能通过 isRealConfigValue，必须显式拦截避免裸奔。
+  const weakDefaults: Array<[string, string, string]> = [
+    ["ADMIN_TOKEN", config.adminToken, "dev-admin-token"],
+    ["SCHEDULER_TOKEN", config.schedulerToken, "dev-scheduler-token"]
+  ];
+  for (const [key, value, weak] of weakDefaults) {
+    if (value === weak) missing.push([key, "使用了不安全的默认值，请设置强随机值"]);
+  }
+  if (config.authTokenSecret.length < 16) {
+    missing.push(["AUTH_TOKEN_SECRET", "过短，请设置 ≥16 位强随机值"]);
+  }
+
   if (!Number.isFinite(config.port) || config.port <= 0) {
     missing.push(["PORT", String(config.port)]);
   }

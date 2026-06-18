@@ -258,7 +258,10 @@ export function createRepositories(): Repositories {
           .map((attribution) => {
             const order = orders.get(attribution.tbkOrderId)!;
             const userLedger = [...ledger.values()]
-              .filter((entry) => entry.userId === userId && entry.tbkOrderId === order.id)
+              .filter(
+                (entry) =>
+                  entry.userId === userId && entry.tbkOrderId === order.id && entry.status !== "reversed"
+              )
               .reduce((total, entry) => total + entry.amountCents, 0);
             return {
               id: order.id,
@@ -581,6 +584,18 @@ export function createRepositories(): Repositories {
         return [...withdrawalMap.values()]
           .filter((r) => r.userId === userId)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+      async createIfAffordable(input) {
+        const available = await this.getAvailableBalance(input.userId);
+        if (input.amountCents > available) return { ok: false as const, available };
+        const withdrawal = await this.create({
+          userId: input.userId,
+          amountCents: input.amountCents,
+          payAccount: "",
+          payType: "redpacket",
+          notes: null
+        });
+        return { ok: true as const, withdrawal };
       },
       async getAvailableBalance(userId: string) {
         const earned = [...ledger.values()]

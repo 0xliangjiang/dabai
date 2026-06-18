@@ -54,6 +54,9 @@ export type CreateAppOptions = {
 export async function createApp(options: CreateAppOptions = {}) {
   const config = options.config ?? loadConfig();
   const app = Fastify({
+    // 线上在反向代理后：信任 X-Forwarded-For，使 req.ip 为真实客户端 IP，
+    // 否则按 IP 的限流会退化成所有用户共享一个全局额度
+    trustProxy: true,
     logger:
       config.nodeEnv === "test"
         ? false

@@ -311,27 +311,32 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const records = await prisma.orderAttribution.findMany({
           where: { userId },
           orderBy: { createdAt: "desc" },
-          include: {
-            tbkOrder: true,
-            user: { include: { commissionLedger: true } }
-          }
+          include: { tbkOrder: true }
         });
+        if (records.length === 0) return [];
 
-        return records.map((record) => {
-          const userRebateCents = record.user?.commissionLedger
-            .filter((entry) => entry.tbkOrderId === record.tbkOrderId)
-            .reduce((total, entry) => total + entry.amountCents, 0);
-          return {
-            id: record.tbkOrder.id,
-            itemTitle: record.tbkOrder.itemTitle,
-            status: record.tbkOrder.orderStatus,
-            payTime: record.tbkOrder.payTime,
-            payAmountCents: record.tbkOrder.payAmountCents,
-            estimatedCommissionCents: record.tbkOrder.estimatedCommissionCents,
-            settledCommissionCents: record.tbkOrder.settledCommissionCents,
-            userRebateCents: userRebateCents ?? 0
-          };
+        // 一次性取这些订单的台账（避免 N+1 把用户全部台账 load 进内存）；
+        // 排除 reversed，使退款订单返利显示为 0。
+        const orderIds = records.map((r) => r.tbkOrderId);
+        const ledgers = await prisma.commissionLedger.findMany({
+          where: { userId, tbkOrderId: { in: orderIds }, status: { not: "reversed" } },
+          select: { tbkOrderId: true, amountCents: true }
         });
+        const rebateByOrder = new Map<string, number>();
+        for (const l of ledgers) {
+          rebateByOrder.set(l.tbkOrderId, (rebateByOrder.get(l.tbkOrderId) ?? 0) + l.amountCents);
+        }
+
+        return records.map((record) => ({
+          id: record.tbkOrder.id,
+          itemTitle: record.tbkOrder.itemTitle,
+          status: record.tbkOrder.orderStatus,
+          payTime: record.tbkOrder.payTime,
+          payAmountCents: record.tbkOrder.payAmountCents,
+          estimatedCommissionCents: record.tbkOrder.estimatedCommissionCents,
+          settledCommissionCents: record.tbkOrder.settledCommissionCents,
+          userRebateCents: rebateByOrder.get(record.tbkOrderId) ?? 0
+        }));
       },
       async upsert(input: UpsertOrderInput) {
         const existing = await prisma.tbkOrder.findUnique({ where: { tbkOrderId: input.tbkOrderId } });
@@ -692,6 +697,44 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           orderBy: { createdAt: "desc" }
         });
         return records.map(mapWithdrawal);
+      },
+      async createIfAffordable(input) {
+        // Serializable 事务：余额计算 + 创建在同一事务内，并发提交会被串行化，杜绝超额
+        return prisma.$transaction(
+          async (tx) => {
+            const [earned, points, adjustment, requested] = await Promise.all([
+              tx.commissionLedger.aggregate({
+                where: { userId: input.userId, status: "available" },
+                _sum: { amountCents: true }
+              }),
+              tx.checkIn.aggregate({ where: { userId: input.userId }, _sum: { points: true } }),
+              tx.pointAdjustment.aggregate({ where: { userId: input.userId }, _sum: { amountCents: true } }),
+              tx.withdrawal.aggregate({
+                where: { userId: input.userId, status: { in: ["pending", "paid"] } },
+                _sum: { amountCents: true }
+              })
+            ]);
+            const total =
+              (earned._sum.amountCents ?? 0) +
+              (points._sum.points ?? 0) +
+              (adjustment._sum.amountCents ?? 0);
+            const available = Math.max(0, total - (requested._sum.amountCents ?? 0));
+            if (input.amountCents > available) {
+              return { ok: false as const, available };
+            }
+            const record = await tx.withdrawal.create({
+              data: {
+                userId: input.userId,
+                amountCents: input.amountCents,
+                payAccount: "",
+                payType: "redpacket",
+                notes: null
+              }
+            });
+            return { ok: true as const, withdrawal: mapWithdrawal(record) };
+          },
+          { isolationLevel: "Serializable" }
+        );
       },
       async getAvailableBalance(userId: string) {
         const [earned, points, adjustment, requestedResult] = await Promise.all([

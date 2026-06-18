@@ -204,6 +204,7 @@ model CommissionLedger {
   tbkOrder TbkOrder @relation(fields: [tbkOrderId], references: [id])
 
   @@index([userId, createdAt])
+  @@index([userId, status])
   @@index([tbkOrderId])
   @@unique([userId, tbkOrderId, ledgerType])
 }

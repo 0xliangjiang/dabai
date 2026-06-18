@@ -328,6 +328,11 @@ export type Repositories = {
     }): Promise<WithdrawalRecord>;
     listByUser(userId: string): Promise<WithdrawalRecord[]>;
     getAvailableBalance(userId: string): Promise<number>;
+    // 原子地校验余额并创建提现，防止并发重复提交导致超额
+    createIfAffordable(input: {
+      userId: string;
+      amountCents: number;
+    }): Promise<{ ok: true; withdrawal: WithdrawalRecord } | { ok: false; available: number }>;
     list(status?: string): Promise<AdminWithdrawalRecord[]>;
     review(id: string, input: { status: "paid" | "rejected"; reviewedBy?: string; notes?: string | null }): Promise<WithdrawalRecord>;
   };
