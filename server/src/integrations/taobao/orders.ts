@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from "../http.js";
+
 export type TaobaoOrder = {
   tbkOrderId: string;
   itemId: string;
@@ -55,7 +57,7 @@ export function createTaobaoOrderClient(
       }
 
       const url = `${config.apiUrl}?${params.toString()}`;
-      const response = await fetcher(url, { method: "GET" });
+      const response = await fetchWithTimeout(fetcher, url, { method: "GET" });
       if (!response.ok) {
         throw new Error(`Taobao order API HTTP ${response.status}`);
       }

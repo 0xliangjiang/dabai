@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { fetchWithTimeout } from "../http.js";
 
 // 京东联盟官方开放平台（宙斯网关）客户端
 // 文档：https://union.jd.com/openplatform
@@ -55,7 +56,7 @@ export function createJdUnionClient(config: JdUnionConfig, fetcher: typeof fetch
     };
     sysParams.sign = signParams(sysParams, config.appSecret);
 
-    const response = await fetcher(GATEWAY_URL, {
+    const response = await fetchWithTimeout(fetcher, GATEWAY_URL, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded;charset=utf-8" },
       body: new URLSearchParams(sysParams)
