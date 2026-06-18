@@ -149,7 +149,8 @@ export async function createApp(options: CreateAppOptions = {}) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
-    const user = await repositories.users.findById(userId);
+    // 删除是软删除：用户带 token 回访时自动复活，重新可被后台管理（封禁才是真正拉黑）
+    const user = await repositories.users.getOrReviveById(userId);
     if (user && user.status === "banned") {
       return reply.code(403).send({ error: "账号已被禁用，请联系客服" });
     }

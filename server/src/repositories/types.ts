@@ -226,6 +226,9 @@ export type Repositories = {
       input?: { unionid?: string | null; inviterId?: string | null }
     ): Promise<UserRecord>;
     findById(id: string): Promise<UserRecord | undefined>;
+    // 认证路径专用：被软删用户带 token 回访时自动复活（清除 deletedAt），
+    // 让删除后又回来的用户重新出现在后台、可被管理。truly 不存在则返回 undefined。
+    getOrReviveById(id: string): Promise<UserRecord | undefined>;
     referralSummary(userId: string): Promise<ReferralSummary>;
     updateStatus(id: string, status: UserStatus): Promise<UserRecord>;
     updateProfile(id: string, input: { nickname?: string; avatarUrl?: string }): Promise<UserRecord>;

@@ -54,6 +54,16 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         // 软删除用户视为不存在
         return user && !user.deletedAt ? mapUser(user) : undefined;
       },
+      async getOrReviveById(id: string) {
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (!user) return undefined;
+        if (user.deletedAt) {
+          // 删除后又回来用 app 的用户：自动复活，重新可被后台管理
+          const revived = await prisma.user.update({ where: { id }, data: { deletedAt: null } });
+          return mapUser(revived);
+        }
+        return mapUser(user);
+      },
       async referralSummary(userId: string): Promise<ReferralSummary> {
         const [downlineCount, earned, pending] = await Promise.all([
           prisma.user.count({ where: { inviterId: userId, deletedAt: null } }),

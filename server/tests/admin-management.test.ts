@@ -97,6 +97,43 @@ describe("user management and claim review", () => {
     expect(restoredResponse.statusCode).toBe(200);
   });
 
+  test("deleted user reappears (revived) when they use the app again", async () => {
+    const app = await buildApp();
+    const { token, user } = await loginUser(app);
+
+    // 后台软删除
+    const del = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/users/${user.id}`,
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(del.statusCode).toBe(200);
+
+    // 删除后后台列表看不到
+    const listAfterDelete = await app.inject({
+      method: "GET",
+      url: "/api/admin/users",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(listAfterDelete.json().users.find((u: { id: string }) => u.id === user.id)).toBeUndefined();
+
+    // 用户带着原 token 再次使用 app（不重新登录）→ 自动复活
+    const reuse = await app.inject({
+      method: "GET",
+      url: "/api/orders/me",
+      headers: { authorization: `Bearer ${token}` }
+    });
+    expect(reuse.statusCode).toBe(200);
+
+    // 现在后台又能看到、可管理
+    const listAfterReuse = await app.inject({
+      method: "GET",
+      url: "/api/admin/users",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(listAfterReuse.json().users.find((u: { id: string }) => u.id === user.id)).toBeTruthy();
+  });
+
   test("rejects invalid user status values", async () => {
     const app = await buildApp();
     const { user } = await loginUser(app);

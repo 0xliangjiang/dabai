@@ -92,6 +92,13 @@ export function createRepositories(): Repositories {
         if (deletedUserIds.has(id)) return undefined;
         return users.get(id);
       },
+      async getOrReviveById(id: string) {
+        const user = users.get(id);
+        if (!user) return undefined;
+        // 删除后又回来用 app 的用户：自动复活
+        deletedUserIds.delete(id);
+        return user;
+      },
       async updateStatus(id: string, status) {
         const user = users.get(id);
         if (!user) {
