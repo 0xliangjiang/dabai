@@ -1,4 +1,5 @@
 import { createJdUnionClient, isJdUnionConfigured, type JdUnionClient } from "../jd/union.js";
+import { fetchWithTimeout } from "../http.js";
 
 export type ConversionPlatform = "taobao" | "jd" | "pdd" | "vip";
 
@@ -78,7 +79,9 @@ export class ZhetaokeClient implements TaobaoClient {
     private readonly config: ZhetaokeClientConfig,
     dependencies: ClientDependencies = {}
   ) {
-    this.fetch = dependencies.fetch ?? fetch;
+    // 统一套超时：转链是用户高频接口，第三方挂起会卡死请求（默认 20s）
+    const baseFetch = dependencies.fetch ?? fetch;
+    this.fetch = ((url: string | URL, init?: RequestInit) => fetchWithTimeout(baseFetch, url, init)) as typeof fetch;
     this.jdUnion = dependencies.jdUnion;
   }
 

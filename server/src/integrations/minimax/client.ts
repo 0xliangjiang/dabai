@@ -1,4 +1,5 @@
 // MiniMax（OpenAI 兼容 chat 接口）：把促销文案识别成结构化线报草稿
+import { fetchWithTimeout } from "../http.js";
 
 export type ParsedDealStep = {
   content: string;
@@ -69,22 +70,28 @@ export function createDealAiParser(
 
       let response: Response;
       try {
-        response = await fetcher(config.apiUrl, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            authorization: `Bearer ${config.apiKey}`
+        // AI 解析较慢，给 60s 超时（仍避免无限挂起）
+        response = await fetchWithTimeout(
+          fetcher,
+          config.apiUrl,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${config.apiKey}`
+            },
+            body: JSON.stringify({
+              model: config.model,
+              messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: text }
+              ],
+              temperature: 0.3,
+              max_tokens: 2000
+            })
           },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user", content: text }
-            ],
-            temperature: 0.3,
-            max_tokens: 2000
-          })
-        });
+          60000
+        );
       } catch (error) {
         throw new MinimaxError(`MiniMax 请求失败：${(error as Error).message}`);
       }

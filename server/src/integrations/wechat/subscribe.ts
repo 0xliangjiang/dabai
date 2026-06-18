@@ -1,4 +1,5 @@
 import type { AppConfig } from "../../config/env.js";
+import { fetchWithTimeout } from "../http.js";
 
 export type SubscribeMessageSender = {
   send(input: {
@@ -34,7 +35,7 @@ export function createSubscribeMessageSender(
     url.searchParams.set("appid", config.wechatAppId);
     url.searchParams.set("secret", config.wechatAppSecret);
 
-    const response = await fetcher(url);
+    const response = await fetchWithTimeout(fetcher, url);
     const payload = (await response.json()) as {
       access_token?: string;
       expires_in?: number;
@@ -52,7 +53,8 @@ export function createSubscribeMessageSender(
   return {
     async send({ openid, templateId, page, data }) {
       const token = await getAccessToken();
-      const response = await fetcher(
+      const response = await fetchWithTimeout(
+        fetcher,
         `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${token}`,
         {
           method: "POST",
