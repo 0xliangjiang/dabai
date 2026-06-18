@@ -76,6 +76,7 @@ Page({
         downlines: (d.downlines || []).map((f) => ({
           id: f.id,
           name: f.nickname || "微信用户",
+          initial: (f.nickname || "友").slice(0, 1),
           joinedAt: formatDate(f.createdAt),
           contributedText: fen2yuan(f.contributedCents)
         }))

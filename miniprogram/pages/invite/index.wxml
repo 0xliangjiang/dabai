@@ -1,5 +1,9 @@
 <view class="cu-page page-shell">
-  <view class="hero hero-slim anim-up"></view>
+  <view class="hero hero-slim anim-up">
+    <view class="invite-badge">邀请有奖</view>
+    <view class="invite-hero-title">邀请好友，赚返利提成</view>
+    <view class="invite-hero-sub">好友下单，平台额外奖励你提成 · 不影响 TA 自己的返利</view>
+  </view>
 
   <view class="content-stack floating-stack">
     <view wx:if="{{!enabled && !loading}}" class="cu-card error-card flex-direction align-center anim-pop">
@@ -10,42 +14,53 @@
 
     <block wx:else>
       <!-- 收益概况 -->
-      <view class="cu-card anim-up">
-        <view class="section-title">我的邀请</view>
-        <view class="section-desc">邀请好友使用小程序，TA 的返利你额外提成（不影响 TA 自己的返利）</view>
-        <view class="invite-stats margin-top">
-          <view class="invite-stat">
-            <view class="invite-stat-value">{{downlineCount}}</view>
-            <view class="invite-stat-label">已邀请好友</view>
+      <view class="cu-card earn-card anim-up">
+        <view class="earn-label">累计已到账提成（元）</view>
+        <view class="earn-value">{{earnedText}}</view>
+        <view class="earn-grid">
+          <view class="earn-cell">
+            <view class="earn-cell-num">{{downlineCount}}</view>
+            <view class="earn-cell-cap">已邀请好友</view>
           </view>
-          <view class="invite-stat">
-            <view class="invite-stat-value">{{earnedText}}</view>
-            <view class="invite-stat-label">已到账提成(元)</view>
-          </view>
-          <view class="invite-stat">
-            <view class="invite-stat-value">{{pendingText}}</view>
-            <view class="invite-stat-label">待结算提成(元)</view>
+          <view class="earn-divider"></view>
+          <view class="earn-cell">
+            <view class="earn-cell-num">{{pendingText}}</view>
+            <view class="earn-cell-cap">待结算（元）</view>
           </view>
         </view>
       </view>
 
       <!-- 邀请按钮 -->
-      <view class="cu-card anim-up delay-1">
-        <button class="cu-btn primary block pressable" hover-class="pressed" bindtap="openShareModal">邀请好友 / 分享</button>
-        <view class="invite-tip margin-top-sm">提成会自动并入你的积分余额，可在「我的」页查看与兑换。</view>
+      <view class="cu-card cta-card anim-up delay-1">
+        <view class="cta-row">
+          <view class="cta-emoji">🎁</view>
+          <view class="flex-sub">
+            <view class="cta-title">邀好友，赚提成</view>
+            <view class="cta-sub">TA 每笔返利，你都能多拿一份奖励</view>
+          </view>
+        </view>
+        <button class="cta-btn pressable" hover-class="pressed" bindtap="openShareModal">立即邀请好友</button>
+        <view class="invite-tip">提成会自动并入你的积分余额，可在「我的」页查看与兑换</view>
       </view>
 
       <!-- 已邀请好友列表 -->
       <view class="cu-card anim-up delay-2">
-        <view class="section-title">已邀请的好友（{{downlineCount}}）</view>
-        <view wx:if="{{downlines.length === 0}}" class="invite-tip margin-top-sm">还没有好友通过你的分享加入，快去邀请吧～</view>
-        <view wx:else class="downline-list margin-top-sm">
+        <view class="list-head">
+          <view class="section-title">已邀请的好友</view>
+          <view class="count-chip">{{downlineCount}} 人</view>
+        </view>
+        <view wx:if="{{downlines.length === 0}}" class="empty-friends">
+          <view class="empty-friends-emoji">👥</view>
+          <view class="invite-tip">还没有好友通过你的分享加入，快去邀请吧～</view>
+        </view>
+        <view wx:else class="downline-list">
           <view wx:for="{{downlines}}" wx:key="id" class="downline-row">
-            <view class="downline-info">
+            <view class="downline-avatar">{{item.initial}}</view>
+            <view class="downline-info flex-sub">
               <view class="downline-name">{{item.name}}</view>
               <view class="downline-date">{{item.joinedAt}} 加入</view>
             </view>
-            <view class="downline-contrib">+{{item.contributedText}} 元</view>
+            <view class="downline-contrib">+{{item.contributedText}}<text class="dc-unit">元</text></view>
           </view>
         </view>
       </view>
