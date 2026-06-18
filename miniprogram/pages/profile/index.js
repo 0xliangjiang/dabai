@@ -52,6 +52,16 @@ Page({
     this.refreshUser();
     this.syncUserFromServer();
     this.loadAppConfig();
+    this.promptNicknameIfMissing();
+  },
+
+  // 软引导：已登录但没昵称时，自动展开编辑面板并提示
+  promptNicknameIfMissing() {
+    const user = getCurrentUser();
+    if (user && !user.nickname && !this.data.editingProfile) {
+      this.startEditProfile();
+      wx.showToast({ title: "请先设置昵称", icon: "none" });
+    }
   },
 
   // 拉取功能开关；兑换入口默认隐藏，开关打开才显示（审核期间关闭）

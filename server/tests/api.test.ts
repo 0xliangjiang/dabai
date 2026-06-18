@@ -529,6 +529,15 @@ describe("server API", () => {
       id: downline.id,
       contributedCents: 30
     });
+
+    // 小程序端：邀请人看自己的下线列表
+    const myDownline = await app.inject({
+      method: "GET",
+      url: "/api/users/me/downline",
+      headers: { authorization: `Bearer local_${inviterId}` }
+    });
+    expect(myDownline.json().downlines).toHaveLength(1);
+    expect(myDownline.json().downlines[0]).toMatchObject({ id: downline.id, contributedCents: 30 });
   });
 
   test("referral: no inviter commission when feature disabled", async () => {

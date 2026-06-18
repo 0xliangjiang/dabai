@@ -28,3 +28,32 @@
   color: #8a8f99;
   line-height: 1.5;
 }
+
+.downline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.downline-row:last-child {
+  border-bottom: none;
+}
+
+.downline-name {
+  font-size: 28rpx;
+  color: #2b2f33;
+}
+
+.downline-date {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #9aa0a6;
+}
+
+.downline-contrib {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #0a7a52;
+}

@@ -1,6 +1,7 @@
 const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
+const { ensureNickname } = require("../../utils/guard");
 
 Page({
   onShareAppMessage(res) {
@@ -40,6 +41,8 @@ Page({
 
   async onShow() {
     syncTabBar(this);
+    // 已登录但没昵称 → 引导去完善（匿名浏览不强制）
+    if (!ensureNickname()) return;
     await this.fetchDeals();
     this.refreshSubscription();
   },

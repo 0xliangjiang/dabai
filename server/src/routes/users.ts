@@ -27,6 +27,11 @@ export async function registerUserRoutes(app: FastifyInstance, repositories: Rep
     return { enabled, ...summary };
   });
 
+  // 二级分销：我已邀请的好友列表（昵称、加入时间、累计贡献提成）
+  app.get("/api/users/me/downline", async (request) => ({
+    downlines: await repositories.users.listDownline(request.userId)
+  }));
+
   app.post<{ Body: { nickname?: string; avatarUrl?: string } }>(
     "/api/users/me/profile",
     async (request, reply) => {

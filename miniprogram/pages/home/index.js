@@ -2,6 +2,7 @@ const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
+const { ensureNickname } = require("../../utils/guard");
 
 Page({
   onShareAppMessage() {
@@ -234,6 +235,8 @@ Page({
   async loginQuietly() {
     try {
       await ensureLogin();
+      // 登录后没昵称 → 引导去「我的」页完善
+      ensureNickname();
     } catch (_error) {
       wx.showToast({ title: "请先完成微信登录", icon: "none" });
     }

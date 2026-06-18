@@ -1,5 +1,6 @@
 const { ensureLogin, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
+const { ensureNickname } = require("../../utils/guard");
 
 Page({
   onShareAppMessage() {
@@ -25,6 +26,12 @@ Page({
 
   async onShow() {
     syncTabBar(this);
+    try {
+      await ensureLogin();
+      if (!ensureNickname()) return; // 没昵称 → 已跳转去完善
+    } catch (_e) {
+      // 登录失败下方 fetchOrders 会再处理
+    }
     await this.fetchOrders();
   },
 

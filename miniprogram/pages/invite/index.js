@@ -1,8 +1,16 @@
 const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
+const { ensureNickname } = require("../../utils/guard");
 
 function fen2yuan(cents) {
   return ((cents || 0) / 100).toFixed(2);
+}
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 Page({
@@ -13,6 +21,7 @@ Page({
     downlineCount: 0,
     earnedText: "0.00",
     pendingText: "0.00",
+    downlines: [],
     showShareModal: false,
     showTimelineGuide: false,
     showPrivacy: false
@@ -50,15 +59,26 @@ Page({
       this.setData({ isLoggedIn: false, loading: false });
       return;
     }
+    // 没昵称 → 引导去完善（邀请前先有名字）
+    if (!ensureNickname()) return;
     this.setData({ isLoggedIn: Boolean(getCurrentUser()) });
     try {
-      const r = await request("/api/users/me/referral");
+      const [r, d] = await Promise.all([
+        request("/api/users/me/referral"),
+        request("/api/users/me/downline").catch(() => ({ downlines: [] }))
+      ]);
       this.setData({
         loading: false,
         enabled: Boolean(r.enabled),
         downlineCount: r.downlineCount || 0,
         earnedText: fen2yuan(r.earnedCents),
-        pendingText: fen2yuan(r.pendingCents)
+        pendingText: fen2yuan(r.pendingCents),
+        downlines: (d.downlines || []).map((f) => ({
+          id: f.id,
+          name: f.nickname || "微信用户",
+          joinedAt: formatDate(f.createdAt),
+          contributedText: fen2yuan(f.contributedCents)
+        }))
       });
     } catch (_e) {
       this.setData({ loading: false });
