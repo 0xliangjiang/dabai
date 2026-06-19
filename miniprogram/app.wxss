@@ -1012,6 +1012,16 @@ page {
   background: #fafcfb;
   text-align: left;
   line-height: 1.4;
+  box-sizing: border-box;
+}
+
+/* button 版（微信好友/群，用 open-type=share）：清掉 button 自带样式，与 view 版对齐 */
+button.share-option {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: inherit;
+  font-weight: normal;
+  color: inherit;
 }
 
 .share-option::after {
