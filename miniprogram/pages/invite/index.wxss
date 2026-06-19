@@ -105,21 +105,30 @@
 }
 
 .cta-btn {
-  margin-top: 24rpx;
+  margin: 24rpx 0 0;
+  padding: 0;
   width: 100%;
   height: 92rpx;
-  line-height: 92rpx;
-  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-radius: 46rpx;
   border: none;
   font-size: 31rpx;
   font-weight: 700;
-  color: #5a3d08;
-  background: linear-gradient(140deg, #f6e6b8 0%, #e8c476 46%, #cda44a 100%);
-  box-shadow: 0 16rpx 30rpx -12rpx rgba(205, 164, 74, 0.6);
+  letter-spacing: 2rpx;
+  color: #6b4a0b;
+  background: linear-gradient(135deg, #ffdd86 0%, #f3b63f 100%);
+  box-shadow: 0 14rpx 28rpx -12rpx rgba(224, 158, 39, 0.65);
 }
 
 .cta-btn::after {
   border: none;
+}
+
+.cta-btn.pressed {
+  background: linear-gradient(135deg, #f5cf6f 0%, #e2a52f 100%);
 }
 
 .invite-tip {
