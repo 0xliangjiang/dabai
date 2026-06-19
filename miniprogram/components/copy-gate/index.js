@@ -10,7 +10,11 @@ Component({
         // 每次打开时按当前登录态/资料计算从哪一步进入
         if (value) this.resolvePhase();
       }
-    }
+    },
+    // copy = 复制前拦截（可关闭）；onboarding = 首次进入登录+昵称硬门槛
+    mode: { type: String, value: "copy" },
+    // 是否允许关闭：onboarding 硬门槛传 false，遮罩点击/取消都无效
+    dismissible: { type: Boolean, value: true }
   },
 
   data: {
@@ -109,6 +113,8 @@ Component({
     },
 
     onMaskTap() {
+      // 硬门槛（不可关闭）下，点遮罩/取消无效，必须完成
+      if (!this.properties.dismissible) return;
       this.triggerEvent("close");
     },
 

@@ -35,9 +35,12 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         // 二级分销绑定只在「新用户首次注册」时生效：放进 create 分支，update 不动。
         // 先校验邀请人存在且未软删，无效则置 null（避免 FK 报错导致登录失败）。
         let inviterId: string | null = null;
+        let alreadyExisted = false;
         if (input.inviterId) {
           const inviter = await prisma.user.findUnique({ where: { id: input.inviterId } });
           if (inviter && !inviter.deletedAt) inviterId = inviter.id;
+          // 仅在「被邀请进来」的登录上多查一次，用于判断是不是真·新用户绑定（打日志用）
+          alreadyExisted = Boolean(await prisma.user.findUnique({ where: { openid }, select: { id: true } }));
         }
         // 软删除用户重新登录时复活账号（清除 deletedAt），保留历史数据
         const user = await prisma.user.upsert({
@@ -48,6 +51,10 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             deletedAt: null
           }
         });
+        // 绑定埋点：新用户 + 成功绑上线时记一条，方便核对朋友圈/好友拉新
+        if (inviterId && !alreadyExisted) {
+          console.log(`[referral-bind] 新用户 ${user.id} 绑定到上线 ${inviterId}`);
+        }
         return mapUser(user);
       },
       async findById(id: string) {

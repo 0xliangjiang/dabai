@@ -6,15 +6,15 @@
   <view wx:if="{{phase === 'login' || phase === 'profile'}}" class="modal-overlay" bindtap="onMaskTap">
     <view class="modal-card" catchtap="stopProp">
       <block wx:if="{{phase === 'login'}}">
-        <view class="modal-title">登录后即可复制</view>
-        <view class="gate-desc">复制优惠口令前，请先用微信登录</view>
+        <view class="modal-title">{{mode === 'onboarding' ? '欢迎，先登录一下' : '登录后即可复制'}}</view>
+        <view class="gate-desc">{{mode === 'onboarding' ? '登录后即可领返利、查订单、邀好友赚提成' : '复制优惠口令前，请先用微信登录'}}</view>
         <button class="cu-btn login-btn block margin-top pressable" hover-class="pressed" loading="{{loggingIn}}" disabled="{{loggingIn}}" bindtap="onLogin">微信登录</button>
-        <view class="gate-cancel" bindtap="onMaskTap">暂不复制</view>
+        <view wx:if="{{dismissible}}" class="gate-cancel" bindtap="onMaskTap">暂不复制</view>
       </block>
 
       <block wx:elif="{{phase === 'profile'}}">
-        <view class="modal-title">完善资料后即可复制</view>
-        <view class="gate-desc">设置昵称（头像可选），即可一键复制</view>
+        <view class="modal-title">{{mode === 'onboarding' ? '设置你的昵称' : '完善资料后即可复制'}}</view>
+        <view class="gate-desc">{{mode === 'onboarding' ? '设置昵称（头像可选）即可开始使用' : '设置昵称（头像可选），即可一键复制'}}</view>
         <view class="cu-form margin-top">
           <view class="flex align-center gap">
             <button class="avatar-picker pressable" hover-class="pressed" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
@@ -26,7 +26,7 @@
               <input class="cu-input" type="nickname" value="{{draftNickname}}" placeholder="请输入昵称" bindinput="onNicknameInput" />
             </view>
           </view>
-          <button class="cu-btn primary block margin-top pressable" hover-class="pressed" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">{{saving ? '保存中…' : '完成并复制'}}</button>
+          <button class="cu-btn primary block margin-top pressable" hover-class="pressed" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">{{saving ? '保存中…' : (mode === 'onboarding' ? '完成' : '完成并复制')}}</button>
         </view>
       </block>
     </view>

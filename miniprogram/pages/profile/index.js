@@ -44,7 +44,8 @@ Page({
     withdrawAmount: "",
     submittingWithdraw: false,
     exchangeEnabled: false,
-    referralEnabled: false
+    referralEnabled: false,
+    showOnboard: false
   },
 
   onShow() {
@@ -52,16 +53,19 @@ Page({
     this.refreshUser();
     this.syncUserFromServer();
     this.loadAppConfig();
-    this.promptNicknameIfMissing();
+    this.checkOnboard();
   },
 
-  // 软引导：已登录但没昵称时，自动展开编辑面板并提示
-  promptNicknameIfMissing() {
+  // 硬门槛：未登录或未设昵称 → 全屏不可跳过的登录+昵称墙
+  checkOnboard() {
     const user = getCurrentUser();
-    if (user && !user.nickname && !this.data.editingProfile) {
-      this.startEditProfile();
-      wx.showToast({ title: "请先设置昵称", icon: "none" });
-    }
+    this.setData({ showOnboard: !user || !user.nickname });
+  },
+
+  onOnboardPass() {
+    this.setData({ showOnboard: false });
+    this.refreshUser();
+    this.syncUserFromServer();
   },
 
   // 拉取功能开关；兑换入口默认隐藏，开关打开才显示（审核期间关闭）
