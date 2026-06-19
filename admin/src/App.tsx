@@ -129,6 +129,7 @@ export function App() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersStatus, setOrdersStatus] = useState("");
   const [ordersAttr, setOrdersAttr] = useState("");
+  const [exportingOrders, setExportingOrders] = useState(false);
   const [usersTotal, setUsersTotal] = useState(0);
   const [usersPage, setUsersPage] = useState(1);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -302,6 +303,51 @@ export function App() {
       toast("用户加载失败", "error");
     } finally {
       setUsersLoading(false);
+    }
+  }
+
+  async function exportAllOrders() {
+    if (exportingOrders) return;
+    setExportingOrders(true);
+    try {
+      const all: AdminOrder[] = [];
+      const MAX_PAGES = 50; // 封顶 5000 条，防数据过大跑飞
+      let page = 1;
+      let total = 0;
+      while (page <= MAX_PAGES) {
+        const q = new URLSearchParams({ page: String(page), pageSize: "100" });
+        if (ordersStatus) q.set("orderStatus", ordersStatus);
+        if (ordersAttr) q.set("attributionStatus", ordersAttr);
+        const r = await fetchAdminApi<{ total: number; items: AdminOrder[] }>(`/api/admin/orders?${q.toString()}`, adminToken);
+        total = r.total;
+        all.push(...r.items);
+        if (all.length >= r.total || r.items.length === 0) break;
+        page += 1;
+      }
+      if (all.length === 0) {
+        toast("没有符合条件的订单", "error");
+        return;
+      }
+      downloadCsv(
+        "订单_全部.csv",
+        ["订单号", "商品", "付款时间", "订单状态", "实付(元)", "预估佣金(元)", "结算佣金(元)", "归因状态", "归因用户"],
+        all.map((o) => [
+          o.tbkOrderId,
+          o.itemTitle,
+          new Date(o.payTime).toLocaleString("zh-CN"),
+          o.orderStatus,
+          yuan(o.payAmountCents),
+          yuan(o.estimatedCommissionCents),
+          yuan(o.settledCommissionCents),
+          o.attribution?.status ?? "",
+          o.attribution?.userNickname ?? o.attribution?.userId ?? ""
+        ])
+      );
+      toast(all.length < total ? `数据较多，已导出最近 ${all.length}/${total} 条` : `已导出 ${all.length} 条`);
+    } catch {
+      toast("导出失败，请重试", "error");
+    } finally {
+      setExportingOrders(false);
     }
   }
 
@@ -890,29 +936,8 @@ export function App() {
                 <Button size="sm" variant="outline" disabled={ordersLoading} onClick={() => void loadOrders(ordersPage)}>
                   <RefreshCw className={`h-4 w-4 ${ordersLoading ? "animate-spin" : ""}`} />
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={orders.items.length === 0}
-                  onClick={() =>
-                    downloadCsv(
-                      `订单_第${ordersPage}页.csv`,
-                      ["订单号", "商品", "付款时间", "订单状态", "实付(元)", "预估佣金(元)", "结算佣金(元)", "归因状态", "归因用户"],
-                      orders.items.map((o) => [
-                        o.tbkOrderId,
-                        o.itemTitle,
-                        new Date(o.payTime).toLocaleString("zh-CN"),
-                        o.orderStatus,
-                        yuan(o.payAmountCents),
-                        yuan(o.estimatedCommissionCents),
-                        yuan(o.settledCommissionCents),
-                        o.attribution?.status ?? "",
-                        o.attribution?.userNickname ?? o.attribution?.userId ?? ""
-                      ])
-                    )
-                  }
-                >
-                  <Download className="h-4 w-4" />
+                <Button size="sm" variant="outline" disabled={exportingOrders || orders.total === 0} onClick={() => void exportAllOrders()}>
+                  <Download className={`h-4 w-4 ${exportingOrders ? "animate-pulse" : ""}`} /> {exportingOrders ? "导出中…" : "导出全部"}
                 </Button>
               </div>
             }
