@@ -1310,9 +1310,12 @@ function SyncStatusCard({ status }: { status: SyncStatus | null }) {
   if (!status) return null;
   const { latest, intervalMinutes } = status;
 
-  // 静默卡死不会有失败记录，只能靠「最新记录距今 > 2×间隔」判断
+  // 静默卡死不会有失败记录，只能靠「最新记录距今过久」判断。
+  // 阈值取 max(3×间隔, 15min)：短间隔(如2min)下单轮同步可能跑超间隔、防重入会跳tick，
+  // 用过紧的 2×间隔会误报"已停止"，故设 15min 下限。
+  const staleMinutes = Math.max(intervalMinutes * 3, 15);
   const stale =
-    latest != null && Date.now() - new Date(latest.createdAt).getTime() > intervalMinutes * 2 * 60 * 1000;
+    latest != null && Date.now() - new Date(latest.createdAt).getTime() > staleMinutes * 60 * 1000;
 
   let tone: "ok" | "warn" | "error";
   let badge: string;
@@ -1372,7 +1375,7 @@ function SyncStatusCard({ status }: { status: SyncStatus | null }) {
             ) : null}
             {stale && latest.ok ? (
               <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-600">
-                已超过 {intervalMinutes * 2} 分钟没有新同步记录，定时任务可能已停止，请检查服务。
+                已超过 {staleMinutes} 分钟没有新同步记录，定时任务可能已停止，请检查服务。
               </div>
             ) : null}
           </>
