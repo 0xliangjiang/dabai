@@ -512,23 +512,15 @@ export function App() {
     }
   }, []);
 
+  // 切到某模块时按需加载其数据（首次进入懒加载，避免一上来全量请求）
   useEffect(() => {
-    const sections = NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(Boolean) as HTMLElement[];
-    if (sections.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((entry) => entry.isIntersecting);
-        if (visible.length > 0) {
-          setActiveNav(visible[0].target.id);
-        }
-      },
-      { rootMargin: "-30% 0px -60% 0px" }
-    );
-    for (const section of sections) observer.observe(section);
-    return () => observer.disconnect();
-  }, [authed]);
+    if (!authed) return;
+    if (activeNav === "all-orders") void loadOrders(ordersPage);
+    if (activeNav === "conversions" && conversions.length === 0) void loadConversions(1);
+  }, [activeNav, authed]);
 
   const metrics = data.overview.metrics;
+  const activeLabel = NAV_ITEMS.find((n) => n.id === activeNav)?.label ?? "概览";
 
   if (!authed) {
     return (
@@ -576,14 +568,15 @@ export function App() {
 
           <nav className="mt-7 flex flex-col gap-0.5">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-              <a
+              <button
                 key={id}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                type="button"
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   activeNav === id
                     ? "bg-emerald-50 font-medium text-emerald-700"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                 }`}
-                href={`#${id}`}
+                onClick={() => setActiveNav(id)}
               >
                 <Icon className="h-4 w-4" />
                 {label}
@@ -592,7 +585,7 @@ export function App() {
                     {metrics.pendingAttributionCount}
                   </span>
                 ) : null}
-              </a>
+              </button>
             ))}
           </nav>
 
@@ -608,8 +601,8 @@ export function App() {
         <section className="px-8 py-7">
           <header className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-semibold">运营控制台</h1>
-              <p className="mt-1 text-sm text-slate-500">用户、线报、订单与配置</p>
+              <h1 className="text-xl font-semibold">{activeLabel}</h1>
+              <p className="mt-1 text-sm text-slate-500">良匠省钱助手 · 运营后台</p>
             </div>
             <div className="flex gap-2">
               <Button disabled={syncing} variant="outline" onClick={() => void syncOrders()}>
@@ -623,7 +616,9 @@ export function App() {
             </div>
           </header>
 
-          <section id="overview" className="mt-6 grid grid-cols-5 gap-3">
+          {activeNav === "overview" && (
+          <>
+          <section className="mt-6 grid grid-cols-5 gap-3">
             <MetricCard icon={<Users className="h-4 w-4" />} label="用户数" value={metrics.userCount} note="注册用户" />
             <MetricCard icon={<WalletCards className="h-4 w-4" />} label="转化数" value={metrics.conversionCount} note="生成内容" />
             <MetricCard icon={<Copy className="h-4 w-4" />} label="复制事件" value={metrics.copyEventCount} note="归因依据" />
@@ -638,9 +633,12 @@ export function App() {
           </section>
 
           <SyncStatusCard status={syncStatus} />
+          </>
+          )}
 
-          <DealManager adminToken={adminToken} />
+          {activeNav === "deals" && <DealManager adminToken={adminToken} />}
 
+          {activeNav === "users" && (
           <SectionCard
             id="users"
             title="用户"
@@ -749,7 +747,9 @@ export function App() {
               </TableBody>
             </Table>
           </SectionCard>
+          )}
 
+          {activeNav === "all-orders" && (
           <SectionCard
             id="all-orders"
             title="全部订单"
@@ -822,7 +822,9 @@ export function App() {
               </TableBody>
             </Table>
           </SectionCard>
+          )}
 
+          {activeNav === "conversions" && (
           <SectionCard
             id="conversions"
             title="查询历史"
@@ -880,7 +882,9 @@ export function App() {
               </TableBody>
             </Table>
           </SectionCard>
+          )}
 
+          {activeNav === "attribution" && (
           <SectionCard id="attribution" title="订单归因复核" subtitle="处理自动匹配不确定和未匹配的订单">
             <Table>
               <TableHeader>
@@ -917,7 +921,9 @@ export function App() {
               </TableBody>
             </Table>
           </SectionCard>
+          )}
 
+          {activeNav === "claims" && (
           <SectionCard id="claims" title="订单申诉审核" subtitle="用户提交的漏单补充，核对后通过或驳回">
             <Table>
               <TableHeader>
@@ -978,7 +984,9 @@ export function App() {
               </TableBody>
             </Table>
           </SectionCard>
+          )}
 
+          {activeNav === "withdrawals" && (
           <SectionCard id="withdrawals" title="提现审核" subtitle="用户提现申请，核对后打款或驳回">
             <Table>
               <TableHeader>
@@ -1028,7 +1036,9 @@ export function App() {
               </TableBody>
             </Table>
           </SectionCard>
+          )}
 
+          {activeNav === "settings" && (
           <SectionCard
             id="settings"
             title="运营设置"
@@ -1065,7 +1075,9 @@ export function App() {
               密钥项「只写不回显」：只显示是否已配置，永不返回原值；留空保存代表不改动。订单同步间隔/窗口改完下一轮生效。
             </div>
           </SectionCard>
+          )}
 
+          {activeNav === "config" && (
           <SectionCard id="config" title="系统配置" subtitle="全局返利比例可在线修改，其余为只读">
             <div className="p-5">
               <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3.5">
@@ -1142,6 +1154,7 @@ export function App() {
               </div>
             </div>
           </SectionCard>
+          )}
         </section>
       </div>
 
