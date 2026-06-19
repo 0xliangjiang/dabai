@@ -78,18 +78,38 @@ const emptyData: AdminData = {
   withdrawals: []
 };
 
-const NAV_ITEMS = [
-  { id: "overview", label: "概览", icon: LayoutDashboard },
-  { id: "deals", label: "线报管理", icon: Megaphone },
-  { id: "users", label: "用户", icon: Users },
-  { id: "all-orders", label: "全部订单", icon: PackageSearch },
-  { id: "conversions", label: "查询历史", icon: Search },
-  { id: "attribution", label: "待复核", icon: ClipboardCheck },
-  { id: "claims", label: "申诉审核", icon: ShieldQuestion },
-  { id: "withdrawals", label: "提现审核", icon: ArrowDownToLine },
-  { id: "settings", label: "运营设置", icon: Settings },
-  { id: "config", label: "配置", icon: Settings }
+const NAV_GROUPS = [
+  {
+    label: "运营",
+    items: [
+      { id: "overview", label: "概览", icon: LayoutDashboard },
+      { id: "deals", label: "线报管理", icon: Megaphone },
+      { id: "users", label: "用户", icon: Users }
+    ]
+  },
+  {
+    label: "订单与归因",
+    items: [
+      { id: "all-orders", label: "全部订单", icon: PackageSearch },
+      { id: "conversions", label: "查询历史", icon: Search },
+      { id: "attribution", label: "待复核", icon: ClipboardCheck },
+      { id: "claims", label: "申诉审核", icon: ShieldQuestion }
+    ]
+  },
+  {
+    label: "财务",
+    items: [{ id: "withdrawals", label: "提现审核", icon: ArrowDownToLine }]
+  },
+  {
+    label: "系统",
+    items: [
+      { id: "settings", label: "运营设置", icon: Settings },
+      { id: "config", label: "系统配置", icon: Settings }
+    ]
+  }
 ];
+
+const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 export function App() {
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem("dabai-admin-token") ?? "");
@@ -566,26 +586,33 @@ export function App() {
             </div>
           </div>
 
-          <nav className="mt-7 flex flex-col gap-0.5">
-            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                  activeNav === id
-                    ? "bg-emerald-50 font-medium text-emerald-700"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                }`}
-                onClick={() => setActiveNav(id)}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-                {id === "attribution" && metrics.pendingAttributionCount > 0 ? (
-                  <span className="ml-auto rounded-full bg-amber-100 px-1.5 text-xs font-medium text-amber-700">
-                    {metrics.pendingAttributionCount}
-                  </span>
-                ) : null}
-              </button>
+          <nav className="mt-6 flex flex-col gap-4 overflow-y-auto">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="flex flex-col gap-0.5">
+                <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                  {group.label}
+                </div>
+                {group.items.map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeNav === id
+                        ? "bg-emerald-50 font-medium text-emerald-700"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                    }`}
+                    onClick={() => setActiveNav(id)}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                    {id === "attribution" && metrics.pendingAttributionCount > 0 ? (
+                      <span className="ml-auto rounded-full bg-amber-100 px-1.5 text-xs font-medium text-amber-700">
+                        {metrics.pendingAttributionCount}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
             ))}
           </nav>
 
@@ -618,7 +645,7 @@ export function App() {
 
           {activeNav === "overview" && (
           <>
-          <section className="mt-6 grid grid-cols-5 gap-3">
+          <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <MetricCard icon={<Users className="h-4 w-4" />} label="用户数" value={metrics.userCount} note="注册用户" />
             <MetricCard icon={<WalletCards className="h-4 w-4" />} label="转化数" value={metrics.conversionCount} note="生成内容" />
             <MetricCard icon={<Copy className="h-4 w-4" />} label="复制事件" value={metrics.copyEventCount} note="归因依据" />
