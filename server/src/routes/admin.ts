@@ -39,12 +39,15 @@ export async function registerAdminRoutes(
     };
   });
 
-  app.get<{ Querystring: { page?: string; pageSize?: string } }>("/api/admin/users", async (request) => {
-    const page = request.query.page ? Number(request.query.page) : 1;
-    const pageSize = request.query.pageSize ? Number(request.query.pageSize) : 50;
-    const { total, items } = await repositories.users.list({ page, pageSize });
-    return { users: items, total, page, pageSize };
-  });
+  app.get<{ Querystring: { page?: string; pageSize?: string; search?: string } }>(
+    "/api/admin/users",
+    async (request) => {
+      const page = request.query.page ? Number(request.query.page) : 1;
+      const pageSize = request.query.pageSize ? Number(request.query.pageSize) : 50;
+      const { total, items } = await repositories.users.list({ page, pageSize, search: request.query.search });
+      return { users: items, total, page, pageSize };
+    }
+  );
 
   // 某会员的下线明细（昵称、加入时间、累计为上级贡献的提成）
   app.get<{ Params: { id: string } }>("/api/admin/users/:id/downline", async (request) => ({

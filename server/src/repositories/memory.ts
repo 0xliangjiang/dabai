@@ -117,11 +117,19 @@ export function createRepositories(): Repositories {
         if (input.avatarUrl !== undefined) user.avatarUrl = input.avatarUrl;
         return user;
       },
-      async list(options?: { page?: number; pageSize?: number }) {
+      async list(options?: { page?: number; pageSize?: number; search?: string }) {
         const pageSize = Math.min(200, Math.max(1, options?.pageSize ?? 50));
         const page = Math.max(1, options?.page ?? 1);
+        const search = options?.search?.trim().toLowerCase();
         const activeUsers = [...users.values()]
           .filter((user) => !deletedUserIds.has(user.id))
+          .filter(
+            (user) =>
+              !search ||
+              (user.nickname ?? "").toLowerCase().includes(search) ||
+              user.openid.toLowerCase().includes(search) ||
+              user.id.toLowerCase().includes(search)
+          )
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         const items = activeUsers.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((user) => ({
           ...user,

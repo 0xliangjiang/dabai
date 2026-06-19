@@ -104,13 +104,20 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return mapUser(user);
       },
-      async list(options?: { page?: number; pageSize?: number }) {
+      async list(options?: { page?: number; pageSize?: number; search?: string }) {
         const pageSize = Math.min(200, Math.max(1, options?.pageSize ?? 50));
         const page = Math.max(1, options?.page ?? 1);
+        const search = options?.search?.trim();
+        const where: Prisma.UserWhereInput = {
+          deletedAt: null,
+          ...(search
+            ? { OR: [{ nickname: { contains: search } }, { openid: { contains: search } }, { id: { contains: search } }] }
+            : {})
+        };
         const [total, users] = await Promise.all([
-          prisma.user.count({ where: { deletedAt: null } }),
+          prisma.user.count({ where }),
           prisma.user.findMany({
-            where: { deletedAt: null },
+            where,
             orderBy: { createdAt: "desc" },
             skip: (page - 1) * pageSize,
             take: pageSize,

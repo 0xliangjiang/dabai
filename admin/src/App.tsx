@@ -7,7 +7,9 @@ import {
   ChevronRight,
   ClipboardCheck,
   Copy,
+  Inbox,
   LayoutDashboard,
+  Menu,
   LogOut,
   Megaphone,
   PackageSearch,
@@ -120,12 +122,16 @@ export function App() {
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [activeNav, setActiveNav] = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersStatus, setOrdersStatus] = useState("");
+  const [ordersAttr, setOrdersAttr] = useState("");
   const [usersTotal, setUsersTotal] = useState(0);
   const [usersPage, setUsersPage] = useState(1);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersSearch, setUsersSearch] = useState("");
   const [conversions, setConversions] = useState<AdminConversion[]>([]);
   const [conversionsTotal, setConversionsTotal] = useState(0);
   const [conversionsPage, setConversionsPage] = useState(1);
@@ -241,11 +247,14 @@ export function App() {
     }
   }
 
-  async function loadOrders(page = ordersPage) {
+  async function loadOrders(page = ordersPage, status = ordersStatus, attr = ordersAttr) {
     setOrdersLoading(true);
     try {
+      const q = new URLSearchParams({ page: String(page), pageSize: "50" });
+      if (status) q.set("orderStatus", status);
+      if (attr) q.set("attributionStatus", attr);
       const result = await fetchAdminApi<{ total: number; items: AdminOrder[] }>(
-        `/api/admin/orders?page=${page}&pageSize=50`,
+        `/api/admin/orders?${q.toString()}`,
         adminToken
       );
       setOrders(result);
@@ -276,11 +285,13 @@ export function App() {
     }
   }
 
-  async function loadUsers(page = usersPage) {
+  async function loadUsers(page = usersPage, search = usersSearch) {
     setUsersLoading(true);
     try {
+      const q = new URLSearchParams({ page: String(page), pageSize: "50" });
+      if (search.trim()) q.set("search", search.trim());
       const r = await fetchAdminApi<{ users: AdminUser[]; total: number }>(
-        `/api/admin/users?page=${page}&pageSize=50`,
+        `/api/admin/users?${q.toString()}`,
         adminToken
       );
       setData((prev) => ({ ...prev, users: r.users }));
@@ -541,6 +552,8 @@ export function App() {
 
   const metrics = data.overview.metrics;
   const activeLabel = NAV_ITEMS.find((n) => n.id === activeNav)?.label ?? "概览";
+  const pendingClaimsCount = data.claims.filter((c) => c.status === "pending_review").length;
+  const pendingWithdrawalsCount = data.withdrawals.filter((w) => w.status === "pending").length;
 
   if (!authed) {
     return (
@@ -574,8 +587,15 @@ export function App() {
   return (
     <main className="min-h-screen text-slate-900">
       <Toaster />
-      <div className="grid min-h-screen grid-cols-[232px_1fr]">
-        <aside className="sticky top-0 flex h-screen flex-col border-r border-slate-200/80 bg-white px-3 py-5">
+      {sidebarOpen ? (
+        <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      ) : null}
+      <div className="lg:grid lg:min-h-screen lg:grid-cols-[232px_1fr]">
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 flex h-screen w-[232px] transform flex-col border-r border-slate-200/80 bg-white px-3 py-5 transition-transform lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
           <div className="flex items-center gap-2.5 px-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold text-white">
               白
@@ -601,7 +621,7 @@ export function App() {
                         ? "bg-emerald-50 font-medium text-emerald-700"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                     }`}
-                    onClick={() => setActiveNav(id)}
+                    onClick={() => { setActiveNav(id); setSidebarOpen(false); }}
                   >
                     <Icon className="h-4 w-4" />
                     {label}
@@ -625,11 +645,21 @@ export function App() {
           </button>
         </aside>
 
-        <section className="px-8 py-7">
+        <section className="px-4 py-5 sm:px-8 sm:py-7">
           <header className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-semibold">{activeLabel}</h1>
-              <p className="mt-1 text-sm text-slate-500">良匠省钱助手 · 运营后台</p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="菜单"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-xl font-semibold">{activeLabel}</h1>
+                <p className="mt-1 text-sm text-slate-500">良匠省钱助手 · 运营后台</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button disabled={syncing} variant="outline" onClick={() => void syncOrders()}>
@@ -654,12 +684,42 @@ export function App() {
               icon={<ClipboardCheck className="h-4 w-4" />}
               label="待复核"
               value={metrics.pendingAttributionCount}
-              note="需人工处理"
+              note="去处理"
+              onClick={() => setActiveNav("attribution")}
             />
-            <MetricCard icon={<ShieldQuestion className="h-4 w-4" />} label="申诉记录" value={metrics.orderClaimCount} note="用户提交" />
+            <MetricCard
+              icon={<ShieldQuestion className="h-4 w-4" />}
+              label="申诉记录"
+              value={metrics.orderClaimCount}
+              note="去审核"
+              onClick={() => setActiveNav("claims")}
+            />
           </section>
 
           <SyncStatusCard status={syncStatus} />
+
+          {(metrics.pendingAttributionCount > 0 || pendingClaimsCount > 0 || pendingWithdrawalsCount > 0) && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+              <div className="text-sm font-medium text-amber-800">待办事项</div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {metrics.pendingAttributionCount > 0 && (
+                  <button className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-100" onClick={() => setActiveNav("attribution")}>
+                    待复核归因 {metrics.pendingAttributionCount} 单 ›
+                  </button>
+                )}
+                {pendingClaimsCount > 0 && (
+                  <button className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-100" onClick={() => setActiveNav("claims")}>
+                    待审申诉 {pendingClaimsCount} 条 ›
+                  </button>
+                )}
+                {pendingWithdrawalsCount > 0 && (
+                  <button className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-100" onClick={() => setActiveNav("withdrawals")}>
+                    待审提现 {pendingWithdrawalsCount} 笔 ›
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           </>
           )}
 
@@ -672,6 +732,16 @@ export function App() {
             subtitle={`共 ${usersTotal} 人，每页 50 条`}
             headerRight={
               <div className="flex items-center gap-2">
+                <input
+                  className="h-8 w-48 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
+                  placeholder="搜昵称 / OpenID / ID"
+                  value={usersSearch}
+                  onChange={(e) => setUsersSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void loadUsers(1, usersSearch); }}
+                />
+                <Button size="sm" variant="outline" disabled={usersLoading} onClick={() => void loadUsers(1, usersSearch)}>
+                  搜索
+                </Button>
                 <Button size="sm" variant="ghost" disabled={usersPage <= 1 || usersLoading} onClick={() => void loadUsers(usersPage - 1)}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -770,7 +840,7 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.users.length === 0 ? <EmptyRow colSpan={11} text="暂无用户数据" /> : null}
+                {data.users.length === 0 ? <EmptyRow colSpan={11} loading={usersLoading} text={usersLoading ? "加载中…" : "暂无用户数据"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>
@@ -783,6 +853,28 @@ export function App() {
             subtitle={`共 ${orders.total} 条，每页 50 条`}
             headerRight={
               <div className="flex items-center gap-2">
+                <select
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-emerald-400"
+                  value={ordersStatus}
+                  onChange={(e) => { setOrdersStatus(e.target.value); void loadOrders(1, e.target.value, ordersAttr); }}
+                >
+                  <option value="">全部状态</option>
+                  <option value="paid">已付款</option>
+                  <option value="received">已收货</option>
+                  <option value="settled">已结算</option>
+                  <option value="refunded">已退款</option>
+                </select>
+                <select
+                  className="h-8 rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-emerald-400"
+                  value={ordersAttr}
+                  onChange={(e) => { setOrdersAttr(e.target.value); void loadOrders(1, ordersStatus, e.target.value); }}
+                >
+                  <option value="">全部归因</option>
+                  <option value="auto_matched">已自动归因</option>
+                  <option value="manual_matched">已人工归因</option>
+                  <option value="pending_review">待复核</option>
+                  <option value="unmatched">未归因</option>
+                </select>
                 <Button size="sm" variant="ghost" disabled={ordersPage <= 1 || ordersLoading} onClick={() => void loadOrders(ordersPage - 1)}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -845,7 +937,7 @@ export function App() {
                     </TableRow>
                   );
                 })}
-                {orders.items.length === 0 ? <EmptyRow colSpan={10} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
+                {orders.items.length === 0 ? <EmptyRow colSpan={10} loading={ordersLoading} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>
@@ -905,7 +997,7 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {conversions.length === 0 ? <EmptyRow colSpan={6} text={conversionsLoading ? "加载中…" : "暂无查询记录"} /> : null}
+                {conversions.length === 0 ? <EmptyRow colSpan={6} loading={conversionsLoading} text={conversionsLoading ? "加载中…" : "暂无查询记录"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>
@@ -1256,7 +1348,7 @@ export function App() {
                 </TableHeader>
                 <TableBody>
                   {downlineLoading ? (
-                    <EmptyRow colSpan={3} text="加载中…" />
+                    <EmptyRow colSpan={3} loading text="加载中…" />
                   ) : downlines.length === 0 ? (
                     <EmptyRow colSpan={3} text="暂无下线" />
                   ) : (
@@ -1310,19 +1402,22 @@ function MetricCard({
   label,
   value,
   note,
-  highlight = false
+  highlight = false,
+  onClick
 }: {
   icon?: React.ReactNode;
   label: string;
   value: number;
   note: string;
   highlight?: boolean;
+  onClick?: () => void;
 }) {
   return (
     <div
+      onClick={onClick}
       className={`rounded-xl border bg-white p-4 shadow-sm shadow-slate-200/40 transition-colors ${
         highlight ? "border-amber-200 bg-amber-50/40" : "border-slate-200/80"
-      }`}
+      } ${onClick ? "cursor-pointer hover:border-emerald-300 hover:shadow-md" : ""}`}
     >
       <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
         <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${highlight ? "bg-amber-100 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>
@@ -1331,7 +1426,7 @@ function MetricCard({
         {label}
       </div>
       <div className="mt-3 text-2xl font-semibold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-xs text-slate-400">{note}</div>
+      <div className="mt-0.5 text-xs text-slate-400">{note}{onClick ? " ›" : ""}</div>
     </div>
   );
 }
@@ -1427,11 +1522,18 @@ function SyncStatusCard({ status }: { status: SyncStatus | null }) {
   );
 }
 
-function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
+function EmptyRow({ colSpan, text, loading = false }: { colSpan: number; text: string; loading?: boolean }) {
   return (
     <TableRow>
-      <TableCell className="py-10 text-center text-sm text-slate-400" colSpan={colSpan}>
-        {text}
+      <TableCell className="py-12 text-center" colSpan={colSpan}>
+        <div className="flex flex-col items-center gap-2 text-slate-400">
+          {loading ? (
+            <RefreshCw className="h-6 w-6 animate-spin" />
+          ) : (
+            <Inbox className="h-7 w-7 text-slate-300" />
+          )}
+          <span className="text-sm">{text}</span>
+        </div>
       </TableCell>
     </TableRow>
   );
