@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Copy,
+  Download,
   Inbox,
   LayoutDashboard,
   Menu,
@@ -331,6 +332,7 @@ export function App() {
   }
 
   async function setUserStatus(id: string, status: "active" | "banned") {
+    if (status === "banned" && !window.confirm("确定封禁该用户？封禁后其无法使用小程序。")) return;
     await fetchAdminApi(`/api/admin/users/${id}/status`, adminToken, {
       method: "POST",
       body: JSON.stringify({ status })
@@ -340,6 +342,8 @@ export function App() {
   }
 
   async function reviewWithdrawal(id: string, status: "paid" | "rejected") {
+    const ok = window.confirm(status === "paid" ? "确认这笔提现已打款？标记后不可撤销。" : "确定驳回这笔提现申请？");
+    if (!ok) return;
     await fetchAdminApi(`/api/admin/withdrawals/${id}/review`, adminToken, {
       method: "POST",
       body: JSON.stringify({ status })
@@ -529,6 +533,7 @@ export function App() {
   }
 
   async function reviewClaim(id: string, status: "approved" | "rejected") {
+    if (!window.confirm(status === "approved" ? "确定通过这条申诉？" : "确定驳回这条申诉？")) return;
     await fetchAdminApi(`/api/admin/claims/${id}/review`, adminToken, {
       method: "POST",
       body: JSON.stringify({ status })
@@ -885,6 +890,30 @@ export function App() {
                 <Button size="sm" variant="outline" disabled={ordersLoading} onClick={() => void loadOrders(ordersPage)}>
                   <RefreshCw className={`h-4 w-4 ${ordersLoading ? "animate-spin" : ""}`} />
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={orders.items.length === 0}
+                  onClick={() =>
+                    downloadCsv(
+                      `订单_第${ordersPage}页.csv`,
+                      ["订单号", "商品", "付款时间", "订单状态", "实付(元)", "预估佣金(元)", "结算佣金(元)", "归因状态", "归因用户"],
+                      orders.items.map((o) => [
+                        o.tbkOrderId,
+                        o.itemTitle,
+                        new Date(o.payTime).toLocaleString("zh-CN"),
+                        o.orderStatus,
+                        yuan(o.payAmountCents),
+                        yuan(o.estimatedCommissionCents),
+                        yuan(o.settledCommissionCents),
+                        o.attribution?.status ?? "",
+                        o.attribution?.userNickname ?? o.attribution?.userId ?? ""
+                      ])
+                    )
+                  }
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
               </div>
             }
           >
@@ -1106,7 +1135,33 @@ export function App() {
           )}
 
           {activeNav === "withdrawals" && (
-          <SectionCard id="withdrawals" title="提现审核" subtitle="用户提现申请，核对后打款或驳回">
+          <SectionCard
+            id="withdrawals"
+            title="提现审核"
+            subtitle="用户提现申请，核对后打款或驳回"
+            headerRight={
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={data.withdrawals.length === 0}
+                onClick={() =>
+                  downloadCsv(
+                    "提现申请.csv",
+                    ["用户", "OpenID", "金额(元)", "状态", "申请时间"],
+                    data.withdrawals.map((w) => [
+                      w.userNickname ?? w.userId,
+                      w.userOpenid,
+                      yuan(w.amountCents),
+                      w.status,
+                      new Date(w.createdAt).toLocaleString("zh-CN")
+                    ])
+                  )
+                }
+              >
+                <Download className="h-4 w-4" /> 导出CSV
+              </Button>
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1541,4 +1596,21 @@ function EmptyRow({ colSpan, text, loading = false }: { colSpan: number; text: s
 
 function formatMoney(amountCents: number) {
   return `¥${(amountCents / 100).toFixed(2)}`;
+}
+
+function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]) {
+  const esc = (v: string | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csv = [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
+  // BOM 让 Excel 正确识别中文
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function yuan(cents: number | null) {
+  return cents == null ? "" : (cents / 100).toFixed(2);
 }
