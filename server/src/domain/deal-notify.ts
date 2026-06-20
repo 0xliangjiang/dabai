@@ -39,9 +39,9 @@ export function createDealPublishedNotifier(
           templateId,
           page: `pages/deal-detail/index?id=${deal.id}`,
           data: {
-            // 默认对应「新内容/上新提醒」类模板字段，换模板时同步调整
-            thing1: { value: truncate(deal.title, 20) },
-            time2: { value: formatTime(deal.publishedAt ?? new Date()) }
+            // 对应模板字段：thing3=商品名称，time6=发货时间（换模板时同步调整 key）
+            thing3: { value: truncate(deal.title || "新线报上架", 20) },
+            time6: { value: formatTime(deal.publishedAt ?? new Date()) }
           }
         });
         // 无论成功还是被微信拒绝（如用户撤销订阅），该额度都视为已消耗
