@@ -3,6 +3,7 @@ const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
 const { ensureNickname } = require("../../utils/guard");
+const { subscribeDeals } = require("../../utils/subscribe");
 
 Page({
   onShareAppMessage() {
@@ -59,6 +60,10 @@ Page({
 
   onInput(event) {
     this.setData({ rawContent: event.detail.value });
+  },
+
+  async onSubscribe() {
+    await subscribeDeals();
   },
 
   async pasteFromClipboard() {

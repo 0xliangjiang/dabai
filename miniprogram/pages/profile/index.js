@@ -2,6 +2,7 @@ const { ensureLogin, getCurrentUser, loginWithWechat, logout, request, uploadFil
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
+const { subscribeDeals } = require("../../utils/subscribe");
 
 Page({
   onShareAppMessage() {
@@ -87,6 +88,10 @@ Page({
       return;
     }
     wx.navigateTo({ url: "/pages/invite/index" });
+  },
+
+  async onSubscribe() {
+    await subscribeDeals();
   },
 
   async syncUserFromServer() {

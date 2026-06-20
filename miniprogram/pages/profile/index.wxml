@@ -63,6 +63,16 @@
       </view>
     </view>
 
+    <view class="cu-card anim-up delay-2" bindtap="onSubscribe">
+      <view class="flex align-center justify-between">
+        <view class="flex-sub">
+          <view class="section-title">🔔 新券提醒</view>
+          <view class="section-desc">订阅后，有好券第一时间通知你</view>
+        </view>
+        <view class="paste-chip pressable" hover-class="pressed" catchtap="onSubscribe">订阅</view>
+      </view>
+    </view>
+
     <!-- 兑换申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">

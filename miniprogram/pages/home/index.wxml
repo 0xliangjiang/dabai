@@ -39,6 +39,14 @@
       <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{loading}}" disabled="{{loading}}" bindtap="convert">{{loading ? '正在查询…' : '查看预估优惠'}}</button>
     </view>
 
+    <view class="cu-card anim-up delay-2 flex align-center justify-between gap" bindtap="onSubscribe">
+      <view class="flex-sub">
+        <view class="section-title">🔔 新券提醒</view>
+        <view class="muted text-sm margin-top-xs">订阅后，有好券第一时间通知你</view>
+      </view>
+      <view class="paste-chip pressable" hover-class="pressed">订阅</view>
+    </view>
+
     <view wx:if="{{loading}}" class="cu-card flex-direction gap anim-up">
       <view class="flex align-start gap">
         <view class="skeleton-block skeleton-thumb"></view>
