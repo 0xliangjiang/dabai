@@ -209,7 +209,9 @@ export class ZhetaokeClient implements TaobaoClient {
 
     return {
       platform: "taobao",
-      itemId: pickString(content, ["tao_id", "item_id", "num_iid", "goods_id"]) || fallbackId,
+      // itemId 必须是数字商品 id（要与订单接口的 item_id 对齐才能归因）；
+      // 拿不到数字时从返回链接/原文里抠，绝不回退存淘口令 token
+      itemId: extractNumericItemId(content, fallbackId),
       itemTitle: pickString(content, ["title", "tao_title", "goods_name"]) || "淘宝商品",
       itemImageUrl: ensureHttps(pickString(content, ["pict_url", "pic_url"])),
       itemPriceCents: priceCents,
@@ -480,6 +482,26 @@ function pickString(record: Record<string, unknown>, keys: string[]): string {
   const value = pickValue(record, keys);
   if (value === undefined) return "";
   return String(value);
+}
+
+// 解析淘宝数字商品 id（归因要与订单接口的 item_id 完全相等）。
+// 顺序：响应里的数字字段 → fallback 本身是数字 → 响应链接/原文里的 id=数字 → 空。
+function extractNumericItemId(content: Record<string, unknown>, fallbackId: string): string {
+  const direct = pickString(content, ["tao_id", "item_id", "num_iid", "goods_id"]);
+  if (/^\d{6,}$/.test(direct)) return direct;
+  if (/^\d{6,}$/.test(String(fallbackId))) return String(fallbackId);
+  const candidates = [
+    pickString(content, ["coupon_click_url", "item_url", "click_url", "url"]),
+    pickString(content, ["shorturl", "short_url"]),
+    String(fallbackId ?? "")
+  ];
+  for (const text of candidates) {
+    const fromParam = text.match(/[?&](?:id|num_iid|item_id|itemId)=(\d{6,})/);
+    if (fromParam) return fromParam[1];
+    const fromPath = text.match(/\/(\d{9,})\.htm/);
+    if (fromPath) return fromPath[1];
+  }
+  return "";
 }
 
 function pickJdImage(goods: Record<string, unknown>): string {
