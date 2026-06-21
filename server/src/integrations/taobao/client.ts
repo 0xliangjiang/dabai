@@ -354,15 +354,20 @@ export class ZhetaokeClient implements TaobaoClient {
       const url = new URL(this.config.jdBigFieldUrl);
       url.searchParams.set("appkey", this.config.appKey);
       url.searchParams.set("content", content); // URLSearchParams 自动 urlencode
-      // 该接口要求 sceneId（推广位场景），复用转链用的 positionId/sceneId
-      const sceneId = this.config.jdPositionId;
+      // 该接口要求 sceneId（推广位场景）：优先 positionId，兜底 unionId
+      const sceneId = isRealConfigValue(this.config.jdPositionId)
+        ? this.config.jdPositionId
+        : this.config.jdUnionId;
       if (isRealConfigValue(sceneId)) {
         url.searchParams.set("sceneId", sceneId);
         url.searchParams.set("positionId", sceneId);
       }
       const response = await this.fetch(url.toString());
       const text = await response.text();
-      console.log(`[ztk-jd-bigfield] resp=${text.slice(0, 600)}`);
+      // 诊断：打印请求(appkey 打码)与返回，确认 sceneId/content 是否带上
+      console.log(
+        `[ztk-jd-bigfield] req=${url.toString().replace(this.config.appKey, "***")} resp=${text.slice(0, 600)}`
+      );
       if (!response.ok) return {};
       const payload = JSON.parse(text) as unknown;
       const arr = Array.isArray(payload)
