@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
+import { titleMatches } from "../domain/attribution.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
@@ -308,6 +309,18 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           take: 1000
         });
         return records.map(mapConversion);
+      },
+      async listByTitle(title: string) {
+        const t = title.trim();
+        if (t.length < 8) return []; // 标题太短不做匹配，避免通用词误判
+        // 用前 10 字粗筛，再在内存里做前缀判断（转化标题常被折淘客截断成订单标题的前缀）
+        const probe = t.slice(0, 10);
+        const records = await prisma.conversion.findMany({
+          where: { itemTitle: { contains: probe } },
+          orderBy: { createdAt: "desc" },
+          take: 1000
+        });
+        return records.map(mapConversion).filter((c) => titleMatches(t, c.itemTitle));
       },
       async listForAdmin(options) {
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));

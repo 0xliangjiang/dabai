@@ -700,6 +700,54 @@ describe("server API", () => {
     expect(referral.json()).toMatchObject({ enabled: false, downlineCount: 1, earnedCents: 0, pendingCents: 0 });
   });
 
+  test("attribution falls back to item title when itemId does not match", async () => {
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return {
+          hasNext: false,
+          orders: [
+            {
+              tbkOrderId: "jd-title-1",
+              itemId: "999888777", // 与转化的 mock-item-100 不同
+              itemTitle: "Mock Taobao Item", // 与转化标题相同
+              payTime: new Date(),
+              payAmountCents: 9900,
+              estimatedCommissionCents: 120,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: {}
+            }
+          ]
+        };
+      }
+    };
+    const app = await createApp({ config: testConfig, taobaoClient: new MockTaobaoClient(), orderClient });
+    apps.push(app);
+
+    // 用户查询（转化标题 Mock Taobao Item，itemId mock-item-100），不复制
+    await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { rawContent: "https://item.taobao.com/item.htm?id=100" }
+    });
+
+    await app.inject({
+      method: "POST",
+      url: "/api/jobs/sync-tbk-orders",
+      headers: { "x-scheduler-token": "dev-scheduler-token" }
+    });
+
+    const orders = await app.inject({
+      method: "GET",
+      url: "/api/orders/me",
+      headers: { authorization: "Bearer local_user-1" }
+    });
+    const matched = orders.json().orders.find((o: { itemTitle: string }) => o.itemTitle === "Mock Taobao Item");
+    expect(matched).toBeTruthy();
+    expect(matched.userRebateCents).toBeGreaterThan(0);
+  });
+
   test("GET /api/admin/conversions lists query history and supports search", async () => {
     const app = await buildTestApp();
     await app.inject({

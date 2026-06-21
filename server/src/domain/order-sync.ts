@@ -22,16 +22,36 @@ async function resolveOrderAttribution(
   if (attribution.status !== "unmatched") return attribution;
 
   const conversions = await repositories.conversions.listByItem(order.itemId);
-  if (conversions.length === 0) return attribution;
-  const candidates = conversions.map((c) => ({
-    id: c.id,
-    userId: c.userId,
-    conversionId: c.id,
-    itemId: c.itemId,
-    copiedAt: c.createdAt
-  }));
-  const fallback = matchOrderAttribution(orderRef, candidates, { windowHours });
-  return fallback.status === "unmatched" ? attribution : fallback;
+  if (conversions.length > 0) {
+    const candidates = conversions.map((c) => ({
+      id: c.id,
+      userId: c.userId,
+      conversionId: c.id,
+      itemId: c.itemId,
+      copiedAt: c.createdAt
+    }));
+    const fallback = matchOrderAttribution(orderRef, candidates, { windowHours });
+    if (fallback.status !== "unmatched") return fallback;
+  }
+
+  // 最后兜底：itemId 都对不上时，按「商品标题精确匹配」找用户查询记录。
+  // 标题候选已确认同名，这里借用 order.itemId 复用时间窗逻辑；唯一候选→自动归因，多个→待复核。
+  const title = (order.itemTitle ?? "").trim();
+  if (title.length >= 4) {
+    const titleConvs = await repositories.conversions.listByTitle(title);
+    const titleCandidates = titleConvs.map((c) => ({
+      id: c.id,
+      userId: c.userId,
+      conversionId: c.id,
+      itemId: order.itemId,
+      copiedAt: c.createdAt
+    }));
+    const byTitle = matchOrderAttribution(orderRef, titleCandidates, { windowHours });
+    if (byTitle.status === "auto_matched") return { ...byTitle, reason: "title_match_single" };
+    if (byTitle.status === "pending_review") return { ...byTitle, reason: "title_match_multiple" };
+  }
+
+  return attribution;
 }
 
 // 单个订单的归因 + 台账处理（JD / 淘宝共用）：

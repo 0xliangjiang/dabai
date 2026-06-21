@@ -19,7 +19,7 @@ export type AttributionResult =
       userId: string;
       conversionId: string;
       copyEventId: string;
-      reason: "single_candidate_inside_window";
+      reason: "single_candidate_inside_window" | "title_match_single";
     }
   | {
       status: "pending_review";
@@ -27,7 +27,7 @@ export type AttributionResult =
       userId?: string;
       conversionId?: string;
       copyEventId?: string;
-      reason: "multiple_candidates_inside_window" | "candidate_outside_window";
+      reason: "multiple_candidates_inside_window" | "candidate_outside_window" | "title_match_multiple";
     }
   | {
       status: "unmatched";
@@ -40,6 +40,15 @@ export type AttributionOptions = {
 };
 
 const DEFAULT_WINDOW_HOURS = 24;
+
+// 标题匹配：精确相等，或一个是另一个的前缀（转化标题常被折淘客截断成订单标题前缀）。
+// 两边都要 ≥8 字，避免通用短词误判。
+export function titleMatches(a: string, b: string): boolean {
+  const x = a.trim();
+  const y = b.trim();
+  if (x.length < 8 || y.length < 8) return false;
+  return x === y || x.startsWith(y) || y.startsWith(x);
+}
 
 export function matchOrderAttribution(
   order: AttributionOrder,

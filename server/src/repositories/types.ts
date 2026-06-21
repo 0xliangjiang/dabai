@@ -281,6 +281,8 @@ export type Repositories = {
     findById(id: string): Promise<ConversionRecord | undefined>;
     listByUser(userId: string): Promise<ConversionRecord[]>;
     listByItem(itemId: string): Promise<ConversionRecord[]>;
+    // 归因兜底：按商品标题精确匹配（itemId 对不上时用）
+    listByTitle(title: string): Promise<ConversionRecord[]>;
     // 后台「查询历史」：按 商品标题/itemId/用户昵称 搜索，分页，便于人工归因兜底
     listForAdmin(options?: {
       search?: string;

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
+import { titleMatches } from "../domain/attribution.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
@@ -245,6 +246,11 @@ export function createRepositories(): Repositories {
       },
       async listByItem(itemId: string) {
         return [...conversions.values()].filter((record) => record.itemId === itemId);
+      },
+      async listByTitle(title: string) {
+        const t = title.trim();
+        if (t.length < 8) return [];
+        return [...conversions.values()].filter((record) => titleMatches(t, record.itemTitle));
       },
       async listForAdmin(options) {
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
