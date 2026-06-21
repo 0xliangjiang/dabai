@@ -104,9 +104,9 @@ export class ZhetaokeClient implements TaobaoClient {
     let tklError: Error | undefined;
     try {
       const result = await this.convertTaobaoByTkl(rawContent);
-      // 折淘客可能返回 200 但商品信息为空（如新版价保分享链接）；没有有效 itemId 就不当成功，
-      // 继续走 id 解析兜底，避免生成"淘宝商品/空 itemId"的无用转化记录
-      if (result.itemId) return result;
+      // 只要折淘客返回了真实商品（有标题）即视为成功——新版加密商品 id 是不稳定 token，
+      // itemId 可能为空，归因改走「商品标题」匹配，不能因没有数字 id 就当失败。
+      if (result.itemTitle && result.itemTitle !== "淘宝商品") return result;
     } catch (error) {
       if (!(error instanceof ConversionApiError)) throw error;
       tklError = error;
@@ -217,9 +217,11 @@ export class ZhetaokeClient implements TaobaoClient {
     return {
       platform: "taobao",
       // itemId 必须是数字商品 id（要与订单接口的 item_id 对齐才能归因）；
-      // 拿不到数字时从返回链接/原文里抠，绝不回退存淘口令 token
+      // 新版加密 tao_id 是不稳定 token，会被过滤为空，归因改走标题
       itemId: extractNumericItemId(content, fallbackId),
-      itemTitle: pickString(content, ["title", "tao_title", "goods_name"]) || "淘宝商品",
+      // 优先用完整标题：折淘客 title 常被截断，jianjie 多为完整商品名，
+      // 用完整名与订单标题对齐，标题归因最准
+      itemTitle: pickFullTitle(content),
       itemImageUrl: ensureHttps(pickString(content, ["pict_url", "pic_url"])),
       itemPriceCents: priceCents,
       commissionRate,
@@ -489,6 +491,15 @@ function pickString(record: Record<string, unknown>, keys: string[]): string {
   const value = pickValue(record, keys);
   if (value === undefined) return "";
   return String(value);
+}
+
+// 取完整商品标题：title 常被折淘客截断，jianjie 多为完整名；当 jianjie 是 title 的
+// 扩展（以 title 开头）时用 jianjie，否则用 title，避免误用无关的简介。
+function pickFullTitle(content: Record<string, unknown>): string {
+  const title = pickString(content, ["title", "tao_title", "goods_name"]).trim();
+  const jianjie = pickString(content, ["jianjie", "shortTitle", "sub_title"]).trim();
+  if (jianjie && (!title || jianjie.startsWith(title))) return jianjie;
+  return title || "淘宝商品";
 }
 
 // 解析淘宝数字商品 id（归因要与订单接口的 item_id 完全相等）。
