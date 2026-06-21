@@ -71,8 +71,14 @@ Component({
       try {
         await loginWithWechat();
         this.resolvePhase();
-      } catch (_error) {
-        wx.showToast({ title: "登录失败，请重试", icon: "none" });
+      } catch (error) {
+        console.error("[copy-gate login] 失败:", error);
+        const detail = (error && (error.errMsg || error.error || error.message)) || "";
+        wx.showModal({
+          title: "登录失败",
+          content: detail || "请重试；若多次失败请联系客服",
+          showCancel: false
+        });
       } finally {
         this.setData({ loggingIn: false });
       }
