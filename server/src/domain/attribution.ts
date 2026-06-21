@@ -18,7 +18,7 @@ export type AttributionResult =
       confidence: number;
       userId: string;
       conversionId: string;
-      copyEventId: string;
+      copyEventId?: string; // 转化/标题兜底匹配无真实复制事件，可空
       reason: "single_candidate_inside_window" | "title_match_single";
     }
   | {
@@ -40,6 +40,16 @@ export type AttributionOptions = {
 };
 
 const DEFAULT_WINDOW_HOURS = 24;
+
+// 去掉 copyEventId：转化/标题兜底匹配是基于「查询记录」而非「复制事件」，
+// 候选的 id 是 conversion id，不能当 copyEventId 写库（否则外键报错）。
+export function withoutCopyEvent(result: AttributionResult): AttributionResult {
+  if (result.status === "auto_matched" || result.status === "pending_review") {
+    const { copyEventId: _drop, ...rest } = result;
+    return rest;
+  }
+  return result;
+}
 
 // 标题匹配：精确相等，或一个是另一个的前缀（转化标题常被折淘客截断成订单标题前缀）。
 // 两边都要 ≥8 字，避免通用短词误判。

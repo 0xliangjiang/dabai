@@ -1,4 +1,4 @@
-import { matchOrderAttribution, type AttributionResult } from "./attribution.js";
+import { matchOrderAttribution, withoutCopyEvent, type AttributionResult } from "./attribution.js";
 import {
   buildCommissionLedgerEntry,
   buildReferralLedgerEntry,
@@ -31,7 +31,7 @@ async function resolveOrderAttribution(
       copiedAt: c.createdAt
     }));
     const fallback = matchOrderAttribution(orderRef, candidates, { windowHours });
-    if (fallback.status !== "unmatched") return fallback;
+    if (fallback.status !== "unmatched") return withoutCopyEvent(fallback);
   }
 
   // 最后兜底：itemId 都对不上时，按「商品标题精确匹配」找用户查询记录。
@@ -46,7 +46,7 @@ async function resolveOrderAttribution(
       itemId: order.itemId,
       copiedAt: c.createdAt
     }));
-    const byTitle = matchOrderAttribution(orderRef, titleCandidates, { windowHours });
+    const byTitle = withoutCopyEvent(matchOrderAttribution(orderRef, titleCandidates, { windowHours }));
     if (byTitle.status === "auto_matched") return { ...byTitle, reason: "title_match_single" };
     if (byTitle.status === "pending_review") return { ...byTitle, reason: "title_match_multiple" };
   }
@@ -210,10 +210,15 @@ export async function syncJdOrders(
   while (true) {
     const page = await orderClient.fetchJdOrders({ startTime, endTime, pageIndex, pageSize });
     for (const incoming of page.orders) {
-      const order = await repositories.orders.upsert(incoming);
-      const result = await processOrder(repositories, order, options);
-      if (result.attributed) attributed += 1;
-      synced += 1;
+      try {
+        const order = await repositories.orders.upsert(incoming);
+        const result = await processOrder(repositories, order, options);
+        if (result.attributed) attributed += 1;
+        synced += 1;
+      } catch (error) {
+        // 单条订单处理失败不应中断整批同步（如个别归因外键/数据异常）
+        console.error(`[order-sync] 订单 ${incoming.tbkOrderId} 处理失败:`, (error as Error).message);
+      }
     }
 
     if (!page.hasNext || page.orders.length === 0) {
@@ -246,10 +251,15 @@ export async function syncTaobaoOrders(
   while (true) {
     const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, positionIndex, pageSize, queryType: 4 });
     for (const incoming of page.orders) {
-      const order = await repositories.orders.upsert(incoming);
-      const result = await processOrder(repositories, order, options);
-      if (result.attributed) attributed += 1;
-      synced += 1;
+      try {
+        const order = await repositories.orders.upsert(incoming);
+        const result = await processOrder(repositories, order, options);
+        if (result.attributed) attributed += 1;
+        synced += 1;
+      } catch (error) {
+        // 单条订单处理失败不应中断整批同步（如个别归因外键/数据异常）
+        console.error(`[order-sync] 订单 ${incoming.tbkOrderId} 处理失败:`, (error as Error).message);
+      }
     }
 
     if (!page.hasNext || page.orders.length === 0) break;
