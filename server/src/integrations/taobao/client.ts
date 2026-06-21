@@ -273,6 +273,8 @@ export class ZhetaokeClient implements TaobaoClient {
 
     // 返回可能是折淘客包装 {status,content}，也可能直接透传京东 {jd_union_..._response:{getResult}}
     const payload = (await response.json()) as Record<string, unknown>;
+    // 诊断日志：打印折淘客京东转链原始返回，确认是否带商品详情/佣金（docker logs 可查）
+    console.log(`[ztk-jd] resp=${JSON.stringify(payload).slice(0, 1000)}`);
     const data = extractZhetaokeJdData(payload);
     const clickUrl = pickString(data, ["clickURL", "clickUrl", "url"]);
     const shortUrl = pickString(data, ["shortURL", "shortUrl"]) || clickUrl;
