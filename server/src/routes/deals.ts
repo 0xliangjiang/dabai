@@ -37,6 +37,7 @@ export async function registerDealRoutes(app: FastifyInstance, repositories: Rep
         summary: deal.summary,
         pinned: deal.pinned,
         stepCount: deal.steps.length,
+        visitorCount: deal.visitorCount,
         publishedAt: deal.publishedAt ?? deal.createdAt
       }))
     };
