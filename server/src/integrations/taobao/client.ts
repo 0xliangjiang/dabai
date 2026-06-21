@@ -234,21 +234,28 @@ export class ZhetaokeClient implements TaobaoClient {
     };
   }
 
-  // 跟随最多 3 次重定向，返回最终落地 URL（失败时返回原始 URL）
+  // 跟随重定向取最终落地 URL；fetch 的 redirect:"manual" 读不到 Location（不透明响应），
+  // 故用默认 follow + response.url，并带移动端 UA（京东短链对 UA 敏感）。
+  // 最终 URL 不含 skuId 时再从页面 HTML 里抠，合成 item URL 返回，便于上层 extractJdSkuId。
   private async resolveRedirect(url: string): Promise<string> {
-    let current = url;
-    for (let i = 0; i < 3; i++) {
-      try {
-        const response = await this.fetch(current, { method: "GET", redirect: "manual" });
-        const location = response.headers.get("location");
-        if (!location) return current;
-        current = new URL(location, current).toString();
-        if (extractJdSkuId(current)) return current;
-      } catch {
-        return current;
-      }
+    try {
+      const response = await this.fetch(url, {
+        headers: {
+          "user-agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
+        }
+      });
+      const finalUrl = response.url || url;
+      if (extractJdSkuId(finalUrl)) return finalUrl;
+      const html = await response.text();
+      const m =
+        html.match(/item\.jd\.com\/(\d{6,})\.html/i) ??
+        html.match(/["'](?:skuId|wareId)["']\s*:\s*["']?(\d{6,})/i) ??
+        html.match(/(?:skuId|wareId)=(\d{6,})/i);
+      return m ? `https://item.jd.com/${m[1]}.html` : finalUrl;
+    } catch {
+      return url;
     }
-    return current;
   }
 
   // 折淘客代理的京东转链（佣金归 unionId 对应的联盟账号）
