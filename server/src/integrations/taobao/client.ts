@@ -262,13 +262,16 @@ export class ZhetaokeClient implements TaobaoClient {
   }
 
   // 折淘客代理的京东转链（佣金归 unionId 对应的联盟账号）
+  // signurl=5：一次调用同时返回「转链短链 + 商品详情 + 佣金/券信息」（content 数组）；
+  // 活动/非商品链接会自动降级为原版转链（只有 shortURL，无 content 数组），需兼容。
   private async convertJdViaZhetaoke(rawContent: string): Promise<TaobaoConversionResult> {
     const materialUrl = extractJdMaterialId(rawContent);
     const body = new URLSearchParams({
       appkey: this.config.appKey,
       materialId: materialUrl,
       unionId: this.config.jdUnionId,
-      chainType: "2"
+      chainType: "2",
+      signurl: "5"
     });
     if (isRealConfigValue(this.config.jdPositionId)) {
       body.set("positionId", this.config.jdPositionId);
@@ -283,40 +286,41 @@ export class ZhetaokeClient implements TaobaoClient {
       throw new ConversionApiError(`Zhetaoke JD HTTP ${response.status}`);
     }
 
-    // 返回可能是折淘客包装 {status,content}，也可能直接透传京东 {jd_union_..._response:{getResult}}
     const payload = (await response.json()) as Record<string, unknown>;
-    // 诊断日志：打印折淘客京东转链原始返回，确认是否带商品详情/佣金（docker logs 可查）
-    console.log(`[ztk-jd] resp=${JSON.stringify(payload).slice(0, 1000)}`);
+    // 诊断日志：打印折淘客京东转链原始返回（docker logs 查 ztk-jd）
+    console.log(`[ztk-jd] resp=${JSON.stringify(payload).slice(0, 1200)}`);
+
+    // 商品详情在 content 数组首元素（含 shorturl/coupon_click_url/tao_id/jianjie/pict_url/价格/佣金）
+    let goods = extractZhetaokeJdGoods(payload);
+    // 降级（活动链接）只有官方转链结果，从 *_response.result 里取 shortURL
     const data = extractZhetaokeJdData(payload);
-    const clickUrl = pickString(data, ["clickURL", "clickUrl", "url"]);
-    const shortUrl = pickString(data, ["shortURL", "shortUrl"]) || clickUrl;
-    if (!clickUrl && !shortUrl) {
+
+    const shortUrl = pickString(goods, ["shorturl", "shortURL"]) || pickString(data, ["shortURL", "shortUrl"]);
+    const clickUrl =
+      pickString(goods, ["coupon_click_url", "clickURL", "clickUrl"]) ||
+      pickString(data, ["clickURL", "clickUrl", "url"]);
+    if (!shortUrl && !clickUrl) {
       const message = typeof payload.content === "string" ? payload.content : "京东转链失败";
       throw new ConversionApiError(message);
     }
 
-    // 商品信息补全：折淘客 bigfield 接口 content 可直接传短链/口令/skuId，
-    // 由折淘客解析出 skuId + 标题 + 图（绕开短链自行重定向解析不出 skuId 的问题）
-    let skuId = pickString(data, ["skuId", "sku_id"]) || extractJdSkuId(rawContent);
-    // content 优先用 skuId；否则用口令(转链能解析的那个)，最后才短链——u.jd.com 短链常不被详情接口接受
-    const detailContent = skuId || materialUrl || shortUrl || rawContent;
-    let goods: Record<string, unknown> = await this.fetchJdBigField(detailContent);
-    if (!skuId) skuId = pickString(goods, ["skuId", "mainSkuId", "productId"]);
+    let skuId =
+      pickString(goods, ["tao_id", "skuId", "sku_id"]) ||
+      pickString(data, ["skuId", "sku_id"]) ||
+      extractJdSkuId(rawContent);
 
-    // 价格/佣金：bigfield 不含，按 skuId 再查 open_item_info3 补全（标题/图以 bigfield 为准）
-    if (skuId) {
-      const priceGoods = await this.fetchJdItemInfo(skuId);
-      goods = { ...priceGoods, ...goods };
-    }
+    // 官方联盟兜底（可选）：signurl=5 没拿到详情且配了官方密钥时再查一次
     if (Object.keys(goods).length === 0 && this.jdUnion && skuId) {
       goods = (await this.jdUnion.goodsQueryBySku(skuId)) ?? {};
     }
+    if (!skuId) skuId = pickString(goods, ["skuId", "mainSkuId", "productId", "tao_id"]);
+
     const commissionInfo = asRecord(pickValue(goods, ["commissionInfo"])) ?? {};
     const priceInfo = asRecord(pickValue(goods, ["priceInfo"])) ?? {};
-    // 价格/佣金：同时兼容官方联盟(嵌套)与折淘客(扁平)两种字段命名
+    // 价格/佣金：兼容折淘客扁平字段(size=折扣价/quanhou_jiage=券后价/tkrate3=佣金率/tkfee3=返佣)与官方联盟嵌套字段
     const itemPriceCents = parseMoneyToCents(
       pickValue(priceInfo, ["lowestCouponPrice", "lowestPrice", "price"]) ??
-        pickValue(goods, ["quanhou_jiage", "quanhoujiage", "price", "lowestPrice", "zk_final_price"])
+        pickValue(goods, ["quanhou_jiage", "quanhoujiage", "size", "price", "lowestPrice", "zk_final_price"])
     );
     const commissionRate = parsePercentRate(
       pickValue(commissionInfo, ["commissionShare", "plusCommissionShare"]) ??
@@ -325,82 +329,28 @@ export class ZhetaokeClient implements TaobaoClient {
     const estimatedCommissionCents =
       parseMoneyToCents(
         pickValue(commissionInfo, ["couponCommission", "commission"]) ??
-          pickValue(goods, ["yongjin_jine", "commission"])
+          pickValue(goods, ["tkfee3", "yongjin_jine", "commission"])
       ) || estimateCommissionCents(itemPriceCents, commissionRate);
 
     return {
       platform: "jd",
       itemId: skuId || materialUrl,
       itemTitle:
-        pickString(goods, ["skuName", "goodsName", "title", "tao_title", "jianjie"]) ||
-        pickString(data, ["skuName", "goodsName"]) ||
+        pickString(goods, ["tao_title", "title", "skuName", "goodsName", "jianjie"]) ||
+        // 降级时详情拿不到：从转链口令/原文提取商品名，至少显示真实标题并可做标题归因
+        extractJdTitleFromCommand(pickString(data, ["jCommand"]) || rawContent) ||
         "京东商品",
       itemImageUrl:
-        pickJdImage(goods) || pickString(goods, ["pict_url", "pic_url", "imageUrl"]) || pickString(data, ["imageUrl", "imgUrl"]),
+        pickJdImage(goods) ||
+        pickString(goods, ["pict_url", "pic_url", "imageUrl", "white_image"]) ||
+        pickString(data, ["imageUrl", "imgUrl"]),
       itemPriceCents,
       commissionRate,
       estimatedCommissionCents,
-      generatedPassword: "",
-      generatedShortUrl: shortUrl,
+      generatedPassword: pickString(goods, ["tkl"]) || "",
+      generatedShortUrl: shortUrl || clickUrl,
       generatedClickUrl: clickUrl || shortUrl
     };
-  }
-
-  // 折淘客「京东商品详情」接口：用 skuId 查标题/价格/佣金（无需官方京东联盟密钥）
-  // 折淘客「京东商品详情(大字段)」接口：content 可传 skuId 或京东 URL/口令，
-  // 折淘客自行解析并返回 skuId + 标题 + 图（不含价格/佣金）
-  private async fetchJdBigField(content: string): Promise<Record<string, unknown>> {
-    if (!content) return {};
-    try {
-      const url = new URL(this.config.jdBigFieldUrl);
-      url.searchParams.set("appkey", this.config.appKey);
-      url.searchParams.set("content", content); // URLSearchParams 自动 urlencode
-      // 该接口要求有效的 sceneId（京东推广位/场景枚举值，非 unionId）——用配置的推广位 id
-      const sceneId = this.config.jdPositionId;
-      if (isRealConfigValue(sceneId)) {
-        url.searchParams.set("sceneId", sceneId);
-        url.searchParams.set("positionId", sceneId);
-      }
-      const response = await this.fetch(url.toString());
-      const text = await response.text();
-      // 诊断：打印请求(appkey 打码)与返回，确认 sceneId/content 是否带上
-      console.log(
-        `[ztk-jd-bigfield] req=${url.toString().replace(this.config.appKey, "***")} resp=${text.slice(0, 600)}`
-      );
-      if (!response.ok) return {};
-      const payload = JSON.parse(text) as unknown;
-      const arr = Array.isArray(payload)
-        ? payload
-        : pickValue(asRecord(payload) ?? {}, ["content", ""]) ?? payload;
-      const first = Array.isArray(arr) ? arr[0] : arr;
-      return asRecord(first) ?? {};
-    } catch (error) {
-      console.warn("[ztk-jd-bigfield] 查询失败:", (error as Error).message);
-      return {};
-    }
-  }
-
-  private async fetchJdItemInfo(skuId: string): Promise<Record<string, unknown>> {
-    try {
-      const url = new URL(this.config.jdItemInfoUrl);
-      url.searchParams.set("appkey", this.config.appKey);
-      if (isRealConfigValue(this.config.sid)) url.searchParams.set("sid", this.config.sid);
-      url.searchParams.set("num_iids", skuId); // 商品ID（折淘客多用 num_iids）
-      url.searchParams.set("id", skuId); // 兜底别名
-      const response = await this.fetch(url.toString());
-      const text = await response.text();
-      // 诊断日志：字段命名未知，先打出来便于校准（docker logs 查 ztk-jd-detail）
-      console.log(`[ztk-jd-detail] resp=${text.slice(0, 1000)}`);
-      if (!response.ok) return {};
-      const payload = JSON.parse(text) as Record<string, unknown>;
-      // 兼容 {content:[{...}]} / {content:{...}} / 直接数组 / {"":[{...}]}
-      const content = pickValue(payload, ["content", ""]) ?? payload;
-      const first = Array.isArray(content) ? content[0] : content;
-      return asRecord(first) ?? {};
-    } catch (error) {
-      console.warn("[ztk-jd-detail] 查询失败:", (error as Error).message);
-      return {};
-    }
   }
 
   // 京东联盟官方 API 转链（免费）
@@ -520,6 +470,15 @@ function parseZhetaokePayload(text: string): Record<string, unknown> {
 }
 
 // 折淘客京东接口响应解包：{status,content} 或透传的 jd_union_*_response.getResult
+// signurl=5 的商品详情在 content 数组首元素；活动/非商品链接降级时无 content 数组，返回 {}
+function extractZhetaokeJdGoods(payload: Record<string, unknown>): Record<string, unknown> {
+  const content = payload.content;
+  if (Array.isArray(content) && content.length > 0) {
+    return asRecord(content[0]) ?? {};
+  }
+  return {};
+}
+
 function extractZhetaokeJdData(payload: Record<string, unknown>): Record<string, unknown> {
   const direct = asRecord(payload.content) ?? asRecord(payload.data);
   if (direct) {
@@ -550,6 +509,16 @@ function detectPlatform(rawContent: string): ConversionPlatform {
   if (lower.includes("yangkeduo.com") || lower.includes("pinduoduo.com") || lower.includes("pdd")) return "pdd";
   if (lower.includes("vip.com") || lower.includes("vipshop.com")) return "vip";
   return "taobao";
+}
+
+// 从京东口令/jCommand 里提取商品标题：格式 `数字:/<标题>！token！...`，
+// 取 `数字:/` 之后、第一个 ！/! 之前的部分，去掉尾部乱码符号。
+function extractJdTitleFromCommand(command: string): string {
+  if (!command) return "";
+  const body = command.replace(/^\s*\d+\s*:\/+/, "");
+  const m = body.match(/^([^!！]+)[!！]/);
+  const title = (m ? m[1] : body).replace(/[\s，,、]*[^一-龥a-zA-Z0-9]{1,8}$/, "").trim();
+  return title.length >= 4 ? title : "";
 }
 
 function extractJdSkuId(rawContent: string): string {
