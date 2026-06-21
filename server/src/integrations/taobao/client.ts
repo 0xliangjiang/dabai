@@ -298,7 +298,8 @@ export class ZhetaokeClient implements TaobaoClient {
     // 商品信息补全：折淘客 bigfield 接口 content 可直接传短链/口令/skuId，
     // 由折淘客解析出 skuId + 标题 + 图（绕开短链自行重定向解析不出 skuId 的问题）
     let skuId = pickString(data, ["skuId", "sku_id"]) || extractJdSkuId(rawContent);
-    const detailContent = skuId || shortUrl || clickUrl || rawContent;
+    // content 优先用 skuId；否则用口令(转链能解析的那个)，最后才短链——u.jd.com 短链常不被详情接口接受
+    const detailContent = skuId || materialUrl || shortUrl || rawContent;
     let goods: Record<string, unknown> = await this.fetchJdBigField(detailContent);
     if (!skuId) skuId = pickString(goods, ["skuId", "mainSkuId", "productId"]);
 
