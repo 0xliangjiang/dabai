@@ -495,7 +495,9 @@ function extractZhetaokeJdData(payload: Record<string, unknown>): Record<string,
 
 function detectPlatform(rawContent: string): ConversionPlatform {
   const lower = rawContent.toLowerCase();
-  if (lower.includes("jd.com") || lower.includes("3.cn")) return "jd";
+  if (lower.includes("jd.com") || lower.includes("3.cn") || lower.includes("u.jd.com")) return "jd";
+  // 京东 App 分享口令：`数字:/！token！` 或 `！token！`（淘宝口令用 ￥ 分隔，不会撞）
+  if (/:\/{1,2}[!！]/.test(rawContent) || /[!！][0-9a-zA-Z]{6,}[!！]/.test(rawContent)) return "jd";
   if (lower.includes("yangkeduo.com") || lower.includes("pinduoduo.com") || lower.includes("pdd")) return "pdd";
   if (lower.includes("vip.com") || lower.includes("vipshop.com")) return "vip";
   return "taobao";
@@ -507,8 +509,12 @@ function extractJdSkuId(rawContent: string): string {
 }
 
 function extractJdMaterialId(rawContent: string): string {
-  const match = rawContent.match(/https?:\/\/(?:u\.jd\.com|3\.cn|item\.jd\.com|item\.m\.jd\.com)\/[^\s，。"'<>]+/i);
-  return match?.[0] ?? rawContent;
+  const url = rawContent.match(/https?:\/\/(?:u\.jd\.com|3\.cn|item\.jd\.com|item\.m\.jd\.com)\/[^\s，。"'<>]+/i);
+  if (url) return url[0];
+  // 京东 App 口令：取 `数字:/！token！` 整段，避免把标题等多余文字一起发给折淘客
+  const kouling = rawContent.match(/\d*:\/{1,2}[!！][^!！\s]+[!！]/);
+  if (kouling) return kouling[0];
+  return rawContent.trim();
 }
 
 function isRealConfigValue(value: string): boolean {
