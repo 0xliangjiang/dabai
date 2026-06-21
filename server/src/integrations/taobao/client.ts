@@ -48,6 +48,7 @@ export type CreateTaobaoClientConfig = {
   zhetaokeJdUnionId?: string;
   zhetaokeJdPositionId?: string;
   zhetaokeJdItemInfoUrl?: string;
+  zhetaokeJdBigFieldUrl?: string;
   jdUnionAppKey?: string;
   jdUnionAppSecret?: string;
   jdUnionSiteId?: string;
@@ -65,6 +66,7 @@ type ZhetaokeClientConfig = {
   jdUnionId: string;
   jdPositionId: string;
   jdItemInfoUrl: string;
+  jdBigFieldUrl: string;
 };
 
 type ClientDependencies = {
@@ -252,6 +254,7 @@ export class ZhetaokeClient implements TaobaoClient {
         html.match(/item\.jd\.com\/(\d{6,})\.html/i) ??
         html.match(/["'](?:skuId|wareId)["']\s*:\s*["']?(\d{6,})/i) ??
         html.match(/(?:skuId|wareId)=(\d{6,})/i);
+      console.log(`[ztk-jd] redirect status=${response.status} finalUrl=${finalUrl} html=${html.slice(0, 300)}`);
       return m ? `https://item.jd.com/${m[1]}.html` : finalUrl;
     } catch {
       return url;
@@ -292,21 +295,17 @@ export class ZhetaokeClient implements TaobaoClient {
       throw new ConversionApiError(message);
     }
 
-    // 商品信息补全：优先折淘客响应自带，缺失时解析短链拿 skuId
+    // 商品信息补全：折淘客 bigfield 接口 content 可直接传短链/口令/skuId，
+    // 由折淘客解析出 skuId + 标题 + 图（绕开短链自行重定向解析不出 skuId 的问题）
     let skuId = pickString(data, ["skuId", "sku_id"]) || extractJdSkuId(rawContent);
-    if (!skuId) {
-      // 京东 App 口令转链后只回短链(u.jd.com/...)，跟随重定向到 item.jd.com/<skuId>.html 取 skuId
-      const resolveTarget = shortUrl || clickUrl || materialUrl;
-      if (/^https?:\/\//i.test(resolveTarget)) {
-        const finalUrl = await this.resolveRedirect(resolveTarget);
-        skuId = extractJdSkuId(finalUrl);
-        console.log(`[ztk-jd] 短链解析 ${resolveTarget} → ${finalUrl} → skuId=${skuId || "(空)"}`);
-      }
-    }
-    let goods: Record<string, unknown> = asRecord(pickValue(data, ["goodsInfo", "skuInfo"])) ?? {};
-    // 全折淘客方案（无官方密钥）：转链接口不返回商品详情，用折淘客「京东商品详情」接口补全
-    if (Object.keys(goods).length === 0 && skuId) {
-      goods = await this.fetchJdItemInfo(skuId);
+    const detailContent = skuId || shortUrl || clickUrl || rawContent;
+    let goods: Record<string, unknown> = await this.fetchJdBigField(detailContent);
+    if (!skuId) skuId = pickString(goods, ["skuId", "mainSkuId", "productId"]);
+
+    // 价格/佣金：bigfield 不含，按 skuId 再查 open_item_info3 补全（标题/图以 bigfield 为准）
+    if (skuId) {
+      const priceGoods = await this.fetchJdItemInfo(skuId);
+      goods = { ...priceGoods, ...goods };
     }
     if (Object.keys(goods).length === 0 && this.jdUnion && skuId) {
       goods = (await this.jdUnion.goodsQueryBySku(skuId)) ?? {};
@@ -347,6 +346,30 @@ export class ZhetaokeClient implements TaobaoClient {
   }
 
   // 折淘客「京东商品详情」接口：用 skuId 查标题/价格/佣金（无需官方京东联盟密钥）
+  // 折淘客「京东商品详情(大字段)」接口：content 可传 skuId 或京东 URL/口令，
+  // 折淘客自行解析并返回 skuId + 标题 + 图（不含价格/佣金）
+  private async fetchJdBigField(content: string): Promise<Record<string, unknown>> {
+    if (!content) return {};
+    try {
+      const url = new URL(this.config.jdBigFieldUrl);
+      url.searchParams.set("appkey", this.config.appKey);
+      url.searchParams.set("content", content); // URLSearchParams 自动 urlencode
+      const response = await this.fetch(url.toString());
+      const text = await response.text();
+      console.log(`[ztk-jd-bigfield] resp=${text.slice(0, 600)}`);
+      if (!response.ok) return {};
+      const payload = JSON.parse(text) as unknown;
+      const arr = Array.isArray(payload)
+        ? payload
+        : pickValue(asRecord(payload) ?? {}, ["content", ""]) ?? payload;
+      const first = Array.isArray(arr) ? arr[0] : arr;
+      return asRecord(first) ?? {};
+    } catch (error) {
+      console.warn("[ztk-jd-bigfield] 查询失败:", (error as Error).message);
+      return {};
+    }
+  }
+
   private async fetchJdItemInfo(skuId: string): Promise<Record<string, unknown>> {
     try {
       const url = new URL(this.config.jdItemInfoUrl);
@@ -435,7 +458,10 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
           "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
         jdUnionId: config.zhetaokeJdUnionId ?? "",
         jdPositionId: config.zhetaokeJdPositionId ?? "",
-        jdItemInfoUrl: config.zhetaokeJdItemInfoUrl ?? "https://j.zhetaoke.com/user/open/open_item_info3.aspx"
+        jdItemInfoUrl: config.zhetaokeJdItemInfoUrl ?? "https://j.zhetaoke.com/user/open/open_item_info3.aspx",
+        jdBigFieldUrl:
+          config.zhetaokeJdBigFieldUrl ??
+          "http://api.zhetaoke.com:20000/api/open_jd_union_open_goods_bigfield_query.ashx"
       },
       { jdUnion }
     );
