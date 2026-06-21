@@ -101,21 +101,26 @@ export class ZhetaokeClient implements TaobaoClient {
 
   // 折淘客淘宝转链：老式淘口令走 tkl 接口；新版分享（e.tb.cn + tk=）解析出商品ID走高佣转链
   private async convertTaobao(rawContent: string): Promise<TaobaoConversionResult> {
+    let tklError: Error | undefined;
     try {
-      return await this.convertTaobaoByTkl(rawContent);
+      const result = await this.convertTaobaoByTkl(rawContent);
+      // 折淘客可能返回 200 但商品信息为空（如新版价保分享链接）；没有有效 itemId 就不当成功，
+      // 继续走 id 解析兜底，避免生成"淘宝商品/空 itemId"的无用转化记录
+      if (result.itemId) return result;
     } catch (error) {
       if (!(error instanceof ConversionApiError)) throw error;
-      // 先尝试从短链（包括 e.tb.cn?tk= 新版分享）解析商品 ID
-      const itemId = await this.resolveTaobaoItemId(rawContent);
-      if (itemId) return this.convertTaobaoByItemId(itemId);
-      // 仍无法解析时，对新版轻口令给出明确引导
-      if (/e\.tb\.cn\/[^\s]+/.test(rawContent) && /[?&]tk=/.test(rawContent)) {
-        throw new UnsupportedPlatformError(
-          '暂不支持这种分享格式，请在淘宝分享时选择「复制口令」（￥￥格式）后再粘贴'
-        );
-      }
-      throw error;
+      tklError = error;
     }
+    // 先尝试从短链（包括 e.tb.cn?tk= 新版分享）解析商品 ID
+    const itemId = await this.resolveTaobaoItemId(rawContent);
+    if (itemId) return this.convertTaobaoByItemId(itemId);
+    // 仍无法解析时，对新版轻口令/价保链接给出明确引导
+    if (/e\.tb\.cn\/[^\s]+/.test(rawContent) && /[?&]tk=/.test(rawContent)) {
+      throw new UnsupportedPlatformError(
+        '暂不支持这种分享格式，请在淘宝 App 商品页选择「分享 → 复制口令」（￥￥ 格式）后再粘贴'
+      );
+    }
+    throw tklError ?? new ConversionApiError("未能识别该商品，请换商品口令重试");
   }
 
   private async convertTaobaoByTkl(rawContent: string): Promise<TaobaoConversionResult> {
@@ -186,6 +191,8 @@ export class ZhetaokeClient implements TaobaoClient {
       throw new ConversionApiError(`Zhetaoke HTTP ${response.status}`);
     }
     const text = await response.text();
+    // 诊断日志：打出折淘客原始返回（截断），便于排查转链/查券为空的问题（docker logs 可查）
+    console.log(`[ztk-convert] resp=${text.slice(0, 800)}`);
     // 折淘客偶发返回两段 JSON 拼接（如 转链失败 + 具体原因），取信息量更大的一段
     const payload = parseZhetaokePayload(text);
     const status = Number(payload.status ?? payload.code ?? 0);
