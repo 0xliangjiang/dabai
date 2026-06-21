@@ -47,6 +47,7 @@ export type CreateTaobaoClientConfig = {
   zhetaokeJdApiUrl?: string;
   zhetaokeJdUnionId?: string;
   zhetaokeJdPositionId?: string;
+  zhetaokeJdItemInfoUrl?: string;
   jdUnionAppKey?: string;
   jdUnionAppSecret?: string;
   jdUnionSiteId?: string;
@@ -63,6 +64,7 @@ type ZhetaokeClientConfig = {
   jdApiUrl: string;
   jdUnionId: string;
   jdPositionId: string;
+  jdItemInfoUrl: string;
 };
 
 type ClientDependencies = {
@@ -289,29 +291,39 @@ export class ZhetaokeClient implements TaobaoClient {
       skuId = extractJdSkuId(await this.resolveRedirect(materialUrl));
     }
     let goods: Record<string, unknown> = asRecord(pickValue(data, ["goodsInfo", "skuInfo"])) ?? {};
+    // 全折淘客方案（无官方密钥）：转链接口不返回商品详情，用折淘客「京东商品详情」接口补全
+    if (Object.keys(goods).length === 0 && skuId) {
+      goods = await this.fetchJdItemInfo(skuId);
+    }
     if (Object.keys(goods).length === 0 && this.jdUnion && skuId) {
       goods = (await this.jdUnion.goodsQueryBySku(skuId)) ?? {};
     }
     const commissionInfo = asRecord(pickValue(goods, ["commissionInfo"])) ?? {};
     const priceInfo = asRecord(pickValue(goods, ["priceInfo"])) ?? {};
+    // 价格/佣金：同时兼容官方联盟(嵌套)与折淘客(扁平)两种字段命名
     const itemPriceCents = parseMoneyToCents(
       pickValue(priceInfo, ["lowestCouponPrice", "lowestPrice", "price"]) ??
-        pickValue(goods, ["price", "lowestPrice"])
+        pickValue(goods, ["quanhou_jiage", "quanhoujiage", "price", "lowestPrice", "zk_final_price"])
     );
     const commissionRate = parsePercentRate(
       pickValue(commissionInfo, ["commissionShare", "plusCommissionShare"]) ??
-        pickValue(goods, ["commissionShare", "commission_rate"])
+        pickValue(goods, ["commissionShare", "commission_rate", "tkrate3", "yongjin_bili", "commissionRatio"])
     );
     const estimatedCommissionCents =
-      parseMoneyToCents(pickValue(commissionInfo, ["couponCommission", "commission"])) ||
-      estimateCommissionCents(itemPriceCents, commissionRate);
+      parseMoneyToCents(
+        pickValue(commissionInfo, ["couponCommission", "commission"]) ??
+          pickValue(goods, ["yongjin_jine", "commission"])
+      ) || estimateCommissionCents(itemPriceCents, commissionRate);
 
     return {
       platform: "jd",
       itemId: skuId || materialUrl,
       itemTitle:
-        pickString(goods, ["skuName", "goodsName", "title"]) || pickString(data, ["skuName", "goodsName"]) || "京东商品",
-      itemImageUrl: pickJdImage(goods) || pickString(data, ["imageUrl", "imgUrl"]),
+        pickString(goods, ["skuName", "goodsName", "title", "tao_title", "jianjie"]) ||
+        pickString(data, ["skuName", "goodsName"]) ||
+        "京东商品",
+      itemImageUrl:
+        pickJdImage(goods) || pickString(goods, ["pict_url", "pic_url", "imageUrl"]) || pickString(data, ["imageUrl", "imgUrl"]),
       itemPriceCents,
       commissionRate,
       estimatedCommissionCents,
@@ -319,6 +331,30 @@ export class ZhetaokeClient implements TaobaoClient {
       generatedShortUrl: shortUrl,
       generatedClickUrl: clickUrl || shortUrl
     };
+  }
+
+  // 折淘客「京东商品详情」接口：用 skuId 查标题/价格/佣金（无需官方京东联盟密钥）
+  private async fetchJdItemInfo(skuId: string): Promise<Record<string, unknown>> {
+    try {
+      const url = new URL(this.config.jdItemInfoUrl);
+      url.searchParams.set("appkey", this.config.appKey);
+      if (isRealConfigValue(this.config.sid)) url.searchParams.set("sid", this.config.sid);
+      url.searchParams.set("num_iids", skuId); // 商品ID（折淘客多用 num_iids）
+      url.searchParams.set("id", skuId); // 兜底别名
+      const response = await this.fetch(url.toString());
+      const text = await response.text();
+      // 诊断日志：字段命名未知，先打出来便于校准（docker logs 查 ztk-jd-detail）
+      console.log(`[ztk-jd-detail] resp=${text.slice(0, 1000)}`);
+      if (!response.ok) return {};
+      const payload = JSON.parse(text) as Record<string, unknown>;
+      // 兼容 {content:[{...}]} / {content:{...}} / 直接数组 / {"":[{...}]}
+      const content = pickValue(payload, ["content", ""]) ?? payload;
+      const first = Array.isArray(content) ? content[0] : content;
+      return asRecord(first) ?? {};
+    } catch (error) {
+      console.warn("[ztk-jd-detail] 查询失败:", (error as Error).message);
+      return {};
+    }
   }
 
   // 京东联盟官方 API 转链（免费）
@@ -385,7 +421,8 @@ export function createTaobaoClient(config: CreateTaobaoClientConfig): TaobaoClie
           config.zhetaokeJdApiUrl ??
           "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
         jdUnionId: config.zhetaokeJdUnionId ?? "",
-        jdPositionId: config.zhetaokeJdPositionId ?? ""
+        jdPositionId: config.zhetaokeJdPositionId ?? "",
+        jdItemInfoUrl: config.zhetaokeJdItemInfoUrl ?? "https://j.zhetaoke.com/user/open/open_item_info3.aspx"
       },
       { jdUnion }
     );
