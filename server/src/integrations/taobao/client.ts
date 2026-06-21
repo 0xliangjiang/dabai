@@ -355,10 +355,8 @@ export class ZhetaokeClient implements TaobaoClient {
       const url = new URL(this.config.jdBigFieldUrl);
       url.searchParams.set("appkey", this.config.appKey);
       url.searchParams.set("content", content); // URLSearchParams 自动 urlencode
-      // 该接口要求 sceneId（推广位场景）：优先 positionId，兜底 unionId
-      const sceneId = isRealConfigValue(this.config.jdPositionId)
-        ? this.config.jdPositionId
-        : this.config.jdUnionId;
+      // 该接口要求有效的 sceneId（京东推广位/场景枚举值，非 unionId）——用配置的推广位 id
+      const sceneId = this.config.jdPositionId;
       if (isRealConfigValue(sceneId)) {
         url.searchParams.set("sceneId", sceneId);
         url.searchParams.set("positionId", sceneId);

@@ -18,6 +18,7 @@ export const SETTING_FIELDS: SettingFieldMeta[] = [
   { key: "ztk_sid", field: "zhetaokeSid", kind: "string", secret: false, label: "折淘客 SID" },
   { key: "ztk_relation_id", field: "zhetaokeRelationId", kind: "string", secret: false, label: "淘宝渠道 relationId" },
   { key: "ztk_jd_union_id", field: "zhetaokeJdUnionId", kind: "string", secret: false, label: "京东联盟 unionId" },
+  { key: "ztk_jd_position_id", field: "zhetaokeJdPositionId", kind: "string", secret: false, label: "京东推广位ID(sceneId)" },
   { key: "minimax_model", field: "minimaxModel", kind: "string", secret: false, label: "MiniMax 模型" },
   { key: "minimax_api_url", field: "minimaxApiUrl", kind: "string", secret: false, label: "MiniMax 接口地址" },
   { key: "wechat_deal_template_id", field: "wechatDealTemplateId", kind: "string", secret: false, label: "订阅消息模板 ID" },
