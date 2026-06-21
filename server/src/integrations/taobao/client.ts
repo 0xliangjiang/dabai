@@ -354,6 +354,12 @@ export class ZhetaokeClient implements TaobaoClient {
       const url = new URL(this.config.jdBigFieldUrl);
       url.searchParams.set("appkey", this.config.appKey);
       url.searchParams.set("content", content); // URLSearchParams 自动 urlencode
+      // 该接口要求 sceneId（推广位场景），复用转链用的 positionId/sceneId
+      const sceneId = this.config.jdPositionId;
+      if (isRealConfigValue(sceneId)) {
+        url.searchParams.set("sceneId", sceneId);
+        url.searchParams.set("positionId", sceneId);
+      }
       const response = await this.fetch(url.toString());
       const text = await response.text();
       console.log(`[ztk-jd-bigfield] resp=${text.slice(0, 600)}`);
