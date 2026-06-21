@@ -285,10 +285,16 @@ export class ZhetaokeClient implements TaobaoClient {
       throw new ConversionApiError(message);
     }
 
-    // 商品信息补全：优先折淘客响应自带，缺失且配置了官方密钥时再查官方
+    // 商品信息补全：优先折淘客响应自带，缺失时解析短链拿 skuId
     let skuId = pickString(data, ["skuId", "sku_id"]) || extractJdSkuId(rawContent);
-    if (!skuId && materialUrl) {
-      skuId = extractJdSkuId(await this.resolveRedirect(materialUrl));
+    if (!skuId) {
+      // 京东 App 口令转链后只回短链(u.jd.com/...)，跟随重定向到 item.jd.com/<skuId>.html 取 skuId
+      const resolveTarget = shortUrl || clickUrl || materialUrl;
+      if (/^https?:\/\//i.test(resolveTarget)) {
+        const finalUrl = await this.resolveRedirect(resolveTarget);
+        skuId = extractJdSkuId(finalUrl);
+        console.log(`[ztk-jd] 短链解析 ${resolveTarget} → ${finalUrl} → skuId=${skuId || "(空)"}`);
+      }
     }
     let goods: Record<string, unknown> = asRecord(pickValue(data, ["goodsInfo", "skuInfo"])) ?? {};
     // 全折淘客方案（无官方密钥）：转链接口不返回商品详情，用折淘客「京东商品详情」接口补全
@@ -504,8 +510,12 @@ function detectPlatform(rawContent: string): ConversionPlatform {
 }
 
 function extractJdSkuId(rawContent: string): string {
-  const match = rawContent.match(/item(?:\.m)?\.jd\.com\/(?:product\/)?(\d{6,})\.html/i);
-  return match?.[1] ?? "";
+  return (
+    rawContent.match(/item(?:\.m)?\.jd\.com\/(?:product\/)?(\d{6,})\.html/i)?.[1] ??
+    rawContent.match(/[?&](?:sku|skuid|wareid)=(\d{6,})/i)?.[1] ??
+    rawContent.match(/\/(\d{8,})\.html/)?.[1] ??
+    ""
+  );
 }
 
 function extractJdMaterialId(rawContent: string): string {
