@@ -161,6 +161,8 @@ export type SyncOrdersOptions = {
   commissionSharingRatio: number;
   referralEnabled?: boolean;
   referralRatio?: number;
+  // 淘宝订单查询时间类型：1创建 2付款 3结算 4更新（默认 4，按更新时间捕获状态变化）
+  queryType?: number;
 };
 
 export type OrderSyncRunResult = {
@@ -206,6 +208,25 @@ export async function runOrderSync(
     jdAttributed = jd.value.attributed;
   } else {
     errors.push(`京东同步失败：${errorText(jd.reason)}`);
+  }
+
+  // 结算兜底：再按"结算时间"(query_type=3)扫最近 3 小时（接口上限），专门补抓被更新窗(qt=4)
+  // 漏掉的结算订单，把 DB 的 orderStatus 也修正到 settled（不计入 ok/计数，best-effort）。
+  try {
+    const settleEnd = new Date();
+    // 接口最大可查 3 小时，留 2 分钟余量避免边界报错
+    const settleStart = new Date(settleEnd.getTime() - (3 * 60 - 2) * 60 * 1000);
+    const settle = await syncTaobaoOrders(repositories, clients.taobaoOrderClient, {
+      ...options,
+      startTime: settleStart,
+      endTime: settleEnd,
+      queryType: 3
+    });
+    if (settle.attributed > 0) {
+      console.log(`[order-sync] 结算兜底扫描：处理 ${settle.synced} 单，归属 ${settle.attributed} 单`);
+    }
+  } catch (error) {
+    console.error("[order-sync] 结算兜底扫描失败:", (error as Error).message);
   }
 
   // 自动兜底：补救"订单已结算/退款但台账仍 pending"的滞后订单（不影响同步计数与成败）
@@ -294,7 +315,13 @@ export async function syncTaobaoOrders(
   let attributed = 0;
 
   while (true) {
-    const page = await orderClient.fetchTaobaoOrders({ startTime, endTime, positionIndex, pageSize, queryType: 4 });
+    const page = await orderClient.fetchTaobaoOrders({
+      startTime,
+      endTime,
+      positionIndex,
+      pageSize,
+      queryType: options.queryType ?? 4
+    });
     for (const incoming of page.orders) {
       try {
         const order = await repositories.orders.upsert(incoming);

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { createRepositories } from "../src/repositories/memory.js";
-import { reconcileOrderLedger } from "../src/domain/order-sync.js";
+import { reconcileOrderLedger, runOrderSync } from "../src/domain/order-sync.js";
 import type { Repositories, UpsertOrderInput } from "../src/repositories/types.js";
 
 const OPTIONS = { commissionSharingRatio: 0.5, referralEnabled: false, referralRatio: 0 };
@@ -140,5 +140,34 @@ describe("commissionLedger.listStalePending", () => {
     await reconcileOrderLedger(repos, settled, OPTIONS);
     stale = await repos.commissionLedger.listStalePending(100);
     expect(stale).toHaveLength(0);
+  });
+});
+
+describe("runOrderSync 结算兜底扫描", () => {
+  test("除常规更新窗(qt=4)外，额外按结算时间(qt=3)扫一遍", async () => {
+    const repos = createRepositories();
+    const queryTypes: number[] = [];
+    const taobaoOrderClient = {
+      async fetchTaobaoOrders(input: { queryType?: number }) {
+        queryTypes.push(input.queryType ?? 4);
+        return { orders: [], hasNext: false };
+      }
+    };
+    const orderClient = {
+      async fetchJdOrders() {
+        return { orders: [], hasNext: false };
+      }
+    };
+
+    const result = await runOrderSync(
+      repos,
+      { taobaoOrderClient, orderClient },
+      { commissionSharingRatio: 0.5 },
+      "auto"
+    );
+
+    expect(result.ok).toBe(true);
+    expect(queryTypes).toContain(4); // 常规更新窗
+    expect(queryTypes).toContain(3); // 结算兜底
   });
 });
