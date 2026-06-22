@@ -108,9 +108,13 @@ export class ZhetaokeClient implements TaobaoClient {
     let tklError: Error | undefined;
     try {
       const result = await this.convertTaobaoByTkl(rawContent);
-      // 只要折淘客返回了真实商品（有标题）即视为成功——新版加密商品 id 是不稳定 token，
-      // itemId 可能为空，归因改走「商品标题」匹配，不能因没有数字 id 就当失败。
-      if (result.itemTitle && result.itemTitle !== "淘宝商品") return result;
+      // 只要折淘客返回了真实商品（有标题）即视为成功。新版加密商品 tao_id 是不稳定 token、
+      // itemId 解析为空，这时补调「解析商品编号」接口拿真实数字 item_id，让归因能走
+      // itemId 精确相等（比标题匹配可靠）；拿不到再退回标题匹配。
+      if (result.itemTitle && result.itemTitle !== "淘宝商品") {
+        if (!result.itemId) result.itemId = await this.resolveTaobaoItemIdByApi(rawContent);
+        return result;
+      }
     } catch (error) {
       if (!(error instanceof ConversionApiError)) throw error;
       tklError = error;
@@ -159,7 +163,35 @@ export class ZhetaokeClient implements TaobaoClient {
   }
 
   // 新版淘宝分享短链（e.tb.cn/m.tb.cn）页面里带商品ID，自行解析
+  // 折淘客「解析商品编号」接口：口令/链接 → 真实数字 item_id（口令免费，纯数字ID才收费故不传 jb）
+  private async resolveTaobaoItemIdByApi(rawContent: string): Promise<string> {
+    try {
+      const url = this.config.apiUrl.replace("open_gaoyongzhuanlian_tkl.ashx", "open_shangpin_id.ashx");
+      const params = new URLSearchParams({
+        appkey: this.config.appKey,
+        sid: this.config.sid,
+        pid: this.config.pid, // 新增必填：必须与授权账户一致
+        content: rawContent, // URLSearchParams 自动 urlencode
+        type: "1"
+      });
+      // 从手淘拷贝的渠道口令必须带 relation_id（渠道 rid）才能解析
+      if (isRealConfigValue(this.config.relationId)) params.set("relation_id", this.config.relationId);
+      const response = await this.fetch(`${url}?${params.toString()}`);
+      if (!response.ok) return "";
+      const text = await response.text();
+      console.log(`[ztk-spid] resp=${text.slice(0, 300)}`);
+      const payload = JSON.parse(text) as Record<string, unknown>;
+      const itemId = pickString(payload, ["item_id", "itemId", "num_iid"]);
+      return /^\d{6,}$/.test(itemId) ? itemId : "";
+    } catch {
+      return "";
+    }
+  }
+
   private async resolveTaobaoItemId(rawContent: string): Promise<string> {
+    // 优先用「解析商品编号」接口（最可靠），失败再退回短链跟随解析
+    const byApi = await this.resolveTaobaoItemIdByApi(rawContent);
+    if (byApi) return byApi;
     const direct = rawContent.match(/[?&]id=(\d{8,})/);
     if (direct) return direct[1];
     let shortLink = rawContent.match(/https?:\/\/(?:e|m)\.tb\.cn\/[^\s，。"'<>]+/i)?.[0];
