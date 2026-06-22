@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
-import { runOrderSync } from "../domain/order-sync.js";
+import { resolveCommissionOptions, runOrderSync } from "../domain/order-sync.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerJobRoutes(
@@ -15,16 +15,12 @@ export async function registerJobRoutes(
       return reply.code(401).send({ error: "unauthorized" });
     }
 
-    const globalRatio =
-      (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
-    const referralEnabled = await repositories.settings.getReferralEnabled();
-    const referralRatio =
-      (await repositories.settings.getReferralRatio()) ?? config.referralCommissionRatio;
+    const commissionOptions = await resolveCommissionOptions(repositories, config);
     const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
     const result = await runOrderSync(
       repositories,
       { taobaoOrderClient, orderClient },
-      { commissionSharingRatio: globalRatio, attributionWindowHours: 24, referralEnabled, referralRatio },
+      { attributionWindowHours: 24, ...commissionOptions },
       "manual"
     );
 

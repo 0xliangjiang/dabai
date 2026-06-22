@@ -32,6 +32,8 @@ export type AppConfig = {
   minimaxModel: string;
   orderSyncIntervalMinutes: number;
   orderSyncLookbackMinutes: number;
+  autoSettleThresholdYuan: number; // 已收货自动结算阈值：佣金≤此值立即结算，超过则延迟
+  autoSettleDelayDays: number; // 大额佣金：已收货满此天数后自动结算
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -75,6 +77,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     minimaxModel: env.MINIMAX_MODEL ?? "MiniMax-M3",
     orderSyncIntervalMinutes: Number(env.ORDER_SYNC_INTERVAL_MINUTES ?? 15),
     orderSyncLookbackMinutes: Number(env.ORDER_SYNC_LOOKBACK_MINUTES ?? 170),
+    autoSettleThresholdYuan: Number(env.AUTO_SETTLE_THRESHOLD_YUAN ?? 20),
+    autoSettleDelayDays: Number(env.AUTO_SETTLE_DELAY_DAYS ?? 7),
   };
 }
 

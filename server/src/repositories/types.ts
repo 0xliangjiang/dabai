@@ -70,6 +70,7 @@ export type OrderRecord = {
   settledCommissionCents: number | null;
   orderStatus: string;
   manualStatus: string | null;
+  receivedAt: Date | null;
   rawPayload: unknown;
 };
 

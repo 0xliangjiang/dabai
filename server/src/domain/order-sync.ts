@@ -8,6 +8,32 @@ import {
 import type { JdOrderClient } from "../integrations/jd/orders.js";
 import type { TaobaoOrderClient } from "../integrations/taobao/orders.js";
 import type { OrderRecord, Repositories } from "../repositories/types.js";
+import type { AppConfig } from "../config/env.js";
+import { getEffectiveConfig } from "../config/runtime.js";
+
+const DEFAULT_AUTO_SETTLE_THRESHOLD_CENTS = 2000; // 20 元
+const DEFAULT_AUTO_SETTLE_DELAY_DAYS = 7;
+
+// 已收货订单的"有效结算状态"：佣金≤阈值→收货即结算；超过阈值→收货满 N 天才结算（控风险）。
+// 已结算/退款/失效按原状态；其余（已付款）维持待结算。
+function resolveSettlementStatus(
+  order: OrderRecord,
+  now: Date,
+  thresholdCents: number,
+  delayDays: number
+): OrderCommissionStatus {
+  const raw = order.orderStatus;
+  if (raw === "settled") return "settled";
+  if (raw === "refunded" || raw === "invalid") return raw;
+  if (raw === "received") {
+    const commission = order.settledCommissionCents ?? order.estimatedCommissionCents;
+    if (commission <= thresholdCents) return "settled"; // 小额：收货即自动结算
+    const ref = order.receivedAt ?? order.payTime; // 大额：收货满 N 天再结算
+    if (now.getTime() - ref.getTime() >= delayDays * 24 * 60 * 60 * 1000) return "settled";
+    return "paid"; // 未到期：维持待结算
+  }
+  return "paid";
+}
 
 // 归因：优先用「复制事件」（强信号）；无复制候选时回退到「查询/转链记录」（弱信号），
 // 解决"用户查过但没点复制"也能归因。多候选会进待复核，避免热门商品误判。
@@ -75,7 +101,13 @@ export async function reconcileOrderLedger(
   if (!userId || !confirmed) return { credited: false, rebateStatus: "none" };
 
   const attrUser = await repositories.users.findById(userId);
-  const orderStatus = normalizeCommissionStatus(order.orderStatus);
+  // 已收货按"佣金阈值 + 延迟天数"决定是否提前结算（小额收货即结算、大额收货满 N 天）
+  const orderStatus = resolveSettlementStatus(
+    order,
+    new Date(),
+    options.autoSettleThresholdCents ?? DEFAULT_AUTO_SETTLE_THRESHOLD_CENTS,
+    options.autoSettleDelayDays ?? DEFAULT_AUTO_SETTLE_DELAY_DAYS
+  );
 
   // 退款/失效：把该订单已记的台账（含上线提成）全部冲销为 reversed，从可用余额剔除。
   // 这样"已结算→退款"会正确扣回；"仅付款→退款"本就未计入，冲销后仍是净 0，安全。
@@ -130,16 +162,28 @@ async function processOrder(
   return { attributed: credited };
 }
 
-// 组装台账核对所需的佣金/分销设置（与定时同步一致），供「刷新返利」端点复用
+// 组装台账核对所需的佣金/分销/自动结算设置（DB 覆盖 > env > 默认），定时同步与各端点共用
 export async function resolveCommissionOptions(
   repositories: Repositories,
-  defaults: { commissionSharingRatio: number; referralCommissionRatio: number }
-): Promise<Pick<SyncOrdersOptions, "commissionSharingRatio" | "referralEnabled" | "referralRatio">> {
+  config: AppConfig
+): Promise<
+  Pick<
+    SyncOrdersOptions,
+    "commissionSharingRatio" | "referralEnabled" | "referralRatio" | "autoSettleThresholdCents" | "autoSettleDelayDays"
+  >
+> {
+  const eff = await getEffectiveConfig(config, repositories);
   const commissionSharingRatio =
-    (await repositories.settings.getCommissionSharingRatio()) ?? defaults.commissionSharingRatio;
+    (await repositories.settings.getCommissionSharingRatio()) ?? config.commissionSharingRatio;
   const referralEnabled = await repositories.settings.getReferralEnabled();
-  const referralRatio = (await repositories.settings.getReferralRatio()) ?? defaults.referralCommissionRatio;
-  return { commissionSharingRatio, referralEnabled, referralRatio };
+  const referralRatio = (await repositories.settings.getReferralRatio()) ?? config.referralCommissionRatio;
+  return {
+    commissionSharingRatio,
+    referralEnabled,
+    referralRatio,
+    autoSettleThresholdCents: Math.round((eff.autoSettleThresholdYuan ?? 20) * 100),
+    autoSettleDelayDays: eff.autoSettleDelayDays ?? DEFAULT_AUTO_SETTLE_DELAY_DAYS
+  };
 }
 
 // 重跑归因：对历史「待复核 / 未归因」订单用当前归因逻辑重新匹配一遍（人工归因不动），
@@ -197,6 +241,9 @@ export type SyncOrdersOptions = {
   referralRatio?: number;
   // 淘宝订单查询时间类型：1创建 2付款 3结算 4更新（默认 4，按更新时间捕获状态变化）
   queryType?: number;
+  // 已收货自动结算：佣金≤阈值立即结算；超过则收货满 N 天再结算
+  autoSettleThresholdCents?: number;
+  autoSettleDelayDays?: number;
 };
 
 export type OrderSyncRunResult = {

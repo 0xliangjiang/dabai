@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { loadConfig, validateProductionConfig } from "./config/env.js";
-import { runOrderSync } from "./domain/order-sync.js";
+import { resolveCommissionOptions, runOrderSync } from "./domain/order-sync.js";
 import { withTimeout } from "./integrations/http.js";
 
 // 整轮同步硬超时：即使第三方请求超时已就位，仍兜底防止任何意外挂起永久卡死调度
@@ -34,22 +34,12 @@ if (syncEnabled) {
           const interval = cfg.orderSyncIntervalMinutes > 0 ? cfg.orderSyncIntervalMinutes : DEFAULT_INTERVAL_MINUTES;
           const lookback = Math.min(175, Math.max(interval * 2, cfg.orderSyncLookbackMinutes || 170));
           const startTime = new Date(Date.now() - lookback * 60 * 1000);
-          const globalRatio =
-            (await app.deps.repositories.settings.getCommissionSharingRatio()) ?? cfg.commissionSharingRatio;
-          const referralEnabled = await app.deps.repositories.settings.getReferralEnabled();
-          const referralRatio =
-            (await app.deps.repositories.settings.getReferralRatio()) ?? cfg.referralCommissionRatio;
+          const commissionOptions = await resolveCommissionOptions(app.deps.repositories, cfg);
           const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
           return runOrderSync(
             app.deps.repositories,
             { taobaoOrderClient, orderClient },
-            {
-              startTime,
-              commissionSharingRatio: globalRatio,
-              attributionWindowHours: 24,
-              referralEnabled,
-              referralRatio
-            },
+            { startTime, attributionWindowHours: 24, ...commissionOptions },
             "auto"
           );
         })(),

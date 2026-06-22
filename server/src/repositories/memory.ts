@@ -348,12 +348,19 @@ export function createRepositories(): Repositories {
       },
       async upsert(input: UpsertOrderInput) {
         const existingId = ordersByTbkOrderId.get(input.tbkOrderId);
-        const manualStatus = (existingId ? orders.get(existingId)?.manualStatus : null) ?? null;
+        const existing = existingId ? orders.get(existingId) : undefined;
+        const manualStatus = existing?.manualStatus ?? null;
+        const orderStatus = resolveEffectiveStatus(input.orderStatus, manualStatus);
+        // 首次进入「已收货/已结算」记录收货时间（已记则不覆盖），用于大额延迟结算计时
+        const receivedAt =
+          existing?.receivedAt ??
+          (orderStatus === "received" || orderStatus === "settled" ? new Date() : null);
         const record: OrderRecord = {
           id: existingId ?? randomUUID(),
           ...input,
-          orderStatus: resolveEffectiveStatus(input.orderStatus, manualStatus),
-          manualStatus
+          orderStatus,
+          manualStatus,
+          receivedAt
         };
         orders.set(record.id, record);
         ordersByTbkOrderId.set(input.tbkOrderId, record.id);
@@ -506,7 +513,7 @@ export function createRepositories(): Repositories {
         }
       },
       async listStalePending(limit: number) {
-        const terminal = new Set(["settled", "refunded", "invalid"]);
+        const terminal = new Set(["settled", "refunded", "invalid", "received"]);
         // 按订单归集：终态订单中"有 pending 但还没有 available/reversed"的才算待重算（保证收敛）
         const byOrder = new Map<string, { hasPending: boolean; hasDone: boolean }>();
         for (const entry of ledger.values()) {

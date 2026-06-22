@@ -143,6 +143,50 @@ describe("commissionLedger.listStalePending", () => {
   });
 });
 
+describe("已收货自动结算（小额即结/大额延迟）", () => {
+  const AUTO = { commissionSharingRatio: 0.5, autoSettleThresholdCents: 2000, autoSettleDelayDays: 7 };
+  async function seedReceived(repos: Repositories, commissionCents: number, receivedAt?: Date) {
+    const user = await repos.users.findOrCreateByOpenid("u-recv");
+    const order = await repos.orders.upsert(
+      orderInput({ orderStatus: "received", estimatedCommissionCents: commissionCents, settledCommissionCents: null })
+    );
+    await repos.orders.upsertAttribution({
+      tbkOrderId: order.tbkOrderId,
+      status: "auto_matched",
+      confidence: 1,
+      reason: "single_candidate_inside_window",
+      userId: user.id
+    });
+    return { user, order: receivedAt ? { ...order, receivedAt } : order };
+  }
+
+  test("已收货 + 小额佣金(≤20元) → 立即自动结算到账", async () => {
+    const repos = createRepositories();
+    const { user, order } = await seedReceived(repos, 1500); // 15 元
+    const r = await reconcileOrderLedger(repos, order, AUTO);
+    expect(r.rebateStatus).toBe("available");
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(750); // 1500*0.5
+  });
+
+  test("已收货 + 大额佣金(>20元) 未满7天 → 维持待结算（按订单佣金判，非返利）", async () => {
+    const repos = createRepositories();
+    // 佣金 30 元(>20) 但用户返利仅 15 元(<20)：仍应延迟，证明阈值看的是订单佣金
+    const { user, order } = await seedReceived(repos, 3000);
+    const r = await reconcileOrderLedger(repos, order, AUTO);
+    expect(r.rebateStatus).toBe("pending");
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(0);
+  });
+
+  test("已收货 + 大额佣金 满7天 → 自动结算到账", async () => {
+    const repos = createRepositories();
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    const { user, order } = await seedReceived(repos, 3000, eightDaysAgo);
+    const r = await reconcileOrderLedger(repos, order, AUTO);
+    expect(r.rebateStatus).toBe("available");
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(1500); // 3000*0.5
+  });
+});
+
 describe("批量核对（后台一键）", () => {
   test("把多笔已结算但台账 pending 的订单全部修复并收敛", async () => {
     const repos = createRepositories();

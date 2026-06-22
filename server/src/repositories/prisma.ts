@@ -426,6 +426,10 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const existing = await prisma.tbkOrder.findUnique({ where: { tbkOrderId: input.tbkOrderId } });
         // 手动标记的状态与折淘客状态取更靠后者，避免同步把已收货/已结算刷回已付款
         const orderStatus = resolveEffectiveStatus(input.orderStatus, existing?.manualStatus ?? null);
+        // 首次进入「已收货/已结算」时记录收货时间，用于大额佣金延迟结算计时（已记则不覆盖）
+        const receivedAt =
+          existing?.receivedAt ??
+          (orderStatus === "received" || orderStatus === "settled" ? new Date() : null);
         const record = await prisma.tbkOrder.upsert({
           where: { tbkOrderId: input.tbkOrderId },
           create: {
@@ -437,6 +441,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             estimatedCommissionCents: input.estimatedCommissionCents,
             settledCommissionCents: input.settledCommissionCents,
             orderStatus,
+            receivedAt,
             rawPayload: toJsonValue(input.rawPayload)
           },
           update: {
@@ -447,6 +452,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             estimatedCommissionCents: input.estimatedCommissionCents,
             settledCommissionCents: input.settledCommissionCents,
             orderStatus,
+            receivedAt,
             rawPayload: toJsonValue(input.rawPayload),
             syncedAt: new Date()
           }
@@ -646,9 +652,9 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
       },
       async listStalePending(limit: number) {
-        // 候选：终态订单（结算/退款/失效）且存在 pending 台账
+        // 候选：终态/已收货订单且存在 pending 台账（已收货纳入：支持小额收货即结算、大额到期结算）
         const pendingRows = await prisma.commissionLedger.findMany({
-          where: { status: "pending", tbkOrder: { orderStatus: { in: ["settled", "refunded", "invalid"] } } },
+          where: { status: "pending", tbkOrder: { orderStatus: { in: ["settled", "refunded", "invalid", "received"] } } },
           select: { tbkOrderId: true },
           distinct: ["tbkOrderId"],
           take: limit * 3
@@ -1037,9 +1043,10 @@ function mapOrder(record: {
   settledCommissionCents: number | null;
   orderStatus: string;
   manualStatus?: string | null;
+  receivedAt?: Date | null;
   rawPayload: unknown;
 }): OrderRecord {
-  return { ...record, manualStatus: record.manualStatus ?? null };
+  return { ...record, manualStatus: record.manualStatus ?? null, receivedAt: record.receivedAt ?? null };
 }
 
 function mapAttribution(record: {

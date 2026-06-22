@@ -292,10 +292,7 @@ export async function registerAdminRoutes(
 
   // 一键核对：把"订单已终态(结算/退款/失效)但返利台账仍 pending"的存量订单立即重算入账
   app.post("/api/admin/orders/reconcile-settled", async () => {
-    const options = await resolveCommissionOptions(repositories, {
-      commissionSharingRatio: config.commissionSharingRatio,
-      referralCommissionRatio: config.referralCommissionRatio
-    });
+    const options = await resolveCommissionOptions(repositories, config);
     const attempted = new Set<string>();
     let fixed = 0;
     // 分批处理直到没有"新"的滞后订单；只统计已处理过的 id，保证收敛与计数准确
@@ -318,10 +315,7 @@ export async function registerAdminRoutes(
 
   // 一键重跑归因：对历史「待复核 / 未归因」订单用当前归因逻辑重新匹配（人工归因不动）
   app.post("/api/admin/orders/reattribute", async () => {
-    const options = await resolveCommissionOptions(repositories, {
-      commissionSharingRatio: config.commissionSharingRatio,
-      referralCommissionRatio: config.referralCommissionRatio
-    });
+    const options = await resolveCommissionOptions(repositories, config);
     const result = await reattributePendingOrders(repositories, { ...options, attributionWindowHours: 24 });
     return { ok: true, ...result };
   });

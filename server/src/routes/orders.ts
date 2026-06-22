@@ -2,14 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
+import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerOrderRoutes(
   app: FastifyInstance,
   repositories: Repositories,
-  commissionSharingRatio: number,
-  referralCommissionRatio: number
+  config: AppConfig
 ) {
+  const commissionSharingRatio = config.commissionSharingRatio;
   app.get("/api/orders/me", async (request) => ({
     orders: await repositories.orders.listByUser(request.userId)
   }));
@@ -22,10 +23,7 @@ export async function registerOrderRoutes(
     if (!attribution || attribution.userId !== request.userId) {
       return reply.code(404).send({ error: "订单不存在" });
     }
-    const options = await resolveCommissionOptions(repositories, {
-      commissionSharingRatio,
-      referralCommissionRatio
-    });
+    const options = await resolveCommissionOptions(repositories, config);
     await reconcileOrderLedger(repositories, order, options);
     const orders = await repositories.orders.listByUser(request.userId);
     return { order: orders.find((o) => o.id === order.id) ?? null };

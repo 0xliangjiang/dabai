@@ -156,6 +156,7 @@ model TbkOrder {
   settledCommissionCents   Int?
   orderStatus              String
   manualStatus             String?
+  receivedAt               DateTime? // 首次变「已收货」的时间，用于大额佣金延迟结算计时
   rawPayload               Json
   syncedAt                 DateTime @default(now())
   updatedAt                DateTime @updatedAt

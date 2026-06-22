@@ -24,6 +24,8 @@ export const SETTING_FIELDS: SettingFieldMeta[] = [
   { key: "wechat_deal_template_id", field: "wechatDealTemplateId", kind: "string", secret: false, label: "订阅消息模板 ID" },
   { key: "order_sync_interval_minutes", field: "orderSyncIntervalMinutes", kind: "number", secret: false, label: "订单同步间隔(分钟)" },
   { key: "order_sync_lookback_minutes", field: "orderSyncLookbackMinutes", kind: "number", secret: false, label: "订单同步回看窗口(分钟)" },
+  { key: "auto_settle_threshold_yuan", field: "autoSettleThresholdYuan", kind: "number", secret: false, label: "自动结算阈值(元,佣金超过则延迟)" },
+  { key: "auto_settle_delay_days", field: "autoSettleDelayDays", kind: "number", secret: false, label: "大额佣金延迟结算天数" },
   // 密钥：只写不回显
   { key: "ztk_app_key", field: "zhetaokeAppKey", kind: "string", secret: true, label: "折淘客 appKey" },
   { key: "minimax_api_key", field: "minimaxApiKey", kind: "string", secret: true, label: "MiniMax API Key" },
