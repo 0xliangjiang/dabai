@@ -62,26 +62,42 @@ describe("ZhetaokeClient", () => {
     });
   });
 
-  test("加密商品 itemId 为空时，调 open_shangpin_id 补真实数字 item_id", async () => {
+  test("tkl 返回加密 tao_id token 时原样存为 itemId（无需再调 spid）", async () => {
+    let spidCalled = false;
+    const client = new ZhetaokeClient(ZTK_CONFIG, {
+      fetch: (async (url: unknown) => {
+        if (String(url).includes("open_shangpin_id.ashx")) {
+          spidCalled = true;
+          return new Response("{}", { status: 200 });
+        }
+        return ztkResponse([
+          { tao_id: "eeoGrBNSDtvayKkC6DpFzt0-MPgp4W3tAznm8zQdiRn", title: "彩虹转转塔", quanhou_jiage: "39.9", max_commission_rate: "10" }
+        ]);
+      }) as typeof fetch
+    });
+
+    const result = await client.convert("￥abc￥ 彩虹转转塔");
+    expect(result.itemId).toBe("eeoGrBNSDtvayKkC6DpFzt0-MPgp4W3tAznm8zQdiRn");
+    expect(spidCalled).toBe(false);
+  });
+
+  test("tkl 拿不到任何 id 时调 open_shangpin_id，并原样存其返回的(加密)id", async () => {
     let spidUrl: string | undefined;
     const client = new ZhetaokeClient(ZTK_CONFIG, {
-      fetch: (async (url: unknown, _init?: RequestInit) => {
+      fetch: (async (url: unknown) => {
         const u = String(url);
         if (u.includes("open_shangpin_id.ashx")) {
           spidUrl = u;
-          return new Response(JSON.stringify({ item_id: "673981878045", activity_id: "" }), { status: 200 });
+          return new Response(JSON.stringify({ item_id: "eeoGrBNSDtvayKkC6DpFzt0-MPgp4W3tAznm8zQdiRn" }), { status: 200 });
         }
-        // 转链返回加密商品：tao_id 是 token，且无 item_url/coupon_click_url 里的数字 id
-        return ztkResponse([
-          { tao_id: "encTOKENabc", title: "彩虹转转塔", quanhou_jiage: "39.9", max_commission_rate: "10" }
-        ]);
+        // tkl 无 tao_id、无 item_url/coupon_click_url → 解析不出任何 id
+        return ztkResponse([{ title: "彩虹转转塔", quanhou_jiage: "39.9", max_commission_rate: "10" }]);
       }) as typeof fetch
     });
 
     const result = await client.convert("￥abc￥ 彩虹转转塔早教玩具");
     expect(spidUrl).toContain("pid=mm_1_2_3");
-    expect(result.itemId).toBe("673981878045");
-    expect(result.itemTitle).toBe("彩虹转转塔");
+    expect(result.itemId).toBe("eeoGrBNSDtvayKkC6DpFzt0-MPgp4W3tAznm8zQdiRn");
   });
 
   test("surfaces zhetaoke business errors", async () => {

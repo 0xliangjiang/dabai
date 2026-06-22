@@ -181,8 +181,9 @@ export class ZhetaokeClient implements TaobaoClient {
       const text = await response.text();
       console.log(`[ztk-spid] resp=${text.slice(0, 300)}`);
       const payload = JSON.parse(text) as Record<string, unknown>;
-      const itemId = pickString(payload, ["item_id", "itemId", "num_iid"]);
-      return /^\d{6,}$/.test(itemId) ? itemId : "";
+      const itemId = pickString(payload, ["item_id", "itemId", "num_iid"]).trim();
+      // 数字或加密 token 都原样返回（与订单侧同款 id 即可精确归因）
+      return isReasonableItemToken(itemId) ? itemId : "";
     } catch {
       return "";
     }
@@ -252,9 +253,10 @@ export class ZhetaokeClient implements TaobaoClient {
 
     return {
       platform: "taobao",
-      // itemId 必须是数字商品 id（要与订单接口的 item_id 对齐才能归因）；
-      // 新版加密 tao_id 是不稳定 token，会被过滤为空，归因改走标题
-      itemId: extractNumericItemId(content, fallbackId),
+      // itemId 优先真实数字 id（最稳，跨上下文一致）；新版加密商品无数字 id 时，
+      // 原样存折淘客返回的 id（加密 token），订单侧若用同款加密 id 即可精确归因，
+      // 否则退回标题匹配（零回退）。
+      itemId: extractItemId(content, fallbackId),
       // 优先用完整标题：折淘客 title 常被截断，jianjie 多为完整商品名，
       // 用完整名与订单标题对齐，标题归因最准
       itemTitle: pickFullTitle(content),
@@ -599,6 +601,21 @@ function pickFullTitle(content: Record<string, unknown>): string {
   const jianjie = pickString(content, ["jianjie", "shortTitle", "sub_title"]).trim();
   if (jianjie && (!title || jianjie.startsWith(title))) return jianjie;
   return title || "淘宝商品";
+}
+
+// 商品 id：优先真实数字 id；拿不到时退回折淘客返回的加密 token（原样存，供订单侧同款加密时精确归因）。
+function extractItemId(content: Record<string, unknown>, fallbackId: string): string {
+  const numeric = extractNumericItemId(content, fallbackId);
+  if (numeric) return numeric;
+  const token = pickString(content, ["tao_id", "item_id", "num_iid", "goods_id"]).trim();
+  if (isReasonableItemToken(token)) return token;
+  const fb = String(fallbackId ?? "").trim();
+  return isReasonableItemToken(fb) ? fb : "";
+}
+
+// 加密商品 id 形如 eeoGrBNSDtvayKkC6DpFzt0-MPgp4W3tAznm8zQdiRn：字母数字与 -_，长度足够才认
+function isReasonableItemToken(s: string): boolean {
+  return /^[A-Za-z0-9_-]{8,}$/.test(s);
 }
 
 // 解析淘宝数字商品 id（归因要与订单接口的 item_id 完全相等）。
