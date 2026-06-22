@@ -1,16 +1,35 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
+import { reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
 import type { Repositories } from "../repositories/types.js";
 
 export async function registerOrderRoutes(
   app: FastifyInstance,
   repositories: Repositories,
-  commissionSharingRatio: number
+  commissionSharingRatio: number,
+  referralCommissionRatio: number
 ) {
   app.get("/api/orders/me", async (request) => ({
     orders: await repositories.orders.listByUser(request.userId)
   }));
+
+  // 刷新返利：以后台订单当前状态重算这笔订单的台账（已结算→把待返利刷成已到账），幂等
+  app.post<{ Params: { id: string } }>("/api/orders/me/:id/recheck", async (request, reply) => {
+    const order = await repositories.orders.findById(request.params.id);
+    if (!order) return reply.code(404).send({ error: "订单不存在" });
+    const attribution = await repositories.orders.getAttribution(order.tbkOrderId);
+    if (!attribution || attribution.userId !== request.userId) {
+      return reply.code(404).send({ error: "订单不存在" });
+    }
+    const options = await resolveCommissionOptions(repositories, {
+      commissionSharingRatio,
+      referralCommissionRatio
+    });
+    await reconcileOrderLedger(repositories, order, options);
+    const orders = await repositories.orders.listByUser(request.userId);
+    return { order: orders.find((o) => o.id === order.id) ?? null };
+  });
 
   app.post<{ Body: { orderNumber?: string } }>("/api/orders/bind", async (request, reply) => {
     const orderNumber = (request.body.orderNumber ?? "").trim();

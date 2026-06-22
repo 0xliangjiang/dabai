@@ -54,50 +54,36 @@ async function resolveOrderAttribution(
   return attribution;
 }
 
-// 单个订单的归因 + 台账处理（JD / 淘宝共用）：
-// - 人工归因（manual_matched）不被自动同步覆盖
-// - 只要有归属用户，就按订单当前状态写台账，让"已收货→已结算"流转到积分
-async function processOrder(
+export type ReconcileResult = { credited: boolean; rebateStatus: "available" | "pending" | "reversed" | "none" };
+
+// 单笔订单的台账核对（同步 / 用户「刷新返利」/ 自动兜底共用）：
+// 以订单"当前权威状态"重算归属用户（及其上线）的台账，幂等（upsert / reverse 可重复执行）。
+// 仅对已确认归属（auto_matched / manual_matched）入账；pending_review / unmatched 不动。
+export async function reconcileOrderLedger(
   repositories: Repositories,
   order: OrderRecord,
   options: SyncOrdersOptions
-): Promise<{ attributed: boolean }> {
-  const existing = await repositories.orders.getAttribution(order.tbkOrderId);
-  let attributedUserId: string | null = null;
+): Promise<ReconcileResult> {
+  const attribution = await repositories.orders.getAttribution(order.tbkOrderId);
+  const userId = attribution?.userId ?? null;
+  const confirmed = attribution?.status === "auto_matched" || attribution?.status === "manual_matched";
+  if (!userId || !confirmed) return { credited: false, rebateStatus: "none" };
 
-  if (existing && existing.status === "manual_matched") {
-    attributedUserId = existing.userId;
-  } else {
-    const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
-    await repositories.orders.upsertAttribution({
-      tbkOrderId: order.tbkOrderId,
-      status: attribution.status,
-      confidence: attribution.confidence,
-      reason: attribution.reason,
-      userId: "userId" in attribution ? attribution.userId : null,
-      conversionId: "conversionId" in attribution ? attribution.conversionId : null,
-      copyEventId: "copyEventId" in attribution ? attribution.copyEventId : null
-    });
-    if (attribution.status === "auto_matched") attributedUserId = attribution.userId;
-  }
-
-  if (!attributedUserId) return { attributed: false };
-
-  const attrUser = await repositories.users.findById(attributedUserId);
+  const attrUser = await repositories.users.findById(userId);
   const orderStatus = normalizeCommissionStatus(order.orderStatus);
 
   // 退款/失效：把该订单已记的台账（含上线提成）全部冲销为 reversed，从可用余额剔除。
   // 这样"已结算→退款"会正确扣回；"仅付款→退款"本就未计入，冲销后仍是净 0，安全。
   if (orderStatus === "refunded" || orderStatus === "invalid") {
-    await repositories.commissionLedger.reverseOrder(attributedUserId, order.id);
+    await repositories.commissionLedger.reverseOrder(userId, order.id);
     if (attrUser?.inviterId) {
       await repositories.commissionLedger.reverseOrder(attrUser.inviterId, order.id);
     }
-    return { attributed: true };
+    return { credited: true, rebateStatus: "reversed" };
   }
 
   const entry = buildCommissionLedgerEntry({
-    userId: attributedUserId,
+    userId,
     tbkOrderId: order.id,
     orderStatus,
     estimatedCommissionCents: order.estimatedCommissionCents,
@@ -108,11 +94,63 @@ async function processOrder(
 
   // 二级分销：下线有上线且开关开 → 给上线额外记一条提成（平台出，镜像下线状态）
   if (options.referralEnabled && options.referralRatio && options.referralRatio > 0 && attrUser?.inviterId) {
-    const referralEntry = buildReferralLedgerEntry(entry, attrUser.inviterId, options.referralRatio);
-    await repositories.commissionLedger.upsert(referralEntry);
+    await repositories.commissionLedger.upsert(buildReferralLedgerEntry(entry, attrUser.inviterId, options.referralRatio));
   }
 
-  return { attributed: true };
+  return { credited: true, rebateStatus: entry.status === "available" ? "available" : "pending" };
+}
+
+// 单个订单的归因 + 台账处理（JD / 淘宝共用）：
+// - 人工归因（manual_matched）不被自动同步覆盖
+// - 归因落库后，交给 reconcileOrderLedger 按订单当前状态写台账（"已收货→已结算"流转到积分）
+async function processOrder(
+  repositories: Repositories,
+  order: OrderRecord,
+  options: SyncOrdersOptions
+): Promise<{ attributed: boolean }> {
+  const existing = await repositories.orders.getAttribution(order.tbkOrderId);
+  if (!(existing && existing.status === "manual_matched")) {
+    const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
+    await repositories.orders.upsertAttribution({
+      tbkOrderId: order.tbkOrderId,
+      status: attribution.status,
+      confidence: attribution.confidence,
+      reason: attribution.reason,
+      userId: "userId" in attribution ? attribution.userId : null,
+      conversionId: "conversionId" in attribution ? attribution.conversionId : null,
+      copyEventId: "copyEventId" in attribution ? attribution.copyEventId : null
+    });
+  }
+  const { credited } = await reconcileOrderLedger(repositories, order, options);
+  return { attributed: credited };
+}
+
+// 组装台账核对所需的佣金/分销设置（与定时同步一致），供「刷新返利」端点复用
+export async function resolveCommissionOptions(
+  repositories: Repositories,
+  defaults: { commissionSharingRatio: number; referralCommissionRatio: number }
+): Promise<Pick<SyncOrdersOptions, "commissionSharingRatio" | "referralEnabled" | "referralRatio">> {
+  const commissionSharingRatio =
+    (await repositories.settings.getCommissionSharingRatio()) ?? defaults.commissionSharingRatio;
+  const referralEnabled = await repositories.settings.getReferralEnabled();
+  const referralRatio = (await repositories.settings.getReferralRatio()) ?? defaults.referralCommissionRatio;
+  return { commissionSharingRatio, referralEnabled, referralRatio };
+}
+
+// 自动兜底：订单已是终态（结算/退款/失效）但台账仍 pending（结算晚于归因等导致滞后），重算入账
+async function reconcileStaleLedgers(repositories: Repositories, options: SyncOrdersOptions): Promise<void> {
+  const LIMIT = 200;
+  const stale = await repositories.commissionLedger.listStalePending(LIMIT);
+  for (const order of stale) {
+    try {
+      await reconcileOrderLedger(repositories, order, options);
+    } catch (error) {
+      console.error(`[order-sync] 兜底核对订单 ${order.tbkOrderId} 失败:`, (error as Error).message);
+    }
+  }
+  if (stale.length >= LIMIT) {
+    console.warn(`[order-sync] 兜底核对达上限 ${LIMIT}，可能仍有滞后台账留待下一轮处理`);
+  }
 }
 
 export type SyncOrdersOptions = {
@@ -168,6 +206,13 @@ export async function runOrderSync(
     jdAttributed = jd.value.attributed;
   } else {
     errors.push(`京东同步失败：${errorText(jd.reason)}`);
+  }
+
+  // 自动兜底：补救"订单已结算/退款但台账仍 pending"的滞后订单（不影响同步计数与成败）
+  try {
+    await reconcileStaleLedgers(repositories, options);
+  } catch (error) {
+    console.error("[order-sync] 兜底核对整体失败:", (error as Error).message);
   }
 
   const result: OrderSyncRunResult = {

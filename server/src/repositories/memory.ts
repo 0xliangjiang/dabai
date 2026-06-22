@@ -308,12 +308,28 @@ export function createRepositories(): Repositories {
           .filter((attribution) => attribution.userId === userId)
           .map((attribution) => {
             const order = orders.get(attribution.tbkOrderId)!;
-            const userLedger = [...ledger.values()]
-              .filter(
-                (entry) =>
-                  entry.userId === userId && entry.tbkOrderId === order.id && entry.status !== "reversed"
-              )
-              .reduce((total, entry) => total + entry.amountCents, 0);
+            // 折叠同一订单的多条台账（estimated/settled/reversal），按"冲销>到账>待结算"取单一有效值
+            const entries = [...ledger.values()].filter(
+              (entry) => entry.userId === userId && entry.tbkOrderId === order.id
+            );
+            let available = 0;
+            let pending = 0;
+            let reversed = false;
+            for (const e of entries) {
+              if (e.status === "reversed") reversed = true;
+              else if (e.status === "available") available += e.amountCents;
+              else pending += e.amountCents;
+            }
+            let rebateStatus: "available" | "pending" | "reversed" | "none" = "none";
+            let userRebateCents = 0;
+            if (reversed) rebateStatus = "reversed";
+            else if (available > 0) {
+              rebateStatus = "available";
+              userRebateCents = available;
+            } else if (pending > 0) {
+              rebateStatus = "pending";
+              userRebateCents = pending;
+            }
             return {
               id: order.id,
               itemTitle: order.itemTitle,
@@ -322,9 +338,13 @@ export function createRepositories(): Repositories {
               payAmountCents: order.payAmountCents,
               estimatedCommissionCents: order.estimatedCommissionCents,
               settledCommissionCents: order.settledCommissionCents,
-              userRebateCents: userLedger
+              userRebateCents,
+              rebateStatus
             };
           });
+      },
+      async findById(id: string) {
+        return orders.get(id) ?? null;
       },
       async upsert(input: UpsertOrderInput) {
         const existingId = ordersByTbkOrderId.get(input.tbkOrderId);
@@ -484,6 +504,27 @@ export function createRepositories(): Repositories {
             entry.status = "reversed";
           }
         }
+      },
+      async listStalePending(limit: number) {
+        const terminal = new Set(["settled", "refunded", "invalid"]);
+        // 按订单归集：终态订单中"有 pending 但还没有 available/reversed"的才算待重算（保证收敛）
+        const byOrder = new Map<string, { hasPending: boolean; hasDone: boolean }>();
+        for (const entry of ledger.values()) {
+          const order = orders.get(entry.tbkOrderId);
+          if (!order || !terminal.has(order.orderStatus)) continue;
+          const g = byOrder.get(entry.tbkOrderId) ?? { hasPending: false, hasDone: false };
+          if (entry.status === "pending") g.hasPending = true;
+          else if (entry.status === "available" || entry.status === "reversed") g.hasDone = true;
+          byOrder.set(entry.tbkOrderId, g);
+        }
+        const result: OrderRecord[] = [];
+        for (const [orderId, g] of byOrder) {
+          if (!g.hasPending || g.hasDone) continue;
+          const order = orders.get(orderId);
+          if (order) result.push(order);
+          if (result.length >= limit) break;
+        }
+        return result;
       }
     },
     subscriptions: {

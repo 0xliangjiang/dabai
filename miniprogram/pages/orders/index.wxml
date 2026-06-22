@@ -47,8 +47,19 @@
           <view class="muted text-sm">我的积分</view>
           <view class="flex align-center">
             <view class="price">{{item.points}}<text class="points-unit"> 积分</text></view>
-            <text class="points-state {{item.settled ? 'settled' : 'pending'}}">{{item.settled ? '已结算' : '预估'}}</text>
+            <text class="points-state {{item.settled ? 'settled' : 'pending'}}">{{item.rebateLabel}}</text>
           </view>
+        </view>
+        <view wx:if="{{item.canRefresh}}" class="flex align-center justify-between gap-sm refresh-row">
+          <view class="muted text-sm">已确认收货？后台已结算可点此到账</view>
+          <button
+            class="cu-btn refresh-rebate-btn pressable {{item.refreshing ? 'is-loading' : ''}}"
+            hover-class="pressed"
+            loading="{{item.refreshing}}"
+            bindtap="refreshRebate"
+            data-id="{{item.id}}"
+            data-index="{{index}}"
+          >刷新返利</button>
         </view>
       </view>
     </block>

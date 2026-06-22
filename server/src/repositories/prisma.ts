@@ -396,28 +396,34 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         if (records.length === 0) return [];
 
-        // 一次性取这些订单的台账（避免 N+1 把用户全部台账 load 进内存）；
-        // 排除 reversed，使退款订单返利显示为 0。
+        // 一次性取这些订单的台账（避免 N+1 把用户全部台账 load 进内存）。
         const orderIds = records.map((r) => r.tbkOrderId);
         const ledgers = await prisma.commissionLedger.findMany({
-          where: { userId, tbkOrderId: { in: orderIds }, status: { not: "reversed" } },
-          select: { tbkOrderId: true, amountCents: true }
+          where: { userId, tbkOrderId: { in: orderIds } },
+          select: { tbkOrderId: true, amountCents: true, status: true }
         });
-        const rebateByOrder = new Map<string, number>();
-        for (const l of ledgers) {
-          rebateByOrder.set(l.tbkOrderId, (rebateByOrder.get(l.tbkOrderId) ?? 0) + l.amountCents);
-        }
+        // 同一订单可能并存 estimated(pending)+settled(available) 两条（生命周期不同阶段），
+        // 不能相加；按"已冲销 > 已到账 > 待结算"折叠成单一有效返利与状态。
+        const aggByOrder = aggregateRebate(ledgers);
 
-        return records.map((record) => ({
-          id: record.tbkOrder.id,
-          itemTitle: record.tbkOrder.itemTitle,
-          status: record.tbkOrder.orderStatus,
-          payTime: record.tbkOrder.payTime,
-          payAmountCents: record.tbkOrder.payAmountCents,
-          estimatedCommissionCents: record.tbkOrder.estimatedCommissionCents,
-          settledCommissionCents: record.tbkOrder.settledCommissionCents,
-          userRebateCents: rebateByOrder.get(record.tbkOrderId) ?? 0
-        }));
+        return records.map((record) => {
+          const { rebateStatus, userRebateCents } = resolveRebate(aggByOrder.get(record.tbkOrderId));
+          return {
+            id: record.tbkOrder.id,
+            itemTitle: record.tbkOrder.itemTitle,
+            status: record.tbkOrder.orderStatus,
+            payTime: record.tbkOrder.payTime,
+            payAmountCents: record.tbkOrder.payAmountCents,
+            estimatedCommissionCents: record.tbkOrder.estimatedCommissionCents,
+            settledCommissionCents: record.tbkOrder.settledCommissionCents,
+            userRebateCents,
+            rebateStatus
+          };
+        });
+      },
+      async findById(id: string) {
+        const record = await prisma.tbkOrder.findUnique({ where: { id } });
+        return record ? mapOrder(record) : null;
       },
       async upsert(input: UpsertOrderInput) {
         const existing = await prisma.tbkOrder.findUnique({ where: { tbkOrderId: input.tbkOrderId } });
@@ -641,6 +647,28 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           where: { userId, tbkOrderId },
           data: { status: "reversed" }
         });
+      },
+      async listStalePending(limit: number) {
+        // 候选：终态订单（结算/退款/失效）且存在 pending 台账
+        const pendingRows = await prisma.commissionLedger.findMany({
+          where: { status: "pending", tbkOrder: { orderStatus: { in: ["settled", "refunded", "invalid"] } } },
+          select: { tbkOrderId: true },
+          distinct: ["tbkOrderId"],
+          take: limit * 3
+        });
+        const candidateIds = pendingRows.map((r) => r.tbkOrderId);
+        if (candidateIds.length === 0) return [];
+        // 已存在 available/reversed 台账的订单视为已处理（避免结算后残留的 estimated 行被反复重算），排除
+        const doneRows = await prisma.commissionLedger.findMany({
+          where: { tbkOrderId: { in: candidateIds }, status: { in: ["available", "reversed"] } },
+          select: { tbkOrderId: true },
+          distinct: ["tbkOrderId"]
+        });
+        const done = new Set(doneRows.map((r) => r.tbkOrderId));
+        const stuckIds = candidateIds.filter((id) => !done.has(id)).slice(0, limit);
+        if (stuckIds.length === 0) return [];
+        const ordersRows = await prisma.tbkOrder.findMany({ where: { id: { in: stuckIds } } });
+        return ordersRows.map(mapOrder);
       }
     },
     subscriptions: {
@@ -971,6 +999,34 @@ function mapCopyEvent(record: {
     ...record,
     copyType: record.copyType as CopyEventRecord["copyType"]
   };
+}
+
+type RebateAgg = { available: number; pending: number; reversed: boolean };
+
+// 折叠同一订单的多条台账（estimated/settled/reversal）为单一有效返利+状态，避免相加重复计
+function aggregateRebate(
+  ledgers: Array<{ tbkOrderId: string; amountCents: number; status: string }>
+): Map<string, RebateAgg> {
+  const map = new Map<string, RebateAgg>();
+  for (const l of ledgers) {
+    const agg = map.get(l.tbkOrderId) ?? { available: 0, pending: 0, reversed: false };
+    if (l.status === "reversed") agg.reversed = true;
+    else if (l.status === "available") agg.available += l.amountCents;
+    else agg.pending += l.amountCents;
+    map.set(l.tbkOrderId, agg);
+  }
+  return map;
+}
+
+function resolveRebate(agg: RebateAgg | undefined): {
+  rebateStatus: "available" | "pending" | "reversed" | "none";
+  userRebateCents: number;
+} {
+  if (!agg) return { rebateStatus: "none", userRebateCents: 0 };
+  if (agg.reversed) return { rebateStatus: "reversed", userRebateCents: 0 };
+  if (agg.available > 0) return { rebateStatus: "available", userRebateCents: agg.available };
+  if (agg.pending > 0) return { rebateStatus: "pending", userRebateCents: agg.pending };
+  return { rebateStatus: "none", userRebateCents: 0 };
 }
 
 function mapOrder(record: {

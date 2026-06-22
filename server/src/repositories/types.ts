@@ -185,6 +185,8 @@ export type OrderSummary = {
   estimatedCommissionCents: number;
   settledCommissionCents: number | null;
   userRebateCents: number;
+  // 返利台账状态：available 已到账可提现 / pending 待结算 / reversed 已冲销 / none 尚无台账
+  rebateStatus: "available" | "pending" | "reversed" | "none";
 };
 
 export type AdminUserRecord = UserRecord & {
@@ -297,6 +299,7 @@ export type Repositories = {
   };
   orders: {
     listByUser(userId: string): Promise<OrderSummary[]>;
+    findById(id: string): Promise<OrderRecord | null>;
     upsert(input: UpsertOrderInput): Promise<OrderRecord>;
     upsertAttribution(input: UpsertAttributionInput): Promise<AttributionRecord>;
     getAttribution(tbkOrderId: string): Promise<{ status: string; userId: string | null } | null>;
@@ -321,6 +324,8 @@ export type Repositories = {
     upsert(input: CreateCommissionLedgerInput): Promise<CommissionLedgerRecord>;
     // 退款/失效：把某用户在该订单下的所有台账置为 reversed，从可用余额剔除（幂等）
     reverseOrder(userId: string, tbkOrderId: string): Promise<void>;
+    // 自动兜底：订单已是终态（结算/退款/失效）但仍有 pending 台账的订单（去重到订单维度，封顶 limit）
+    listStalePending(limit: number): Promise<OrderRecord[]>;
   };
   subscriptions: {
     addGrant(userId: string, templateId: string): Promise<void>;

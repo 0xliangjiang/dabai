@@ -1,3 +1,22 @@
 page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
 
+.refresh-row {
+  margin-top: 4rpx;
+}
 
+.refresh-rebate-btn {
+  flex: 0 0 auto;
+  width: 168rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  color: #0a7a52;
+  background: #e9f6f0;
+  box-shadow: none;
+}
+
+.refresh-rebate-btn.is-loading {
+  opacity: 0.7;
+}

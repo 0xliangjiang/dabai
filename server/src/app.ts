@@ -171,7 +171,7 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerConversionRoutes(app, repositories, config);
-  await registerOrderRoutes(app, repositories, config.commissionSharingRatio);
+  await registerOrderRoutes(app, repositories, config.commissionSharingRatio, config.referralCommissionRatio);
   await registerUploadRoutes(app, uploadDir);
   await registerUserRoutes(app, repositories);
   await registerCheckInRoutes(app, repositories);
