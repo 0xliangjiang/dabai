@@ -70,6 +70,28 @@ describe("matchOrderAttribution", () => {
     expect(result.confidence).toBeLessThan(1);
   });
 
+  test("同一用户窗内多次查询同款 → 自动归该用户（非歧义），取最近一条", () => {
+    const result = matchOrderAttribution(baseOrder, [
+      {
+        id: "copy-1",
+        userId: "user-1",
+        conversionId: "conversion-1",
+        itemId: "item-100",
+        copiedAt: new Date("2026-06-06T06:00:00.000Z")
+      },
+      {
+        id: "copy-2",
+        userId: "user-1",
+        conversionId: "conversion-2",
+        itemId: "item-100",
+        copiedAt: new Date("2026-06-06T07:50:00.000Z")
+      }
+    ]);
+
+    expect(result.status).toBe("auto_matched");
+    expect(result).toMatchObject({ userId: "user-1", conversionId: "conversion-2" });
+  });
+
   test("requires review when the only copy event is outside the attribution window", () => {
     const result = matchOrderAttribution(baseOrder, [
       {

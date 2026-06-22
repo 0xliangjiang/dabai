@@ -104,19 +104,21 @@ export function matchOrderAttribution(
     return diff >= 0 && diff <= windowMs;
   });
 
-  if (insideWindow.length === 1) {
-    const [event] = insideWindow;
-    return {
-      status: "auto_matched",
-      confidence: 1,
-      userId: event.userId,
-      conversionId: event.conversionId,
-      copyEventId: event.id,
-      reason: "single_candidate_inside_window"
-    };
-  }
-
-  if (insideWindow.length > 1) {
+  if (insideWindow.length >= 1) {
+    // 窗内候选若都属于同一个用户（同一人多次查/复制同款），没有"归给谁"的歧义 → 自动归该用户；
+    // 取窗内最近一条。只有候选跨多个不同用户时才进待复核。
+    const distinctUsers = new Set(insideWindow.map((event) => event.userId));
+    if (distinctUsers.size === 1) {
+      const event = [...insideWindow].sort((a, b) => b.copiedAt.getTime() - a.copiedAt.getTime())[0];
+      return {
+        status: "auto_matched",
+        confidence: 1,
+        userId: event.userId,
+        conversionId: event.conversionId,
+        copyEventId: event.id,
+        reason: "single_candidate_inside_window"
+      };
+    }
     return {
       status: "pending_review",
       confidence: 0.5,

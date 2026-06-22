@@ -4,7 +4,7 @@ import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import { getEffectiveConfig, buildSettingsView, isValidSettingKey, SETTING_FIELDS } from "../config/runtime.js";
 import { buildCommissionLedgerEntry, buildReferralLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
-import { reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
+import { reattributePendingOrders, reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
@@ -314,6 +314,16 @@ export async function registerAdminRoutes(
       }
     }
     return { ok: true, scanned: attempted.size, fixed };
+  });
+
+  // 一键重跑归因：对历史「待复核 / 未归因」订单用当前归因逻辑重新匹配（人工归因不动）
+  app.post("/api/admin/orders/reattribute", async () => {
+    const options = await resolveCommissionOptions(repositories, {
+      commissionSharingRatio: config.commissionSharingRatio,
+      referralCommissionRatio: config.referralCommissionRatio
+    });
+    const result = await reattributePendingOrders(repositories, { ...options, attributionWindowHours: 24 });
+    return { ok: true, ...result };
   });
 
   app.delete<{ Params: { id: string } }>("/api/admin/users/:id", async (request, reply) => {

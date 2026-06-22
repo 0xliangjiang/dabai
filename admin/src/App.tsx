@@ -122,6 +122,7 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [reconciling, setReconciling] = useState(false);
+  const [reattributing, setReattributing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [activeNav, setActiveNav] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -598,6 +599,25 @@ export function App() {
     }
   }
 
+  // 一键对历史「待复核/未归因」订单用最新逻辑重跑归因
+  async function reattributeOrders() {
+    if (reattributing) return;
+    setReattributing(true);
+    try {
+      const result = await fetchAdminApi<{ ok: boolean; scanned: number; attributed: number }>(
+        "/api/admin/orders/reattribute",
+        adminToken,
+        { method: "POST", body: "{}", headers: { "content-type": "application/json" } }
+      );
+      toast(result.attributed > 0 ? `重跑 ${result.scanned} 单，新归因 ${result.attributed} 单` : `重跑 ${result.scanned} 单，暂无可自动归因的`);
+      await Promise.all([loadData(adminToken, { silent: true }), loadOrders(ordersPage)]);
+    } catch {
+      toast("重跑归因失败，请稍后重试", "error");
+    } finally {
+      setReattributing(false);
+    }
+  }
+
   async function reviewClaim(id: string, status: "approved" | "rejected") {
     if (!window.confirm(status === "approved" ? "确定通过这条申诉？" : "确定驳回这条申诉？")) return;
     await fetchAdminApi(`/api/admin/claims/${id}/review`, adminToken, {
@@ -958,6 +978,9 @@ export function App() {
                 </Button>
                 <Button size="sm" variant="outline" disabled={exportingOrders || orders.total === 0} onClick={() => void exportAllOrders()}>
                   <Download className={`h-4 w-4 ${exportingOrders ? "animate-pulse" : ""}`} /> {exportingOrders ? "导出中…" : "导出全部"}
+                </Button>
+                <Button size="sm" variant="outline" disabled={reattributing} onClick={() => void reattributeOrders()}>
+                  <RefreshCw className={`h-4 w-4 ${reattributing ? "animate-spin" : ""}`} /> {reattributing ? "重跑中…" : "重跑归因"}
                 </Button>
                 <Button size="sm" disabled={reconciling} onClick={() => void reconcileSettled()}>
                   <RefreshCw className={`h-4 w-4 ${reconciling ? "animate-spin" : ""}`} /> {reconciling ? "核对中…" : "核对已结算"}

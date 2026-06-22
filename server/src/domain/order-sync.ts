@@ -142,6 +142,35 @@ export async function resolveCommissionOptions(
   return { commissionSharingRatio, referralEnabled, referralRatio };
 }
 
+// 重跑归因：对历史「待复核 / 未归因」订单用当前归因逻辑重新匹配一遍（人工归因不动），
+// 命中则落库 + 入账。供后台「重跑归因」按钮修复存量漏单。
+export async function reattributePendingOrders(
+  repositories: Repositories,
+  options: SyncOrdersOptions
+): Promise<{ scanned: number; attributed: number }> {
+  const pending = await repositories.orders.listPendingAttributions();
+  let attributed = 0;
+  for (const { order } of pending) {
+    try {
+      const attribution = await resolveOrderAttribution(repositories, order, options.attributionWindowHours);
+      await repositories.orders.upsertAttribution({
+        tbkOrderId: order.tbkOrderId,
+        status: attribution.status,
+        confidence: attribution.confidence,
+        reason: attribution.reason,
+        userId: "userId" in attribution ? attribution.userId : null,
+        conversionId: "conversionId" in attribution ? attribution.conversionId : null,
+        copyEventId: "copyEventId" in attribution ? attribution.copyEventId : null
+      });
+      const { credited } = await reconcileOrderLedger(repositories, order, options);
+      if (credited) attributed += 1;
+    } catch (error) {
+      console.error(`[reattribute] 订单 ${order.tbkOrderId} 重跑归因失败:`, (error as Error).message);
+    }
+  }
+  return { scanned: pending.length, attributed };
+}
+
 // 自动兜底：订单已是终态（结算/退款/失效）但台账仍 pending（结算晚于归因等导致滞后），重算入账
 async function reconcileStaleLedgers(repositories: Repositories, options: SyncOrdersOptions): Promise<void> {
   const LIMIT = 200;
