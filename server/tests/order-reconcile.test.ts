@@ -180,6 +180,62 @@ describe("批量核对（后台一键）", () => {
   });
 });
 
+describe("标题同款归因兜底（itemId 为空的加密商品）", () => {
+  function conv(repos: Repositories, userId: string, itemTitle: string) {
+    return repos.conversions.create({
+      userId,
+      rawContent: "x",
+      platform: "taobao",
+      itemId: "", // 加密商品：转化侧没有数字 itemId
+      itemTitle,
+      itemImageUrl: "",
+      itemPriceCents: 0,
+      commissionRate: 0,
+      estimatedCommissionCents: 1000,
+      estimatedRebateCents: 500,
+      generatedPassword: "",
+      generatedShortUrl: "",
+      generatedClickUrl: ""
+    });
+  }
+
+  test("订单长标题 vs 折淘客【】简称标题：唯一候选自动归因入账", async () => {
+    const repos = createRepositories();
+    const user = await repos.users.findOrCreateByOpenid("liangjiang");
+    await conv(repos, user.id, "【益智早教抓握力】彩虹转转塔");
+
+    const orderTitle = "彩虹转转乐叠叠乐宝宝玩具婴幼儿转转塔0-3岁旋转套圈早教礼物";
+    const taobaoOrderClient = {
+      async fetchTaobaoOrders() {
+        return {
+          orders: [
+            {
+              tbkOrderId: "TT1",
+              itemId: "987654321", // 订单侧是数字 itemId，与转化(空)对不上 → 走标题兜底
+              itemTitle: orderTitle,
+              payTime: new Date(Date.now() + 60_000),
+              payAmountCents: 5000,
+              estimatedCommissionCents: 1000,
+              settledCommissionCents: 800,
+              orderStatus: "settled",
+              rawPayload: {}
+            }
+          ],
+          hasNext: false
+        };
+      }
+    };
+    const orderClient = { async fetchJdOrders() { return { orders: [], hasNext: false }; } };
+
+    await runOrderSync(repos, { taobaoOrderClient, orderClient }, { commissionSharingRatio: 0.5, attributionWindowHours: 24 }, "auto");
+
+    const attr = await repos.orders.getAttribution("TT1");
+    expect(attr?.status).toBe("auto_matched");
+    expect(attr?.userId).toBe(user.id);
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(400); // 800 * 0.5 已结算到账
+  });
+});
+
 describe("runOrderSync 结算兜底扫描", () => {
   test("除常规更新窗(qt=4)外，额外按结算时间(qt=3)扫一遍", async () => {
     const repos = createRepositories();

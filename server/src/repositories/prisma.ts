@@ -1,6 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
-import { titleMatches } from "../domain/attribution.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
@@ -310,17 +309,15 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return records.map(mapConversion);
       },
-      async listByTitle(title: string) {
-        const t = title.trim();
-        if (t.length < 8) return []; // 标题太短不做匹配，避免通用词误判
-        // 用前 10 字粗筛，再在内存里做前缀判断（转化标题常被折淘客截断成订单标题的前缀）
-        const probe = t.slice(0, 10);
+      async listCreatedBetween(start: Date, end: Date, limit: number) {
+        // 标题同款匹配在内存里做（来源不同、词序各异，无法靠 SQL contains 粗筛），
+        // 这里只按时间窗取候选，量由归因窗(默认 24h)限制，封顶 limit 兜底。
         const records = await prisma.conversion.findMany({
-          where: { itemTitle: { contains: probe } },
+          where: { createdAt: { gte: start, lte: end } },
           orderBy: { createdAt: "desc" },
-          take: 1000
+          take: limit
         });
-        return records.map(mapConversion).filter((c) => titleMatches(t, c.itemTitle));
+        return records.map(mapConversion);
       },
       async listForAdmin(options) {
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));

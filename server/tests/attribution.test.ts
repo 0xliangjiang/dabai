@@ -1,5 +1,23 @@
 import { describe, expect, test } from "vitest";
-import { matchOrderAttribution } from "../src/domain/attribution.js";
+import { matchOrderAttribution, titlesSameProduct } from "../src/domain/attribution.js";
+
+describe("titlesSameProduct", () => {
+  test("实战：订单长标题 vs 折淘客带【】简称标题 判为同款", () => {
+    const orderTitle = "彩虹转转乐叠叠乐宝宝玩具婴幼儿转转塔0-3岁旋转套圈早教礼物";
+    const convTitle = "【益智早教抓握力】彩虹转转塔";
+    expect(titlesSameProduct(orderTitle, convTitle)).toBe(true);
+  });
+
+  test("不同商品不误判", () => {
+    expect(
+      titlesSameProduct("彩虹转转乐叠叠乐宝宝玩具婴幼儿转转塔0-3岁早教礼物", "蓝牙耳机无线运动入耳式降噪")
+    ).toBe(false);
+  });
+
+  test("过短标题不参与匹配，避免撞通用词", () => {
+    expect(titlesSameProduct("耳机", "蓝牙耳机无线运动入耳式")).toBe(false);
+  });
+});
 
 const baseOrder = {
   id: "order-1",

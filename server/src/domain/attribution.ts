@@ -51,13 +51,35 @@ export function withoutCopyEvent(result: AttributionResult): AttributionResult {
   return result;
 }
 
-// 标题匹配：精确相等，或一个是另一个的前缀（转化标题常被折淘客截断成订单标题前缀）。
-// 两边都要 ≥8 字，避免通用短词误判。
-export function titleMatches(a: string, b: string): boolean {
-  const x = a.trim();
-  const y = b.trim();
-  if (x.length < 8 || y.length < 8) return false;
-  return x === y || x.startsWith(y) || y.startsWith(x);
+// 标题"同款"判断：转化标题(折淘客 jianjie，常带【】营销前缀/简称)与订单标题(淘宝长标题)
+// 来源不同、词序/前缀/装饰各异，纯前缀匹配会漏。改为：去掉括号装饰后，以较短标题为基准，
+// 其字符二元组(bigram)≥80% 出现在较长标题里即视为同款。容忍简称/词序差异；
+// 误配靠 matchOrderAttribution 的「唯一候选 + 24h 窗」兜住（多候选→待复核，不自动发钱）。
+export function titlesSameProduct(a: string, b: string): boolean {
+  const x = normalizeTitle(a);
+  const y = normalizeTitle(b);
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  if (short.length < 5) return false; // 太短易撞通用词
+  const shortGrams = bigramSet(short);
+  if (shortGrams.size === 0) return false;
+  const longGrams = bigramSet(long);
+  let shared = 0;
+  for (const gram of shortGrams) if (longGrams.has(gram)) shared += 1;
+  return shared / shortGrams.size >= 0.8;
+}
+
+// 去掉成对括号及其内含的营销词、再去空白后比较（【益智早教抓握力】彩虹转转塔 → 彩虹转转塔）
+function normalizeTitle(s: string): string {
+  return s
+    .replace(/[【[（(《「][^】\]）)》」]*[】\]）)》」]/g, "") // 成对括号连同内容
+    .replace(/[【】[\]（）()《》「」\s]/g, "") // 残余的单边括号/空白
+    .toLowerCase();
+}
+
+function bigramSet(s: string): Set<string> {
+  const set = new Set<string>();
+  for (let i = 0; i + 1 < s.length; i += 1) set.add(s.slice(i, i + 2));
+  return set;
 }
 
 export function matchOrderAttribution(

@@ -1,4 +1,4 @@
-import { matchOrderAttribution, withoutCopyEvent, type AttributionResult } from "./attribution.js";
+import { matchOrderAttribution, titlesSameProduct, withoutCopyEvent, type AttributionResult } from "./attribution.js";
 import {
   buildCommissionLedgerEntry,
   buildReferralLedgerEntry,
@@ -34,18 +34,23 @@ async function resolveOrderAttribution(
     if (fallback.status !== "unmatched") return withoutCopyEvent(fallback);
   }
 
-  // 最后兜底：itemId 都对不上时，按「商品标题精确匹配」找用户查询记录。
-  // 标题候选已确认同名，这里借用 order.itemId 复用时间窗逻辑；唯一候选→自动归因，多个→待复核。
+  // 最后兜底：itemId 都对不上时（新版加密商品 itemId 常为空），按「商品标题同款」找查询记录。
+  // 加密商品的转化标题(折淘客)与订单标题(淘宝)来源不同、词序/装饰各异，纯前缀会漏，
+  // 改为：取下单前 windowHours 内的转化在内存里做 bigram 同款匹配；唯一候选→自动，多个→待复核。
   const title = (order.itemTitle ?? "").trim();
-  if (title.length >= 4) {
-    const titleConvs = await repositories.conversions.listByTitle(title);
-    const titleCandidates = titleConvs.map((c) => ({
-      id: c.id,
-      userId: c.userId,
-      conversionId: c.id,
-      itemId: order.itemId,
-      copiedAt: c.createdAt
-    }));
+  if (title && title !== "淘宝商品") {
+    const w = windowHours ?? 24;
+    const start = new Date(order.payTime.getTime() - w * 60 * 60 * 1000);
+    const recent = await repositories.conversions.listCreatedBetween(start, order.payTime, 1000);
+    const titleCandidates = recent
+      .filter((c) => titlesSameProduct(title, c.itemTitle))
+      .map((c) => ({
+        id: c.id,
+        userId: c.userId,
+        conversionId: c.id,
+        itemId: order.itemId,
+        copiedAt: c.createdAt
+      }));
     const byTitle = withoutCopyEvent(matchOrderAttribution(orderRef, titleCandidates, { windowHours }));
     if (byTitle.status === "auto_matched") return { ...byTitle, reason: "title_match_single" };
     if (byTitle.status === "pending_review") return { ...byTitle, reason: "title_match_multiple" };
