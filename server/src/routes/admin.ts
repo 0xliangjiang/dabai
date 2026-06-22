@@ -4,6 +4,7 @@ import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import { getEffectiveConfig, buildSettingsView, isValidSettingKey, SETTING_FIELDS } from "../config/runtime.js";
 import { buildCommissionLedgerEntry, buildReferralLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
+import { reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
@@ -288,6 +289,32 @@ export async function registerAdminRoutes(
       return { ok: true, order };
     }
   );
+
+  // 一键核对：把"订单已终态(结算/退款/失效)但返利台账仍 pending"的存量订单立即重算入账
+  app.post("/api/admin/orders/reconcile-settled", async () => {
+    const options = await resolveCommissionOptions(repositories, {
+      commissionSharingRatio: config.commissionSharingRatio,
+      referralCommissionRatio: config.referralCommissionRatio
+    });
+    const attempted = new Set<string>();
+    let fixed = 0;
+    // 分批处理直到没有"新"的滞后订单；只统计已处理过的 id，保证收敛与计数准确
+    for (let i = 0; i < 50; i++) {
+      const stale = await repositories.commissionLedger.listStalePending(200);
+      const fresh = stale.filter((o) => !attempted.has(o.id));
+      if (fresh.length === 0) break;
+      for (const order of fresh) {
+        attempted.add(order.id);
+        try {
+          const result = await reconcileOrderLedger(repositories, order, options);
+          if (result.credited) fixed += 1;
+        } catch (error) {
+          console.error(`[admin-reconcile] 订单 ${order.tbkOrderId} 核对失败:`, (error as Error).message);
+        }
+      }
+    }
+    return { ok: true, scanned: attempted.size, fixed };
+  });
 
   app.delete<{ Params: { id: string } }>("/api/admin/users/:id", async (request, reply) => {
     await repositories.users.deleteUser(request.params.id);

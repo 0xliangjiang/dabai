@@ -143,6 +143,43 @@ describe("commissionLedger.listStalePending", () => {
   });
 });
 
+describe("批量核对（后台一键）", () => {
+  test("把多笔已结算但台账 pending 的订单全部修复并收敛", async () => {
+    const repos = createRepositories();
+    // 造 3 笔：先 paid 入 pending 台账，再转 settled 但不重算
+    for (let i = 0; i < 3; i++) {
+      const tbkOrderId = `B${i}`;
+      const order = await repos.orders.upsert(orderInput({ tbkOrderId, orderStatus: "paid" }));
+      await repos.orders.upsertAttribution({
+        tbkOrderId,
+        status: "auto_matched",
+        confidence: 1,
+        reason: "single_candidate_inside_window",
+        userId: `u${i}`
+      });
+      await reconcileOrderLedger(repos, order, OPTIONS);
+      await repos.orders.upsert(orderInput({ tbkOrderId, orderStatus: "settled" }));
+    }
+
+    // 模拟后台一键：分批 listStalePending + reconcile，直到无新订单
+    const attempted = new Set<string>();
+    let fixed = 0;
+    for (let i = 0; i < 50; i++) {
+      const stale = await repos.commissionLedger.listStalePending(200);
+      const fresh = stale.filter((o) => !attempted.has(o.id));
+      if (fresh.length === 0) break;
+      for (const order of fresh) {
+        attempted.add(order.id);
+        if ((await reconcileOrderLedger(repos, order, OPTIONS)).credited) fixed += 1;
+      }
+    }
+
+    expect(fixed).toBe(3);
+    expect(await repos.commissionLedger.listStalePending(200)).toHaveLength(0);
+    expect(await repos.withdrawals.getAvailableBalance("u0")).toBe(400);
+  });
+});
+
 describe("runOrderSync 结算兜底扫描", () => {
   test("除常规更新窗(qt=4)外，额外按结算时间(qt=3)扫一遍", async () => {
     const repos = createRepositories();

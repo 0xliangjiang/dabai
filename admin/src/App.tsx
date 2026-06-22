@@ -121,6 +121,7 @@ export function App() {
   const [data, setData] = useState<AdminData>(emptyData);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [activeNav, setActiveNav] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -578,6 +579,25 @@ export function App() {
     }
   }
 
+  // 一键把"订单已结算但返利仍待结算"的存量订单重算入账
+  async function reconcileSettled() {
+    if (reconciling) return;
+    setReconciling(true);
+    try {
+      const result = await fetchAdminApi<{ ok: boolean; scanned: number; fixed: number }>(
+        "/api/admin/orders/reconcile-settled",
+        adminToken,
+        { method: "POST", body: "{}", headers: { "content-type": "application/json" } }
+      );
+      toast(result.fixed > 0 ? `已核对 ${result.scanned} 单，修复入账 ${result.fixed} 单` : "没有需要修复的订单，全部已对账");
+      await Promise.all([loadData(adminToken, { silent: true }), loadOrders(ordersPage)]);
+    } catch {
+      toast("核对失败，请稍后重试", "error");
+    } finally {
+      setReconciling(false);
+    }
+  }
+
   async function reviewClaim(id: string, status: "approved" | "rejected") {
     if (!window.confirm(status === "approved" ? "确定通过这条申诉？" : "确定驳回这条申诉？")) return;
     await fetchAdminApi(`/api/admin/claims/${id}/review`, adminToken, {
@@ -938,6 +958,9 @@ export function App() {
                 </Button>
                 <Button size="sm" variant="outline" disabled={exportingOrders || orders.total === 0} onClick={() => void exportAllOrders()}>
                   <Download className={`h-4 w-4 ${exportingOrders ? "animate-pulse" : ""}`} /> {exportingOrders ? "导出中…" : "导出全部"}
+                </Button>
+                <Button size="sm" disabled={reconciling} onClick={() => void reconcileSettled()}>
+                  <RefreshCw className={`h-4 w-4 ${reconciling ? "animate-spin" : ""}`} /> {reconciling ? "核对中…" : "核对已结算"}
                 </Button>
               </div>
             }
