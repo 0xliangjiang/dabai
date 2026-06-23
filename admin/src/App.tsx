@@ -74,7 +74,8 @@ const emptyData: AdminData = {
     highValueReviewThresholdCents: 5000,
     exchangeEnabled: false,
     referralCommissionRatio: 0.2,
-    referralEnabled: false
+    referralEnabled: false,
+    ordersTabEnabled: true
   },
   pendingAttributions: [],
   claims: [],
@@ -483,6 +484,19 @@ export function App() {
         body: JSON.stringify({ enabled })
       });
       toast(enabled ? "已开启兑换功能（小程序显示入口）" : "已关闭兑换功能（小程序隐藏入口）");
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("操作失败，请重试", "error");
+    }
+  }
+
+  async function toggleOrdersTab(enabled: boolean) {
+    try {
+      await fetchAdminApi("/api/admin/config/orders-tab-enabled", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ enabled })
+      });
+      toast(enabled ? "已显示订单 tab" : "已隐藏订单 tab（审核用）");
       await loadData(adminToken, { silent: true });
     } catch {
       toast("操作失败，请重试", "error");
@@ -1387,6 +1401,20 @@ export function App() {
                   onClick={() => void toggleExchange(!data.config.exchangeEnabled)}
                 >
                   {data.config.exchangeEnabled ? "关闭兑换" : "开启兑换"}
+                </Button>
+              </div>
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3.5">
+                <div>
+                  <div className="text-xs font-medium text-slate-500">订单 tab 开关（审核期间关闭，过审后开启）</div>
+                  <div className="mt-1 text-sm font-medium text-slate-700">
+                    当前：{data.config.ordersTabEnabled ? "已开启 · 小程序显示订单 tab" : "已关闭 · 小程序隐藏订单 tab"}
+                  </div>
+                </div>
+                <Button
+                  variant={data.config.ordersTabEnabled ? "danger" : "default"}
+                  onClick={() => void toggleOrdersTab(!data.config.ordersTabEnabled)}
+                >
+                  {data.config.ordersTabEnabled ? "隐藏订单" : "显示订单"}
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-3">

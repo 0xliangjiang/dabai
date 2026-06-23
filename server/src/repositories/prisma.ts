@@ -23,6 +23,7 @@ const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
 const EXCHANGE_ENABLED_KEY = "exchange_enabled";
 const REFERRAL_RATIO_KEY = "referral_commission_ratio";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
+const ORDERS_TAB_ENABLED_KEY = "orders_tab_enabled";
 
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
@@ -248,6 +249,17 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         await prisma.setting.upsert({
           where: { key: REFERRAL_ENABLED_KEY },
           create: { key: REFERRAL_ENABLED_KEY, value: enabled ? "1" : "0" },
+          update: { value: enabled ? "1" : "0" }
+        });
+      },
+      async getOrdersTabEnabled() {
+        const row = await prisma.setting.findUnique({ where: { key: ORDERS_TAB_ENABLED_KEY } });
+        return row?.value !== "0"; // 默认开：未配置即展示订单 tab
+      },
+      async setOrdersTabEnabled(enabled: boolean) {
+        await prisma.setting.upsert({
+          where: { key: ORDERS_TAB_ENABLED_KEY },
+          create: { key: ORDERS_TAB_ENABLED_KEY, value: enabled ? "1" : "0" },
           update: { value: enabled ? "1" : "0" }
         });
       },

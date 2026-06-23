@@ -132,11 +132,12 @@ export async function registerAdminRoutes(
   );
 
   app.get("/api/admin/config", async () => {
-    const [dbRatio, exchangeEnabled, referralRatio, referralEnabled] = await Promise.all([
+    const [dbRatio, exchangeEnabled, referralRatio, referralEnabled, ordersTabEnabled] = await Promise.all([
       repositories.settings.getCommissionSharingRatio(),
       repositories.settings.getExchangeEnabled(),
       repositories.settings.getReferralRatio(),
-      repositories.settings.getReferralEnabled()
+      repositories.settings.getReferralEnabled(),
+      repositories.settings.getOrdersTabEnabled()
     ]);
     return {
       config: {
@@ -146,7 +147,8 @@ export async function registerAdminRoutes(
         highValueReviewThresholdCents: 5000,
         exchangeEnabled,
         referralCommissionRatio: referralRatio ?? config.referralCommissionRatio,
-        referralEnabled
+        referralEnabled,
+        ordersTabEnabled
       }
     };
   });
@@ -160,6 +162,18 @@ export async function registerAdminRoutes(
       }
       await repositories.settings.setExchangeEnabled(enabled);
       return { ok: true, exchangeEnabled: enabled };
+    }
+  );
+
+  app.post<{ Body: { enabled?: boolean } }>(
+    "/api/admin/config/orders-tab-enabled",
+    async (request, reply) => {
+      const enabled = request.body?.enabled;
+      if (typeof enabled !== "boolean") {
+        return reply.code(400).send({ error: "enabled 必须为 true/false" });
+      }
+      await repositories.settings.setOrdersTabEnabled(enabled);
+      return { ok: true, ordersTabEnabled: enabled };
     }
   );
 

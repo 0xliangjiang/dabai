@@ -277,6 +277,8 @@ export type Repositories = {
     setReferralRatio(ratio: number): Promise<void>;
     getReferralEnabled(): Promise<boolean>;
     setReferralEnabled(enabled: boolean): Promise<void>;
+    getOrdersTabEnabled(): Promise<boolean>; // 订单 tab 是否展示（默认开，审核时可关）
+    setOrdersTabEnabled(enabled: boolean): Promise<void>;
     getOverrides(): Promise<Record<string, string>>;
     setMany(entries: Array<{ key: string; value: string }>): Promise<void>;
   };

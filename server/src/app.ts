@@ -166,7 +166,8 @@ export async function createApp(options: CreateAppOptions = {}) {
   // 小程序启动时拉取的功能开关（公开，无需登录），用于审核期间隐藏兑换入口
   app.get("/api/app-config", async () => ({
     exchangeEnabled: await repositories.settings.getExchangeEnabled(),
-    referralEnabled: await repositories.settings.getReferralEnabled()
+    referralEnabled: await repositories.settings.getReferralEnabled(),
+    ordersTabEnabled: await repositories.settings.getOrdersTabEnabled()
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);

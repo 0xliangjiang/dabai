@@ -819,7 +819,8 @@ describe("server API", () => {
         highValueReviewThresholdCents: 5000,
         exchangeEnabled: false,
         referralCommissionRatio: 0.2,
-        referralEnabled: false
+        referralEnabled: false,
+        ordersTabEnabled: true
       }
     });
   });

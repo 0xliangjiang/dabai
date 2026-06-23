@@ -23,6 +23,7 @@ import type {
 
 const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
 const EXCHANGE_ENABLED_KEY = "exchange_enabled";
+const ORDERS_TAB_ENABLED_KEY = "orders_tab_enabled";
 const REFERRAL_RATIO_KEY = "referral_commission_ratio";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
 
@@ -219,6 +220,12 @@ export function createRepositories(): Repositories {
       },
       async setReferralEnabled(enabled: boolean) {
         settingsMap.set(REFERRAL_ENABLED_KEY, enabled ? "1" : "0");
+      },
+      async getOrdersTabEnabled() {
+        return settingsMap.get(ORDERS_TAB_ENABLED_KEY) !== "0"; // 默认开
+      },
+      async setOrdersTabEnabled(enabled: boolean) {
+        settingsMap.set(ORDERS_TAB_ENABLED_KEY, enabled ? "1" : "0");
       },
       async getOverrides() {
         return Object.fromEntries(settingsMap.entries());
