@@ -35,6 +35,10 @@
         </view>
         <view class="order-meta">
           <view class="order-meta-row">
+            <view class="order-meta-label">订单号</view>
+            <text class="order-meta-value order-number" user-select bindtap="copyOrderNumber" data-no="{{item.orderNumber}}">{{item.orderNumber || '—'}}</text>
+          </view>
+          <view class="order-meta-row">
             <view class="order-meta-label">下单时间</view>
             <view class="order-meta-value">{{item.payTimeText || '—'}}</view>
           </view>

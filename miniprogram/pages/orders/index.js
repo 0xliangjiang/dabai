@@ -94,6 +94,12 @@ Page({
     }
   },
 
+  copyOrderNumber(event) {
+    const no = event.currentTarget.dataset.no;
+    if (!no) return;
+    wx.setClipboardData({ data: String(no) }); // 系统自带「已复制」提示
+  },
+
   recomputeTotals() {
     let settledPoints = 0;
     let pendingPoints = 0;

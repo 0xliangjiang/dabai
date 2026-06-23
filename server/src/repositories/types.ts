@@ -179,6 +179,7 @@ export type OrderSyncRunRecord = {
 
 export type OrderSummary = {
   id: string;
+  orderNumber: string;
   itemTitle: string;
   status: string;
   payTime: Date;

@@ -332,6 +332,7 @@ export function createRepositories(): Repositories {
             }
             return {
               id: order.id,
+              orderNumber: order.tbkOrderId,
               itemTitle: order.itemTitle,
               status: order.orderStatus,
               payTime: order.payTime,

@@ -407,6 +407,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           const { rebateStatus, userRebateCents } = resolveRebate(aggByOrder.get(record.tbkOrderId));
           return {
             id: record.tbkOrder.id,
+            orderNumber: record.tbkOrder.tbkOrderId,
             itemTitle: record.tbkOrder.itemTitle,
             status: record.tbkOrder.orderStatus,
             payTime: record.tbkOrder.payTime,
