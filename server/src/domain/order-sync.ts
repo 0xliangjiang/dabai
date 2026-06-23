@@ -137,10 +137,11 @@ export async function reconcileOrderLedger(
   return { credited: true, rebateStatus: entry.status === "available" ? "available" : "pending" };
 }
 
-// 单个订单的归因 + 台账处理（JD / 淘宝共用）：
+// 单个订单的归因 + 台账处理（JD / 淘宝同步、用户「刷新返利」共用）：
 // - 人工归因（manual_matched）不被自动同步覆盖
-// - 归因落库后，交给 reconcileOrderLedger 按订单当前状态写台账（"已收货→已结算"流转到积分）
-async function processOrder(
+// - 用最新归因逻辑重跑归因后，交给 reconcileOrderLedger 按订单当前状态写台账
+//   （这样「刷新返利」能把曾被判待复核的订单按最新逻辑归到本人并入账）
+export async function processOrder(
   repositories: Repositories,
   order: OrderRecord,
   options: SyncOrdersOptions

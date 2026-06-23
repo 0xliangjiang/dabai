@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { buildCommissionLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
-import { reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
+import { processOrder, resolveCommissionOptions } from "../domain/order-sync.js";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 
@@ -15,7 +15,8 @@ export async function registerOrderRoutes(
     orders: await repositories.orders.listByUser(request.userId)
   }));
 
-  // 刷新返利：以后台订单当前状态重算这笔订单的台账（已结算→把待返利刷成已到账），幂等
+  // 刷新返利：按后台订单当前状态，对这笔订单重跑归因 + 重算台账（已结算→把待返利刷成已到账）。
+  // 用完整 processOrder（含重跑归因），解决"曾被判待复核但其实属本人"的订单刷不到账的问题。幂等。
   app.post<{ Params: { id: string } }>("/api/orders/me/:id/recheck", async (request, reply) => {
     const order = await repositories.orders.findById(request.params.id);
     if (!order) return reply.code(404).send({ error: "订单不存在" });
@@ -24,7 +25,7 @@ export async function registerOrderRoutes(
       return reply.code(404).send({ error: "订单不存在" });
     }
     const options = await resolveCommissionOptions(repositories, config);
-    await reconcileOrderLedger(repositories, order, options);
+    await processOrder(repositories, order, options);
     const orders = await repositories.orders.listByUser(request.userId);
     return { order: orders.find((o) => o.id === order.id) ?? null };
   });

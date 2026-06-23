@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { createRepositories } from "../src/repositories/memory.js";
-import { reconcileOrderLedger, runOrderSync } from "../src/domain/order-sync.js";
+import { processOrder, reconcileOrderLedger, runOrderSync } from "../src/domain/order-sync.js";
 import type { Repositories, UpsertOrderInput } from "../src/repositories/types.js";
 
 const OPTIONS = { commissionSharingRatio: 0.5, referralEnabled: false, referralRatio: 0 };
@@ -140,6 +140,50 @@ describe("commissionLedger.listStalePending", () => {
     await reconcileOrderLedger(repos, settled, OPTIONS);
     stale = await repos.commissionLedger.listStalePending(100);
     expect(stale).toHaveLength(0);
+  });
+});
+
+describe("刷新返利：已结算但归因待复核 → 重跑归因后入账", () => {
+  test("processOrder 重跑：已结算订单从待复核归到本人并到账", async () => {
+    const repos = createRepositories();
+    const user = await repos.users.findOrCreateByOpenid("u-recheck");
+    // 订单已结算，itemId=IID9，付款时间在转化之后的窗内
+    const order = await repos.orders.upsert(
+      orderInput({ tbkOrderId: "RC1", orderStatus: "settled", itemId: "IID9", settledCommissionCents: 800, payTime: new Date(Date.now() + 60_000) })
+    );
+    // 该用户对此商品有一条转化（itemId 一致），但订单当前归因被卡在「待复核」
+    await repos.conversions.create({
+      userId: user.id,
+      rawContent: "x",
+      platform: "taobao",
+      itemId: "IID9",
+      itemTitle: "商品X",
+      itemImageUrl: "",
+      itemPriceCents: 0,
+      commissionRate: 0,
+      estimatedCommissionCents: 1000,
+      estimatedRebateCents: 500,
+      generatedPassword: "",
+      generatedShortUrl: "",
+      generatedClickUrl: ""
+    });
+    await repos.orders.upsertAttribution({
+      tbkOrderId: order.tbkOrderId,
+      status: "pending_review",
+      confidence: 0.5,
+      reason: "candidate_outside_window",
+      userId: user.id
+    });
+
+    // 只重算台账不会入账（待复核被拦）
+    await reconcileOrderLedger(repos, order, { commissionSharingRatio: 0.5 });
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(0);
+
+    // 刷新返利走完整 processOrder：重跑归因→auto_matched→按已结算入账
+    await processOrder(repos, order, { commissionSharingRatio: 0.5 });
+    const attr = await repos.orders.getAttribution("RC1");
+    expect(attr?.status).toBe("auto_matched");
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(400); // 800*0.5
   });
 });
 
