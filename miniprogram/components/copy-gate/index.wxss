@@ -12,3 +12,9 @@
   color: #b0b4bb;
   padding: 12rpx;
 }
+
+/* 弹层出现在带自定义 tabBar 的页面（如「我的」）时，tabBar(z-index 999/独立层)会盖住
+   底部按钮。底部多留出 tabBar 高度的安全距离，保证「完成/登录」按钮始终在 tabBar 之上可点。 */
+.gate-sheet {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 180rpx) !important;
+}

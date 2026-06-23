@@ -4,7 +4,7 @@
 
   <!-- 登录 / 完善资料步 -->
   <view wx:if="{{phase === 'login' || phase === 'profile'}}" class="modal-overlay" bindtap="onMaskTap">
-    <view class="modal-card" catchtap="stopProp">
+    <view class="modal-card gate-sheet" catchtap="stopProp">
       <block wx:if="{{phase === 'login'}}">
         <view class="modal-title">{{mode === 'onboarding' ? '欢迎，先登录一下' : '登录后即可复制'}}</view>
         <view class="gate-desc">{{mode === 'onboarding' ? '登录后即可领返利、查订单、邀好友赚提成' : '复制优惠口令前，请先用微信登录'}}</view>
