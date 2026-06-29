@@ -1,5 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { matchOrderAttribution, titlesSameProduct } from "../src/domain/attribution.js";
+import { matchOrderAttribution, titleSimilarity, titlesSameProduct } from "../src/domain/attribution.js";
+
+describe("titleSimilarity 分档", () => {
+  test("品牌前缀+词序差异 → 相似度落在待复核区间(0.55~0.8)，不自动", () => {
+    const order = "内蒙古草原酱牛肉特产即食卤牛肉熟食真空熟非牛腱子肉官方旗舰店";
+    const conv = "蒙时代内蒙古草原即食酱牛肉熟食";
+    const sim = titleSimilarity(order, conv);
+    expect(sim).toBeGreaterThanOrEqual(0.55);
+    expect(sim).toBeLessThan(0.8);
+    expect(titlesSameProduct(order, conv)).toBe(false);
+  });
+});
 
 describe("titlesSameProduct", () => {
   test("实战：订单长标题 vs 折淘客带【】简称标题 判为同款", () => {

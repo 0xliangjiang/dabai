@@ -594,13 +594,15 @@ function pickString(record: Record<string, unknown>, keys: string[]): string {
   return String(value);
 }
 
-// 取完整商品标题：title 常被折淘客截断，jianjie 多为完整名；当 jianjie 是 title 的
-// 扩展（以 title 开头）时用 jianjie，否则用 title，避免误用无关的简介。
+// 取完整商品标题：订单接口的 item_title 是「长标题」，归因要与它对齐，所以优先用长标题
+// tao_title（最贴近订单标题，匹配最准）；其次 jianjie（当它是 title 的扩展时）；最后短标题 title。
 function pickFullTitle(content: Record<string, unknown>): string {
-  const title = pickString(content, ["title", "tao_title", "goods_name"]).trim();
+  const title = pickString(content, ["title", "goods_name"]).trim();
+  const taoTitle = pickString(content, ["tao_title"]).trim();
   const jianjie = pickString(content, ["jianjie", "shortTitle", "sub_title"]).trim();
+  if (taoTitle.length >= 5 && taoTitle.length >= title.length) return taoTitle;
   if (jianjie && (!title || jianjie.startsWith(title))) return jianjie;
-  return title || "淘宝商品";
+  return title || taoTitle || "淘宝商品";
 }
 
 // 商品 id：优先真实数字 id；拿不到时退回折淘客返回的加密 token（原样存，供订单侧同款加密时精确归因）。

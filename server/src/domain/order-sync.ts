@@ -1,4 +1,11 @@
-import { matchOrderAttribution, titlesSameProduct, withoutCopyEvent, type AttributionResult } from "./attribution.js";
+import {
+  matchOrderAttribution,
+  titleSimilarity,
+  TITLE_MATCH_THRESHOLD,
+  TITLE_REVIEW_THRESHOLD,
+  withoutCopyEvent,
+  type AttributionResult
+} from "./attribution.js";
 import {
   buildCommissionLedgerEntry,
   buildReferralLedgerEntry,
@@ -68,18 +75,36 @@ async function resolveOrderAttribution(
     const w = windowHours ?? 24;
     const start = new Date(order.payTime.getTime() - w * 60 * 60 * 1000);
     const recent = await repositories.conversions.listCreatedBetween(start, order.payTime, 1000);
-    const titleCandidates = recent
-      .filter((c) => titlesSameProduct(title, c.itemTitle))
-      .map((c) => ({
-        id: c.id,
-        userId: c.userId,
-        conversionId: c.id,
-        itemId: order.itemId,
-        copiedAt: c.createdAt
-      }));
-    const byTitle = withoutCopyEvent(matchOrderAttribution(orderRef, titleCandidates, { windowHours }));
-    if (byTitle.status === "auto_matched") return { ...byTitle, reason: "title_match_single" };
-    if (byTitle.status === "pending_review") return { ...byTitle, reason: "title_match_multiple" };
+    const scored = recent
+      .map((c) => ({ c, sim: titleSimilarity(title, c.itemTitle) }))
+      .filter((x) => x.sim >= TITLE_REVIEW_THRESHOLD);
+    const toCandidate = (c: { id: string; userId: string; createdAt: Date }) => ({
+      id: c.id,
+      userId: c.userId,
+      conversionId: c.id,
+      itemId: order.itemId,
+      copiedAt: c.createdAt
+    });
+
+    // 强匹配（≥0.8）：唯一候选→自动归因，多个→待复核
+    const strong = scored.filter((x) => x.sim >= TITLE_MATCH_THRESHOLD).map((x) => toCandidate(x.c));
+    const byStrong = withoutCopyEvent(matchOrderAttribution(orderRef, strong, { windowHours }));
+    if (byStrong.status === "auto_matched") return { ...byStrong, reason: "title_match_single" };
+    if (byStrong.status === "pending_review") return { ...byStrong, reason: "title_match_multiple" };
+
+    // 疑似匹配（0.55~0.8）：不自动，进待复核由人工确认（避免误发钱，也不丢候选）
+    const weak = scored.filter((x) => x.sim < TITLE_MATCH_THRESHOLD).map((x) => toCandidate(x.c));
+    const byWeak = withoutCopyEvent(matchOrderAttribution(orderRef, weak, { windowHours }));
+    if (byWeak.status === "auto_matched") {
+      return {
+        status: "pending_review",
+        confidence: 0.4,
+        userId: byWeak.userId,
+        conversionId: byWeak.conversionId,
+        reason: "title_fuzzy_review"
+      };
+    }
+    if (byWeak.status === "pending_review") return { ...byWeak, reason: "title_fuzzy_review" };
   }
 
   return attribution;

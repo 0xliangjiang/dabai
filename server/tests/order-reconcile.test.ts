@@ -268,6 +268,41 @@ describe("批量核对（后台一键）", () => {
   });
 });
 
+describe("标题疑似同款 → 进待复核（不自动、不丢弃）", () => {
+  test("相似度 0.55~0.8 的订单进 pending_review，不自动入账", async () => {
+    const repos = createRepositories();
+    const user = await repos.users.findOrCreateByOpenid("u-fuzzy");
+    await repos.conversions.create({
+      userId: user.id,
+      rawContent: "x",
+      platform: "taobao",
+      itemId: "CID-FZ", // 与订单 itemId 不同 → 走标题兜底
+      itemTitle: "蒙时代内蒙古草原即食酱牛肉熟食",
+      itemImageUrl: "",
+      itemPriceCents: 0,
+      commissionRate: 0,
+      estimatedCommissionCents: 1000,
+      estimatedRebateCents: 500,
+      generatedPassword: "",
+      generatedShortUrl: "",
+      generatedClickUrl: ""
+    });
+    const order = await repos.orders.upsert(
+      orderInput({
+        tbkOrderId: "FZ1",
+        itemId: "OID-FZ",
+        itemTitle: "内蒙古草原酱牛肉特产即食卤牛肉熟食真空熟非牛腱子肉官方旗舰店",
+        orderStatus: "settled",
+        payTime: new Date(Date.now() + 60_000)
+      })
+    );
+    await processOrder(repos, order, { commissionSharingRatio: 0.5 });
+    const attr = await repos.orders.getAttribution("FZ1");
+    expect(attr?.status).toBe("pending_review");
+    expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(0); // 不自动入账
+  });
+});
+
 describe("标题同款归因兜底（itemId 为空的加密商品）", () => {
   function conv(repos: Repositories, userId: string, itemTitle: string) {
     return repos.conversions.create({
