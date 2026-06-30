@@ -37,7 +37,7 @@ declare module "fastify" {
       repositories: Repositories;
       getConfig: () => Promise<AppConfig>;
       buildTaobaoClient: () => Promise<TaobaoClient>;
-      buildOrderClients: () => Promise<{ orderClient: JdOrderClient; taobaoOrderClient: TaobaoOrderClient }>;
+      buildOrderClients: () => Promise<{ orderClient: JdOrderClient; taobaoOrderClient: TaobaoOrderClient; taobaoProductClient: TaobaoClient }>;
     };
   }
 }
@@ -78,8 +78,10 @@ export async function createApp(options: CreateAppOptions = {}) {
     options.taobaoClient ?? createTaobaoClient(await getConfig());
   const buildOrderClients = async () => {
     if (options.orderClient || options.taobaoOrderClient) {
+      const taobaoProductClient = await buildTaobaoClient();
       return {
         orderClient: options.orderClient ?? createJdOrderClient(config),
+        taobaoProductClient,
         taobaoOrderClient:
           options.taobaoOrderClient ??
           createTaobaoOrderClient({ apiUrl: config.zhetaokeOrderApiUrl, appKey: config.zhetaokeAppKey, sid: config.zhetaokeSid })
@@ -88,6 +90,7 @@ export async function createApp(options: CreateAppOptions = {}) {
     const cfg = await getConfig();
     return {
       orderClient: createJdOrderClient(cfg),
+      taobaoProductClient: createTaobaoClient(cfg),
       taobaoOrderClient: createTaobaoOrderClient({
         apiUrl: cfg.zhetaokeOrderApiUrl,
         appKey: cfg.zhetaokeAppKey,

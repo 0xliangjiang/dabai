@@ -16,7 +16,20 @@ export type TaobaoConversionResult = {
   generatedClickUrl: string;
 };
 
-export interface TaobaoClient {
+export type TaobaoProductDetail = {
+  platform: "taobao";
+  itemId: string;
+  itemTitle: string;
+  itemImageUrl: string;
+  itemPriceCents: number;
+  rawPayload?: unknown;
+};
+
+export interface TaobaoProductClient {
+  getProductDetail(itemId: string): Promise<TaobaoProductDetail | undefined>;
+}
+
+export interface TaobaoClient extends TaobaoProductClient {
   convert(rawContent: string): Promise<TaobaoConversionResult>;
 }
 
@@ -101,6 +114,19 @@ export class ZhetaokeClient implements TaobaoClient {
       throw new UnsupportedPlatformError("唯品会转链暂未开通，敬请期待");
     }
     return this.convertTaobao(rawContent);
+  }
+
+  async getProductDetail(itemId: string): Promise<TaobaoProductDetail | undefined> {
+    if (!/^[A-Za-z0-9_-]{6,}$/.test(itemId.trim())) return undefined;
+    const converted = await this.convertTaobaoByItemId(itemId.trim());
+    return {
+      platform: "taobao",
+      itemId: converted.itemId || itemId.trim(),
+      itemTitle: converted.itemTitle,
+      itemImageUrl: converted.itemImageUrl,
+      itemPriceCents: converted.itemPriceCents,
+      rawPayload: { source: "zhetaoke_gaoyongzhuanlian", itemId }
+    };
   }
 
   // 折淘客淘宝转链：老式淘口令走 tkl 接口；新版分享（e.tb.cn + tk=）解析出商品ID走高佣转链
@@ -477,6 +503,17 @@ export class MockTaobaoClient implements TaobaoClient {
       generatedPassword: "￥mockpassword￥",
       generatedShortUrl: "https://s.click.taobao.com/mock",
       generatedClickUrl: "https://uland.taobao.com/mock"
+    };
+  }
+
+  async getProductDetail(itemId: string): Promise<TaobaoProductDetail> {
+    return {
+      platform: "taobao",
+      itemId,
+      itemTitle: "Mock Taobao Item",
+      itemImageUrl: "https://img.alicdn.com/mock-item.png",
+      itemPriceCents: 9900,
+      rawPayload: { mock: true }
     };
   }
 }

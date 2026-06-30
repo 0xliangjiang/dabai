@@ -145,6 +145,21 @@ model CopyEvent {
   @@index([itemId, copiedAt])
 }
 
+model ProductSnapshot {
+  id             String   @id @default(cuid())
+  platform       String   @default("taobao")
+  itemId         String
+  itemTitle      String   @db.VarChar(512)
+  itemImageUrl   String?  @db.VarChar(1024)
+  itemPriceCents Int?
+  rawPayload     Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([platform, itemId])
+  @@index([updatedAt])
+}
+
 model TbkOrder {
   id                       String   @id @default(cuid())
   tbkOrderId               String   @unique

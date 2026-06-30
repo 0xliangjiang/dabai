@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
+import { resolveDealCopyValue } from "../domain/deal-link-resolver.js";
 import { getEffectiveConfig, buildSettingsView, isValidSettingKey, SETTING_FIELDS } from "../config/runtime.js";
 import { buildCommissionLedgerEntry, buildReferralLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { reattributePendingOrders, reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
@@ -87,7 +88,8 @@ export async function registerAdminRoutes(
           const original = (step.copyValue ?? "").trim();
           if (!original || (step.copyType !== "password" && step.copyType !== "link")) continue;
           try {
-            const r = await taobaoClient.convert(original);
+            const normalized = await resolveDealCopyValue(original);
+            const r = await taobaoClient.convert(normalized);
             const link = r.generatedShortUrl || r.generatedClickUrl;
             const combined = [r.generatedPassword, link].filter(Boolean).join(" ").trim();
             if (combined) {

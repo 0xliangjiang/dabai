@@ -16,10 +16,10 @@ export async function registerJobRoutes(
     }
 
     const commissionOptions = await resolveCommissionOptions(repositories, config);
-    const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
+    const { orderClient, taobaoOrderClient, taobaoProductClient } = await app.deps.buildOrderClients();
     const result = await runOrderSync(
       repositories,
-      { taobaoOrderClient, orderClient },
+      { taobaoOrderClient, taobaoProductClient, orderClient },
       { attributionWindowHours: 24, ...commissionOptions },
       "manual"
     );

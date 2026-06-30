@@ -11,6 +11,7 @@ import type {
   DownlineRecord,
   OrderClaimRecord,
   OrderRecord,
+  ProductSnapshotRecord,
   ReferralSummary,
   Repositories,
   UpsertAttributionInput,
@@ -394,6 +395,34 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           take: 1000
         });
         return records.map(mapCopyEvent);
+      }
+    },
+    productSnapshots: {
+      async find(platform, itemId) {
+        const record = await prisma.productSnapshot.findUnique({
+          where: { platform_itemId: { platform, itemId } }
+        });
+        return record ? mapProductSnapshot(record) : undefined;
+      },
+      async upsert(input) {
+        const record = await prisma.productSnapshot.upsert({
+          where: { platform_itemId: { platform: input.platform, itemId: input.itemId } },
+          create: {
+            platform: input.platform,
+            itemId: input.itemId,
+            itemTitle: input.itemTitle,
+            itemImageUrl: input.itemImageUrl || null,
+            itemPriceCents: input.itemPriceCents ?? null,
+            rawPayload: toJsonValue(input.rawPayload ?? {})
+          },
+          update: {
+            itemTitle: input.itemTitle,
+            itemImageUrl: input.itemImageUrl || null,
+            itemPriceCents: input.itemPriceCents ?? null,
+            rawPayload: toJsonValue(input.rawPayload ?? {})
+          }
+        });
+        return mapProductSnapshot(record);
       }
     },
     orders: {
@@ -1014,6 +1043,25 @@ function mapCopyEvent(record: {
   return {
     ...record,
     copyType: record.copyType as CopyEventRecord["copyType"]
+  };
+}
+
+function mapProductSnapshot(record: {
+  id: string;
+  platform: string;
+  itemId: string;
+  itemTitle: string;
+  itemImageUrl: string | null;
+  itemPriceCents: number | null;
+  rawPayload: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}): ProductSnapshotRecord {
+  return {
+    ...record,
+    platform: record.platform as ProductSnapshotRecord["platform"],
+    itemImageUrl: record.itemImageUrl ?? "",
+    itemPriceCents: record.itemPriceCents ?? 0
   };
 }
 

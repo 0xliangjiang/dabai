@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app.js";
 import { validateProductionConfig, type AppConfig } from "../src/config/env.js";
 import type { JdOrderClient } from "../src/integrations/jd/orders.js";
-import { MockTaobaoClient } from "../src/integrations/taobao/client.js";
+import { MockTaobaoClient, type TaobaoClient } from "../src/integrations/taobao/client.js";
 
 describe("server API", () => {
   const apps: Awaited<ReturnType<typeof createApp>>[] = [];
@@ -185,6 +185,51 @@ describe("server API", () => {
       generatedClickUrl: "https://uland.taobao.com/mock",
       estimatedCommissionCents: 1188,
       estimatedRebateCents: 594
+    });
+  });
+
+  test("POST /api/conversions stores canonical product detail title when available", async () => {
+    const taobaoClient = {
+      async convert() {
+        return {
+          platform: "taobao" as const,
+          itemId: "660000001",
+          itemTitle: "短标题",
+          itemImageUrl: "",
+          itemPriceCents: 5900,
+          commissionRate: 0.1,
+          estimatedCommissionCents: 590,
+          generatedPassword: "￥newpass￥",
+          generatedShortUrl: "https://s.click.taobao.com/x",
+          generatedClickUrl: "https://uland.taobao.com/x"
+        };
+      },
+      async getProductDetail(itemId: string) {
+        expect(itemId).toBe("660000001");
+        return {
+          platform: "taobao" as const,
+          itemId,
+          itemTitle: "官方长标题 商品详情标准名称",
+          itemImageUrl: "https://img.alicdn.com/detail.jpg",
+          itemPriceCents: 5900
+        };
+      }
+    };
+    const app = await createApp({ config: testConfig, taobaoClient });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/conversions",
+      headers: { authorization: "Bearer local_user-1" },
+      payload: { rawContent: "￥abc123￥ 淘宝商品" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      itemId: "660000001",
+      itemTitle: "官方长标题 商品详情标准名称",
+      itemImageUrl: "https://img.alicdn.com/detail.jpg"
     });
   });
 
@@ -856,6 +901,93 @@ describe("server API", () => {
         orderClaimCount: 0
       }
     });
+  });
+
+  test("POST /api/admin/deals/ai-parse expands short links before converting", async () => {
+    const originalFetch = globalThis.fetch;
+    let convertedInput = "";
+    const taobaoClient: TaobaoClient = {
+      async convert(rawContent: string) {
+        convertedInput = rawContent;
+        return {
+          platform: "taobao",
+          itemId: "660000001",
+          itemTitle: "植护乳霜纸",
+          itemImageUrl: "",
+          itemPriceCents: 0,
+          commissionRate: 0,
+          estimatedCommissionCents: 0,
+          generatedPassword: "￥own￥",
+          generatedShortUrl: "https://s.click.taobao.com/own",
+          generatedClickUrl: "https://uland.taobao.com/own"
+        };
+      },
+      async getProductDetail() {
+        return undefined;
+      }
+    };
+
+    const responseWithUrl = (url: string, body = "") => {
+      const response = new Response(body, { status: 200 });
+      Object.defineProperty(response, "url", { value: url });
+      return response;
+    };
+
+    globalThis.fetch = (async (url: string | URL) => {
+      const href = String(url);
+      if (href === "https://example.com/chat") {
+        return new Response(
+          JSON.stringify({
+            base_resp: { status_code: 0, status_msg: "success" },
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    title: "植护乳霜纸",
+                    summary: "基本 0 元",
+                    steps: [{ content: "复制链接去拍", copyType: "link", copyValue: "https://upurl.cn/3tqEL7" }]
+                  })
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+      if (href === "https://upurl.cn/3tqEL7") {
+        return responseWithUrl("https://item.taobao.com/item.htm?id=660000001");
+      }
+      throw new Error(`unexpected fetch ${href}`);
+    }) as typeof fetch;
+
+    try {
+      const app = await createApp({
+        config: {
+          ...testConfig,
+          minimaxApiUrl: "https://example.com/chat",
+          minimaxApiKey: "test-key",
+          minimaxModel: "MiniMax-M3"
+        },
+        taobaoClient
+      });
+      apps.push(app);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/admin/deals/ai-parse",
+        headers: { "x-admin-token": "dev-admin-token" },
+        payload: { rawContent: "植护乳霜纸 https://upurl.cn/3tqEL7" }
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(convertedInput).toBe("https://item.taobao.com/item.htm?id=660000001");
+      expect(response.json()).toMatchObject({
+        convertedCount: 1,
+        deal: { steps: [{ copyType: "password", copyValue: "￥own￥ https://s.click.taobao.com/own" }] }
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("production config validation fails when critical config is missing", () => {

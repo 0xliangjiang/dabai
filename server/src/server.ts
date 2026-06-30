@@ -35,10 +35,10 @@ if (syncEnabled) {
           const lookback = Math.min(175, Math.max(interval * 2, cfg.orderSyncLookbackMinutes || 170));
           const startTime = new Date(Date.now() - lookback * 60 * 1000);
           const commissionOptions = await resolveCommissionOptions(app.deps.repositories, cfg);
-          const { orderClient, taobaoOrderClient } = await app.deps.buildOrderClients();
+          const { orderClient, taobaoOrderClient, taobaoProductClient } = await app.deps.buildOrderClients();
           return runOrderSync(
             app.deps.repositories,
-            { taobaoOrderClient, orderClient },
+            { taobaoOrderClient, taobaoProductClient, orderClient },
             { startTime, attributionWindowHours: 24, ...commissionOptions },
             "auto"
           );

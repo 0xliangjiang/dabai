@@ -50,6 +50,18 @@ export type ConversionRecord = {
   createdAt: Date;
 };
 
+export type ProductSnapshotRecord = {
+  id: string;
+  platform: Platform;
+  itemId: string;
+  itemTitle: string;
+  itemImageUrl: string;
+  itemPriceCents: number;
+  rawPayload: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type CopyEventRecord = {
   id: string;
   conversionId: string;
@@ -226,6 +238,15 @@ export type UpsertOrderInput = {
   rawPayload: unknown;
 };
 
+export type UpsertProductSnapshotInput = {
+  platform: Platform;
+  itemId: string;
+  itemTitle: string;
+  itemImageUrl?: string | null;
+  itemPriceCents?: number | null;
+  rawPayload?: unknown;
+};
+
 export type UpsertAttributionInput = {
   tbkOrderId: string;
   userId?: string | null;
@@ -300,6 +321,10 @@ export type Repositories = {
     create(input: Omit<CopyEventRecord, "id" | "copiedAt">): Promise<CopyEventRecord>;
     count(): Promise<number>;
     listByItem(itemId: string): Promise<CopyEventRecord[]>;
+  };
+  productSnapshots: {
+    find(platform: Platform, itemId: string): Promise<ProductSnapshotRecord | undefined>;
+    upsert(input: UpsertProductSnapshotInput): Promise<ProductSnapshotRecord>;
   };
   orders: {
     listByUser(userId: string): Promise<OrderSummary[]>;

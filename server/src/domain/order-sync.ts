@@ -13,10 +13,12 @@ import {
   type OrderCommissionStatus
 } from "./commission.js";
 import type { JdOrderClient } from "../integrations/jd/orders.js";
+import type { TaobaoProductClient } from "../integrations/taobao/client.js";
 import type { TaobaoOrderClient } from "../integrations/taobao/orders.js";
 import type { OrderRecord, Repositories } from "../repositories/types.js";
 import type { AppConfig } from "../config/env.js";
 import { getEffectiveConfig } from "../config/runtime.js";
+import { resolveProductDetail } from "./product-detail.js";
 
 const DEFAULT_AUTO_SETTLE_THRESHOLD_CENTS = 2000; // 20 元
 const DEFAULT_AUTO_SETTLE_DELAY_DAYS = 7;
@@ -288,13 +290,13 @@ export type OrderSyncRunResult = {
 // - 记录写库失败只吞掉（记录功能不能拖垮同步本身），交由调用方记日志
 export async function runOrderSync(
   repositories: Repositories,
-  clients: { taobaoOrderClient: TaobaoOrderClient; orderClient: JdOrderClient },
+  clients: { taobaoOrderClient: TaobaoOrderClient; taobaoProductClient?: TaobaoProductClient; orderClient: JdOrderClient },
   options: SyncOrdersOptions,
   trigger: "auto" | "manual"
 ): Promise<OrderSyncRunResult> {
   const startedAt = Date.now();
   const [taobao, jd] = await Promise.allSettled([
-    syncTaobaoOrders(repositories, clients.taobaoOrderClient, options),
+    syncTaobaoOrders(repositories, clients.taobaoOrderClient, options, clients.taobaoProductClient),
     syncJdOrders(repositories, clients.orderClient, options)
   ]);
 
@@ -323,12 +325,17 @@ export async function runOrderSync(
     const settleEnd = new Date();
     // 接口最大可查 3 小时，留 2 分钟余量避免边界报错
     const settleStart = new Date(settleEnd.getTime() - (3 * 60 - 2) * 60 * 1000);
-    const settle = await syncTaobaoOrders(repositories, clients.taobaoOrderClient, {
-      ...options,
-      startTime: settleStart,
-      endTime: settleEnd,
-      queryType: 3
-    });
+    const settle = await syncTaobaoOrders(
+      repositories,
+      clients.taobaoOrderClient,
+      {
+        ...options,
+        startTime: settleStart,
+        endTime: settleEnd,
+        queryType: 3
+      },
+      clients.taobaoProductClient
+    );
     if (settle.attributed > 0) {
       console.log(`[order-sync] 结算兜底扫描：处理 ${settle.synced} 单，归属 ${settle.attributed} 单`);
     }
@@ -412,7 +419,8 @@ export async function syncJdOrders(
 export async function syncTaobaoOrders(
   repositories: Repositories,
   orderClient: TaobaoOrderClient,
-  options: SyncOrdersOptions
+  options: SyncOrdersOptions,
+  productClient?: TaobaoProductClient
 ) {
   const endTime = options.endTime ?? new Date();
   const startTime = options.startTime ?? new Date(endTime.getTime() - 2 * 60 * 60 * 1000);
@@ -431,7 +439,15 @@ export async function syncTaobaoOrders(
     });
     for (const incoming of page.orders) {
       try {
-        const order = await repositories.orders.upsert(incoming);
+        const product = await resolveProductDetail(repositories, productClient, {
+          platform: "taobao",
+          itemId: incoming.itemId,
+          itemTitle: incoming.itemTitle
+        });
+        const order = await repositories.orders.upsert({
+          ...incoming,
+          itemTitle: product.itemTitle
+        });
         const result = await processOrder(repositories, order, options);
         if (result.attributed) attributed += 1;
         synced += 1;

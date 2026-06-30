@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { createRepositories } from "../src/repositories/memory.js";
 import { processOrder, reconcileOrderLedger, runOrderSync } from "../src/domain/order-sync.js";
+import type { JdOrderClient } from "../src/integrations/jd/orders.js";
+import type { TaobaoProductClient } from "../src/integrations/taobao/client.js";
+import type { TaobaoOrderClient } from "../src/integrations/taobao/orders.js";
 import type { Repositories, UpsertOrderInput } from "../src/repositories/types.js";
 
 const OPTIONS = { commissionSharingRatio: 0.5, referralEnabled: false, referralRatio: 0 };
@@ -328,7 +331,7 @@ describe("标题同款归因兜底（itemId 为空的加密商品）", () => {
     await conv(repos, user.id, "【益智早教抓握力】彩虹转转塔");
 
     const orderTitle = "彩虹转转乐叠叠乐宝宝玩具婴幼儿转转塔0-3岁旋转套圈早教礼物";
-    const taobaoOrderClient = {
+    const taobaoOrderClient: TaobaoOrderClient = {
       async fetchTaobaoOrders() {
         return {
           orders: [
@@ -356,6 +359,55 @@ describe("标题同款归因兜底（itemId 为空的加密商品）", () => {
     expect(attr?.status).toBe("auto_matched");
     expect(attr?.userId).toBe(user.id);
     expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(400); // 800 * 0.5 已结算到账
+  });
+});
+
+describe("商品详情标题统一", () => {
+  test("淘宝订单同步按 itemId 使用商品详情标题入库", async () => {
+    const repos = createRepositories();
+    const taobaoOrderClient = {
+      async fetchTaobaoOrders() {
+        return {
+          orders: [
+            {
+              tbkOrderId: "PD1",
+              itemId: "660000001",
+              itemTitle: "短标题",
+              payTime: new Date(Date.now() + 60_000),
+              payAmountCents: 5000,
+              estimatedCommissionCents: 1000,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: {}
+            }
+          ],
+          hasNext: false
+        };
+      }
+    };
+    const taobaoProductClient: TaobaoProductClient = {
+      async getProductDetail(itemId: string) {
+        expect(itemId).toBe("660000001");
+        return {
+          platform: "taobao" as const,
+          itemId,
+          itemTitle: "官方长标题 商品详情标准名称",
+          itemImageUrl: "https://img.alicdn.com/detail.jpg",
+          itemPriceCents: 5900
+        };
+      }
+    };
+    const orderClient: JdOrderClient = { async fetchJdOrders() { return { orders: [], hasNext: false }; } };
+
+    await runOrderSync(
+      repos,
+      { taobaoOrderClient, taobaoProductClient, orderClient },
+      { commissionSharingRatio: 0.5, attributionWindowHours: 24 },
+      "auto"
+    );
+
+    const { items } = await repos.orders.listAllOrders();
+    expect(items[0].itemTitle).toBe("官方长标题 商品详情标准名称");
   });
 });
 

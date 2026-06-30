@@ -14,6 +14,7 @@ import type {
   OrderClaimRecord,
   OrderRecord,
   OrderSyncRunRecord,
+  ProductSnapshotRecord,
   Repositories,
   UpsertAttributionInput,
   UpsertOrderInput,
@@ -32,6 +33,7 @@ export function createRepositories(): Repositories {
   const usersByOpenid = new Map<string, string>();
   const conversions = new Map<string, ConversionRecord>();
   const copyEvents = new Map<string, CopyEventRecord>();
+  const productSnapshots = new Map<string, ProductSnapshotRecord>();
   const orders = new Map<string, OrderRecord>();
   const ordersByTbkOrderId = new Map<string, string>();
   const attributions = new Map<string, AttributionRecord>();
@@ -307,6 +309,29 @@ export function createRepositories(): Repositories {
       },
       async listByItem(itemId: string) {
         return [...copyEvents.values()].filter((record) => record.itemId === itemId);
+      }
+    },
+    productSnapshots: {
+      async find(platform, itemId) {
+        return productSnapshots.get(`${platform}:${itemId}`);
+      },
+      async upsert(input) {
+        const key = `${input.platform}:${input.itemId}`;
+        const existing = productSnapshots.get(key);
+        const now = new Date();
+        const record: ProductSnapshotRecord = {
+          id: existing?.id ?? randomUUID(),
+          platform: input.platform,
+          itemId: input.itemId,
+          itemTitle: input.itemTitle,
+          itemImageUrl: input.itemImageUrl ?? "",
+          itemPriceCents: input.itemPriceCents ?? 0,
+          rawPayload: input.rawPayload ?? {},
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now
+        };
+        productSnapshots.set(key, record);
+        return record;
       }
     },
     orders: {
