@@ -990,6 +990,108 @@ describe("server API", () => {
     }
   });
 
+  test("POST /api/admin/deals/ai-parse extracts tkl from iyunzk short-link pages", async () => {
+    const originalFetch = globalThis.fetch;
+    let convertedInput = "";
+    const taobaoClient: TaobaoClient = {
+      async convert(rawContent: string) {
+        convertedInput = rawContent;
+        return {
+          platform: "taobao",
+          itemId: "660000001",
+          itemTitle: "植护乳霜纸",
+          itemImageUrl: "",
+          itemPriceCents: 0,
+          commissionRate: 0,
+          estimatedCommissionCents: 0,
+          generatedPassword: "￥own-tkl￥",
+          generatedShortUrl: "https://s.click.taobao.com/own-tkl",
+          generatedClickUrl: "https://uland.taobao.com/own-tkl"
+        };
+      },
+      async getProductDetail() {
+        return undefined;
+      }
+    };
+
+    const responseWithUrl = (url: string, body = "") => {
+      const response = new Response(body, { status: 200 });
+      Object.defineProperty(response, "url", { value: url });
+      return response;
+    };
+
+    globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+      const href = String(url);
+      if (href === "https://example.com/chat") {
+        return new Response(
+          JSON.stringify({
+            base_resp: { status_code: 0, status_msg: "success" },
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    title: "植护乳霜纸",
+                    summary: "基本 0 元",
+                    steps: [{ content: "复制链接下单", copyType: "link", copyValue: "https://upurl.cn/3tqEL7" }]
+                  })
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        );
+      }
+      if (href === "https://upurl.cn/3tqEL7") {
+        return responseWithUrl(
+          href,
+          '<script>window.location.href = "http://oss.taobyhq.com/?dkey=3tqEL7&tp=s_p&k=2UCZMB#/pages/h5?temp=super_page&k=2UCZMB";</script>'
+        );
+      }
+      if (href === "https://api.cmsv5.iyunzk.com/apis/SuperPage/get") {
+        expect(String(init?.body)).toContain("key=2UCZMB");
+        return new Response(
+          JSON.stringify({
+            code: 200,
+            data: {
+              list: [{ form: [{ field: "tkl", value: "1(RiL5g9WxuRQ)/ AC33" }] }]
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+      throw new Error(`unexpected fetch ${href}`);
+    }) as typeof fetch;
+
+    try {
+      const app = await createApp({
+        config: {
+          ...testConfig,
+          minimaxApiUrl: "https://example.com/chat",
+          minimaxApiKey: "test-key",
+          minimaxModel: "MiniMax-M3"
+        },
+        taobaoClient
+      });
+      apps.push(app);
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/admin/deals/ai-parse",
+        headers: { "x-admin-token": "dev-admin-token" },
+        payload: { rawContent: "点击链接下单植护乳霜纸 https://upurl.cn/3tqEL7" }
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(convertedInput).toBe("1(RiL5g9WxuRQ)/ AC33");
+      expect(response.json()).toMatchObject({
+        convertedCount: 1,
+        deal: { steps: [{ copyType: "password", copyValue: "￥own-tkl￥ https://s.click.taobao.com/own-tkl" }] }
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("production config validation fails when critical config is missing", () => {
     expect(() =>
       validateProductionConfig({
