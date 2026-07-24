@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import type { InviteCodeGenerator } from "../integrations/wechat/mini-code.js";
 import type { Repositories } from "../repositories/types.js";
 
 const profileSchema = z.object({
@@ -13,7 +14,11 @@ const profileSchema = z.object({
     .optional()
 });
 
-export async function registerUserRoutes(app: FastifyInstance, repositories: Repositories) {
+export async function registerUserRoutes(
+  app: FastifyInstance,
+  repositories: Repositories,
+  inviteCodeGenerator?: InviteCodeGenerator
+) {
   app.get("/api/users/me", async (request) => ({
     user: await repositories.users.findById(request.userId)
   }));
@@ -33,6 +38,24 @@ export async function registerUserRoutes(app: FastifyInstance, repositories: Rep
     const pageSize = Math.min(50, Math.max(1, Number(request.query.pageSize) || 20));
     const { total, items } = await repositories.users.listDownline(request.userId, { page, pageSize });
     return { downlines: items, total, page, pageSize, hasMore: page * pageSize < total };
+  });
+
+  app.get("/api/users/me/invite-code", async (request, reply) => {
+    if (!inviteCodeGenerator) {
+      return reply.code(503).send({ error: "小程序码服务暂不可用" });
+    }
+    try {
+      const image = await inviteCodeGenerator.generate(request.userId);
+      const extension = image.contentType === "image/jpeg" ? "jpg" : "png";
+      return reply
+        .header("cache-control", "private, max-age=86400")
+        .header("content-disposition", `inline; filename="invite-code.${extension}"`)
+        .type(image.contentType)
+        .send(image.bytes);
+    } catch (error) {
+      request.log.warn({ err: error }, "invite code generation failed");
+      return reply.code(502).send({ error: "小程序码生成失败，请稍后重试" });
+    }
   });
 
   app.post<{ Body: { nickname?: string; avatarUrl?: string } }>(

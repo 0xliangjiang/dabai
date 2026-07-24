@@ -200,6 +200,41 @@ async function uploadFile(path, filePath, _retried = false) {
   }
 }
 
+function rawDownloadFile(path) {
+  const token = getToken();
+  return new Promise((resolve, reject) => {
+    wx.downloadFile({
+      url: `${app.globalData.apiBaseUrl}${path}`,
+      timeout: 30000,
+      header: token ? { authorization: `Bearer ${token}` } : {},
+      success(res) {
+        if (res.statusCode >= 200 && res.statusCode < 300 && res.tempFilePath) {
+          resolve(res.tempFilePath);
+          return;
+        }
+        reject({ statusCode: res.statusCode, error: "download failed", _authToken: token });
+      },
+      fail: reject
+    });
+  });
+}
+
+async function downloadFile(path, _retried = false) {
+  try {
+    return await rawDownloadFile(path);
+  } catch (error) {
+    if (error && error.statusCode === 401 && !_retried) {
+      const currentToken = getToken();
+      if (!currentToken || !error._authToken || currentToken === error._authToken) {
+        logout();
+        await loginWithWechat();
+      }
+      return downloadFile(path, true);
+    }
+    throw error;
+  }
+}
+
 function logout() {
   wx.removeStorageSync("token");
   wx.removeStorageSync("user");
@@ -211,6 +246,7 @@ function logout() {
 module.exports = {
   request,
   uploadFile,
+  downloadFile,
   ensureLogin,
   getToken,
   getCurrentUser,

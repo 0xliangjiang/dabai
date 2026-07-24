@@ -66,7 +66,8 @@ App({
   // 二级分销：进入小程序时从启动 query 捕获邀请人，暂存本地，登录时绑定。
   // 仅在「本地还没有」时写入，避免后续普通进入覆盖；已登录用户不再捕获（老用户不绑定）。
   captureInviter(options) {
-    const inviter = options && options.query && options.query.inviter;
+    const query = (options && options.query) || {};
+    const inviter = normalizeInviter(query.inviter || query.scene);
     if (!inviter) return;
     try {
       if (wx.getStorageSync("token")) return;
@@ -115,3 +116,14 @@ App({
     }
   }
 });
+
+function normalizeInviter(value) {
+  if (!value) return "";
+  let decoded = String(value);
+  try {
+    decoded = decodeURIComponent(decoded);
+  } catch (_error) {
+    // 使用微信传入的原值。
+  }
+  return /^[A-Za-z0-9_-]{1,32}$/.test(decoded) ? decoded : "";
+}

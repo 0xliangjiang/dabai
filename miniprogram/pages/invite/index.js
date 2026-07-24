@@ -58,8 +58,9 @@ Page({
 
   onLoad(options) {
     // 页面参数再兜底捕获一次，确保朋友圈单页模式切换到完整小程序后仍能绑定邀请人。
-    if (options && options.inviter) {
-      getApp().captureInviter({ query: { inviter: options.inviter } });
+    const inviter = options && (options.inviter || options.scene);
+    if (inviter) {
+      getApp().captureInviter({ query: { inviter } });
     }
   },
 
@@ -259,6 +260,16 @@ Page({
     this.setData({ showTimelineGuide: true });
   },
 
+  openPoster() {
+    if (!hasConsent()) {
+      this.privacyAction = "poster";
+      this.setData({ showPrivacy: true });
+      return;
+    }
+    this.closeShareModal();
+    wx.navigateTo({ url: "/pages/invite-poster/index" });
+  },
+
   onPrivacyAgree() {
     setConsent();
     getApp().resolvePrivacy(true);
@@ -267,6 +278,10 @@ Page({
     this.privacyAction = "";
     if (action === "login") {
       this.loginAndBind();
+      return;
+    }
+    if (action === "poster") {
+      this.openPoster();
       return;
     }
     this.openShareModal();

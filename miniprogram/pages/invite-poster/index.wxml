@@ -1,0 +1,47 @@
+<view class="poster-page">
+  <view class="poster-intro">
+    <view class="poster-kicker">邀请海报</view>
+    <view class="poster-heading">选一张适合你的分享风格</view>
+    <view class="poster-subtitle">每张海报都已带上你的专属小程序码</view>
+  </view>
+
+  <view class="poster-preview">
+    <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
+    <view wx:if="{{rendering}}" class="poster-loading">
+      <view class="poster-loading-mark"></view>
+      <view>{{posterReady ? "正在切换模板" : "正在生成专属海报"}}</view>
+    </view>
+    <view wx:if="{{errorMsg && !rendering}}" class="poster-error">
+      <view class="poster-error-mark">!</view>
+      <view>{{errorMsg}}</view>
+      <button class="poster-retry pressable" hover-class="pressed" bindtap="retryGenerate">重新生成</button>
+    </view>
+  </view>
+
+  <view class="template-section">
+    <view class="template-label">海报模板</view>
+    <scroll-view class="template-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+      <view class="template-list">
+        <button
+          wx:for="{{templates}}"
+          wx:key="id"
+          class="template-option {{selectedTemplateId === item.id ? 'active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="selectTemplate"
+        >
+          <view class="template-swatches">
+            <view wx:for="{{item.colors}}" wx:for-item="color" wx:key="*this" class="template-swatch" style="background: {{color}};"></view>
+          </view>
+          <view class="template-name">{{item.name}}</view>
+          <view class="template-desc">{{item.description}}</view>
+        </button>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="poster-actions">
+    <button class="poster-save-btn pressable" hover-class="pressed" loading="{{saving}}" disabled="{{!posterReady || rendering || saving}}" bindtap="savePoster">保存到相册</button>
+    <button class="poster-share-btn pressable" hover-class="pressed" open-type="share">直接发给好友</button>
+  </view>
+  <view class="poster-note">好友扫码首次进入并登录后，会自动记录邀请关系</view>
+</view>

@@ -94,6 +94,10 @@
           </view>
         </view>
         <button class="cta-btn pressable" hover-class="pressed" bindtap="openShareModal">立即邀请好友</button>
+        <button class="poster-entry-btn pressable" hover-class="pressed" bindtap="openPoster">
+          <text class="poster-entry-icon">▣</text>
+          制作邀请海报
+        </button>
         <view class="invite-tip">提成会自动并入你的奖励值，可在「我的」页查看与兑换</view>
       </view>
 
@@ -146,6 +150,15 @@
           <view class="share-option-text flex-sub">
             <view class="share-option-title">分享到朋友圈</view>
             <view class="share-option-desc">查看教程，一步发到朋友圈</view>
+          </view>
+          <view class="cu-arrow">›</view>
+        </view>
+
+        <view class="share-option pressable" hover-class="pressed" bindtap="openPoster">
+          <view class="share-option-icon poster">▣</view>
+          <view class="share-option-text flex-sub">
+            <view class="share-option-title">生成邀请海报</view>
+            <view class="share-option-desc">选择模板，保存图片后发到群或朋友圈</view>
           </view>
           <view class="cu-arrow">›</view>
         </view>

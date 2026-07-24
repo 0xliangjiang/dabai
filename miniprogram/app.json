@@ -11,7 +11,8 @@
     "pages/withdrawals/index",
     "pages/deal-detail/index",
     "pages/article-detail/index",
-    "pages/invite/index"
+    "pages/invite/index",
+    "pages/invite-poster/index"
   ],
   "window": {
     "navigationBarTitleText": "捷径一生工具箱",

@@ -13,7 +13,9 @@ const eventSchema = z.object({
     "subscription_rejected",
     "withdrawal_submitted",
     "withdrawal_failed",
-    "invite_share_opened"
+    "invite_share_opened",
+    "invite_poster_generated",
+    "invite_poster_saved"
   ]),
   visitorId: z.string().trim().min(1).max(64),
   properties: z.record(z.string(), z.union([z.string().max(100), z.number(), z.boolean()])).optional()

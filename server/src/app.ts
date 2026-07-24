@@ -11,6 +11,7 @@ import { getEffectiveConfig } from "./config/runtime.js";
 import { createJdOrderClient, type JdOrderClient } from "./integrations/jd/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
 import { createTaobaoOrderClient, type TaobaoOrderClient } from "./integrations/taobao/orders.js";
+import { createInviteCodeGenerator } from "./integrations/wechat/mini-code.js";
 import { createRepositories } from "./repositories/memory.js";
 import { createPrismaRepositories } from "./repositories/prisma.js";
 import type { Repositories } from "./repositories/types.js";
@@ -51,6 +52,7 @@ export type CreateAppOptions = {
   taobaoOrderClient?: TaobaoOrderClient;
   taobaoClient?: TaobaoClient;
   wechatAuthFetch?: typeof fetch;
+  wechatApiFetch?: typeof fetch;
 };
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -75,6 +77,7 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   // 生效配置：数据库「运营设置」覆盖 > env > 默认
   const getConfig = () => getEffectiveConfig(config, repositories);
+  const inviteCodeGenerator = createInviteCodeGenerator(getConfig, options.wechatApiFetch);
   // client 构建器：测试注入优先；否则用最新生效配置动态构建（后台改配置即时生效）
   const buildTaobaoClient = async (): Promise<TaobaoClient> =>
     options.taobaoClient ?? createTaobaoClient(await getConfig());
@@ -187,7 +190,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerConversionRoutes(app, repositories, config);
   await registerOrderRoutes(app, repositories, config);
   await registerUploadRoutes(app, uploadDir);
-  await registerUserRoutes(app, repositories);
+  await registerUserRoutes(app, repositories, inviteCodeGenerator);
   await registerCheckInRoutes(app, repositories);
   await registerWithdrawalRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
