@@ -42,6 +42,13 @@ describe("mini program article experience", () => {
     expect(styles).toContain("padding-right: 40rpx");
   });
 
+  test("tutorial tabs and share action reset native button sizing", () => {
+    const styles = read("miniprogram/pages/deals/index.wxss");
+
+    expect(styles).toMatch(/\.content-switch-item\s*\{[^}]*width: 100%;[^}]*margin: 0;/s);
+    expect(styles).toMatch(/\.article-share-btn\s*\{[^}]*width: 120rpx;[^}]*max-width: 120rpx;/s);
+  });
+
   test("article detail sharing carries the article and inviter", () => {
     const script = read("miniprogram/pages/article-detail/index.js");
     expect(script).toContain("/pages/article-detail/index?id=");
