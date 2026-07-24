@@ -26,6 +26,7 @@ import { registerJobRoutes } from "./routes/jobs.js";
 import { registerOrderRoutes } from "./routes/orders.js";
 import { registerUploadRoutes } from "./routes/uploads.js";
 import { registerUserRoutes } from "./routes/users.js";
+import { registerClientEventRoutes } from "./routes/client-events.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -124,7 +125,12 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.decorate("deps", { config, repositories, getConfig, buildTaobaoClient, buildOrderClients });
 
   app.addHook("preHandler", async (request, reply) => {
-    if (request.url === "/health" || request.url === "/api/auth/wechat-login" || request.url === "/api/app-config") {
+    if (
+      request.url === "/health" ||
+      request.url === "/api/auth/wechat-login" ||
+      request.url === "/api/app-config" ||
+      request.url === "/api/client-events"
+    ) {
       return;
     }
 
@@ -174,6 +180,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
+  await registerClientEventRoutes(app);
   await registerConversionRoutes(app, repositories, config);
   await registerOrderRoutes(app, repositories, config);
   await registerUploadRoutes(app, uploadDir);

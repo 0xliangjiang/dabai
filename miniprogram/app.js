@@ -15,6 +15,7 @@ App({
     const envVersion = wx.getAccountInfoSync?.().miniProgram?.envVersion || "develop";
     this.globalData.apiBaseUrl = API_BASE_URLS[envVersion] || API_BASE_URLS.release;
     this.captureInviter(options);
+    this.setupUpdateManager();
 
     // 系统级隐私授权请求（如直接调用隐私接口时触发）：交给当前页面的同意弹窗处理
     if (wx.onNeedPrivacyAuthorization) {
@@ -26,6 +27,25 @@ App({
         }
       });
     }
+  },
+
+  setupUpdateManager() {
+    if (!wx.getUpdateManager) return;
+    const updateManager = wx.getUpdateManager();
+    updateManager.onUpdateReady(() => {
+      wx.showModal({
+        title: "新版本已准备好",
+        content: "重启小程序即可使用最新功能。",
+        confirmText: "立即重启",
+        cancelText: "稍后",
+        success: (result) => {
+          if (result.confirm) updateManager.applyUpdate();
+        }
+      });
+    });
+    updateManager.onUpdateFailed(() => {
+      console.warn("小程序新版本下载失败，将在下次启动时重试");
+    });
   },
 
   onShow(options) {

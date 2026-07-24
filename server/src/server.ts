@@ -3,8 +3,6 @@ import { loadConfig, validateProductionConfig } from "./config/env.js";
 import { resolveCommissionOptions, runOrderSync } from "./domain/order-sync.js";
 import { withTimeout } from "./integrations/http.js";
 
-// 整轮同步硬超时：即使第三方请求超时已就位，仍兜底防止任何意外挂起永久卡死调度
-const SYNC_HARD_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_INTERVAL_MINUTES = 15;
 
 const config = loadConfig();
@@ -26,25 +24,19 @@ if (syncEnabled) {
     if (syncing) return;
     syncing = true;
     try {
-      // 整轮（含配置读取 + 双平台分页同步）套硬超时：任何意外挂起都会被中断，
-      // 保证 syncing 复位、循环能继续——根因（请求无超时）已在客户端修复，这里是兜底。
-      const result = await withTimeout(
-        (async () => {
-          const cfg = await app.deps.getConfig();
-          const interval = cfg.orderSyncIntervalMinutes > 0 ? cfg.orderSyncIntervalMinutes : DEFAULT_INTERVAL_MINUTES;
-          const lookback = Math.min(175, Math.max(interval * 2, cfg.orderSyncLookbackMinutes || 170));
-          const startTime = new Date(Date.now() - lookback * 60 * 1000);
-          const commissionOptions = await resolveCommissionOptions(app.deps.repositories, cfg);
-          const { orderClient, taobaoOrderClient, taobaoProductClient } = await app.deps.buildOrderClients();
-          return runOrderSync(
-            app.deps.repositories,
-            { taobaoOrderClient, taobaoProductClient, orderClient },
-            { startTime, attributionWindowHours: 24, ...commissionOptions },
-            "auto"
-          );
-        })(),
-        SYNC_HARD_TIMEOUT_MS,
-        "order sync"
+      // 单请求已有主动超时，分页也有游标/页数上限；等待任务真正结束后再释放同步锁，
+      // 避免 Promise 竞速超时后旧任务仍在后台运行、下一轮与其重叠。
+      const cfg = await app.deps.getConfig();
+      const interval = cfg.orderSyncIntervalMinutes > 0 ? cfg.orderSyncIntervalMinutes : DEFAULT_INTERVAL_MINUTES;
+      const lookback = Math.min(175, Math.max(interval * 2, cfg.orderSyncLookbackMinutes || 170));
+      const startTime = new Date(Date.now() - lookback * 60 * 1000);
+      const commissionOptions = await resolveCommissionOptions(app.deps.repositories, cfg);
+      const { orderClient, taobaoOrderClient, taobaoProductClient } = await app.deps.buildOrderClients();
+      const result = await runOrderSync(
+        app.deps.repositories,
+        { taobaoOrderClient, taobaoProductClient, orderClient },
+        { startTime, attributionWindowHours: 24, ...commissionOptions },
+        "auto"
       );
       if (result.ok) {
         app.log.info({ result }, "order sync completed");

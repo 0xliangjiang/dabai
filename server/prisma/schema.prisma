@@ -91,6 +91,13 @@ model OrderSyncRun {
   @@index([createdAt])
 }
 
+model OrderSyncLease {
+  key        String   @id @db.VarChar(64)
+  owner      String   @db.VarChar(64)
+  leaseUntil DateTime
+  updatedAt  DateTime @updatedAt
+}
+
 model CheckIn {
   id          String   @id @default(cuid())
   userId      String

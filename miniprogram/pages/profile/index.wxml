@@ -5,7 +5,7 @@
     <view class="cu-card profile-card flex align-center justify-between gap anim-up delay-1">
       <view class="flex align-center gap-sm flex-sub">
         <view class="avatar-ring {{isLoggedIn ? 'is-member' : ''}}">
-          <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" />
+          <image wx:if="{{displayAvatar}}" class="profile-avatar-img" src="{{displayAvatar}}" mode="aspectFill" lazy-load binderror="onAvatarError" />
           <view wx:else class="profile-avatar">{{nickname ? nickname[0] : '匠'}}</view>
           <view wx:if="{{isLoggedIn}}" class="avatar-dot"></view>
         </view>
@@ -22,7 +22,7 @@
       <view class="section-title">编辑资料</view>
       <view class="flex align-center gap">
         <button class="avatar-picker pressable" hover-class="pressed" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-          <image wx:if="{{draftAvatarTemp || displayAvatar}}" class="avatar-picker-img" src="{{draftAvatarTemp || displayAvatar}}" mode="aspectFill" />
+          <image wx:if="{{draftAvatarTemp || displayAvatar}}" class="avatar-picker-img" src="{{draftAvatarTemp || displayAvatar}}" mode="aspectFill" lazy-load binderror="onAvatarError" />
           <view wx:else class="avatar-picker-empty">选头像</view>
         </button>
         <view class="flex-sub">
@@ -30,7 +30,7 @@
           <input class="cu-input" type="nickname" value="{{draftNickname}}" placeholder="请输入昵称" bindinput="onNicknameInput" />
         </view>
       </view>
-      <view class="flex gap-sm">
+      <view class="flex gap-sm responsive-actions">
         <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="cancelEditProfile">取消</button>
         <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{savingProfile}}" disabled="{{savingProfile}}" bindtap="saveProfile">{{savingProfile ? '保存中…' : '保存'}}</button>
       </view>
@@ -38,17 +38,17 @@
 
     <view class="cu-card points-card anim-up delay-2">
       <view class="flex align-center justify-between">
-        <view class="muted text-sm">我的积分</view>
-        <view class="streak-chip">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日签到 +5 积分'}}</view>
+        <view class="muted text-sm">我的奖励值</view>
+        <view class="streak-chip">{{checkin.streak > 0 ? '已连续签到 ' + checkin.streak + ' 天' : '每日随机 +0.01-0.10 奖励值'}}</view>
       </view>
       <view class="points-row">
         <view class="points-value">{{isLoggedIn ? availablePoints : '—'}}</view>
-        <view class="points-yuan">积分</view>
+        <view class="points-yuan">奖励值</view>
       </view>
-      <view class="points-sub">满 1000 积分即可兑换奖励</view>
+      <view class="points-sub">1 奖励值对应 1 元，满 10 可兑换</view>
       <view class="points-actions flex gap-sm">
         <button class="cu-btn checkin-btn pressable {{checkin.todayChecked ? 'checked' : ''}} {{exchangeEnabled ? '' : 'flex-sub'}}" hover-class="pressed" bindtap="checkIn" disabled="{{checkinLoading}}">{{checkin.todayChecked ? '已签到' : '签到'}}</button>
-        <view wx:if="{{exchangeEnabled}}" class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">积分兑换</view>
+        <view wx:if="{{exchangeEnabled}}" class="cu-btn withdraw-btn pressable" hover-class="pressed" bindtap="openWithdrawForm">奖励兑换</view>
       </view>
     </view>
 
@@ -76,13 +76,13 @@
     <!-- 兑换申请弹窗 -->
     <view wx:if="{{showWithdrawForm}}" class="modal-overlay" bindtap="closeWithdrawForm">
       <view class="modal-card" catchtap="stopProp">
-        <view class="modal-title">积分兑换申请</view>
-        <view class="form-tip muted text-sm">当前积分 {{availablePoints}} · 最低兑换 1000 积分</view>
+        <view class="modal-title">奖励兑换申请</view>
+        <view class="form-tip muted text-sm">当前奖励值 {{availablePoints}} · 最低兑换 10</view>
 
-        <view class="cu-label margin-top">兑换积分</view>
-        <input class="cu-input" type="number" placeholder="请输入积分数量，最低 1000" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
+        <view class="cu-label margin-top">兑换奖励值</view>
+        <input class="cu-input" type="digit" placeholder="请输入奖励值，最低 10" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
 
-        <view class="flex gap-sm margin-top">
+        <view class="flex gap-sm margin-top responsive-actions">
           <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="closeWithdrawForm">取消</button>
           <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{submittingWithdraw}}" disabled="{{submittingWithdraw}}" bindtap="submitWithdraw">提交申请</button>
         </view>
@@ -104,7 +104,7 @@
       </view>
       <block wx:if="{{showMoreLinks}}">
         <navigator class="cu-item sub-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/rebate-rules/index">
-          <view class="cu-label">积分说明</view>
+          <view class="cu-label">奖励值说明</view>
           <view class="cu-arrow">›</view>
         </navigator>
         <navigator class="cu-item sub-item flex align-center justify-between line" hover-class="item-pressed" url="/pages/privacy/index">
@@ -140,5 +140,4 @@
   <privacy-consent show="{{showPrivacy}}" bind:agree="onPrivacyAgree" bind:reject="onPrivacyReject" />
 
   <!-- 首次进入：登录 + 填昵称硬门槛（不可跳过） -->
-  <copy-gate show="{{showOnboard}}" mode="onboarding" dismissible="{{false}}" bind:pass="onOnboardPass" />
 </view>

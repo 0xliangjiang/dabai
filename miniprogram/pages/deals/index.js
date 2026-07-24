@@ -1,8 +1,11 @@
 const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
-const { ensureNickname } = require("../../utils/guard");
 const { subscribeDeals } = require("../../utils/subscribe");
+const { readCache, writeCache } = require("../../utils/cache");
+
+const DEALS_CACHE_KEY = "deals_page_1_cache";
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 Page({
   onShareAppMessage(res) {
@@ -35,16 +38,20 @@ Page({
   data: {
     deals: [],
     loading: true,
+    loadingMore: false,
     showEmpty: false,
+    errorMsg: "",
+    loadMoreError: "",
+    cacheNotice: "",
+    page: 1,
+    hasMore: false,
     subscribeTemplateId: "",
     subscribeRemaining: 0
   },
 
   async onShow() {
     syncTabBar(this);
-    // 已登录但没昵称 → 引导去完善（匿名浏览不强制）
-    if (!ensureNickname()) return;
-    await this.fetchDeals();
+    await this.fetchDeals(true);
     this.refreshSubscription();
   },
 
@@ -64,24 +71,92 @@ Page({
   },
 
   async onPullDownRefresh() {
-    await this.fetchDeals();
+    await this.fetchDeals(true);
     wx.stopPullDownRefresh();
   },
 
-  async fetchDeals() {
+  async onReachBottom() {
+    if (this.data.hasMore && !this.data.loadingMore && !this.data.loadMoreError) {
+      await this.fetchDeals(false);
+    }
+  },
+
+  retryLoad() {
+    this.fetchDeals(true);
+  },
+
+  retryLoadMore() {
+    this.fetchDeals(false);
+  },
+
+  async fetchDeals(reset = true) {
+    if (!reset && (this.data.loadingMore || !this.data.hasMore)) return;
+    const requestId = (this.fetchRequestId || 0) + 1;
+    this.fetchRequestId = requestId;
+    const page = reset ? 1 : this.data.page + 1;
+    this.setData(reset
+      ? { loading: true, errorMsg: "", loadMoreError: "" }
+      : { loadingMore: true, loadMoreError: "" });
     try {
       ensureLogin().catch(() => {});
-      const data = await request("/api/deals");
+      const data = await request(`/api/deals?page=${page}&pageSize=20`);
+      if (requestId !== this.fetchRequestId) return;
+      const incoming = data.deals.map((deal) => ({
+        ...deal,
+        dateText: formatDate(deal.publishedAt)
+      }));
+      const deals = reset ? incoming : this.data.deals.concat(incoming);
       this.setData({
-        deals: data.deals.map((deal) => ({
-          ...deal,
-          dateText: formatDate(deal.publishedAt)
-        })),
+        deals,
         loading: false,
-        showEmpty: data.deals.length === 0
+        loadingMore: false,
+        showEmpty: deals.length === 0,
+        errorMsg: "",
+        loadMoreError: "",
+        cacheNotice: "",
+        page,
+        hasMore: Boolean(data.hasMore)
       });
+      if (reset) {
+        writeCache(DEALS_CACHE_KEY, {
+          deals,
+          page,
+          hasMore: Boolean(data.hasMore)
+        });
+      }
     } catch (_error) {
-      this.setData({ deals: [], loading: false, showEmpty: true });
+      if (requestId !== this.fetchRequestId) return;
+      if (reset) {
+        const cached = readCache(DEALS_CACHE_KEY, CACHE_MAX_AGE_MS);
+        if (cached && cached.deals && cached.deals.length > 0) {
+          this.setData({
+            deals: cached.deals,
+            showEmpty: false,
+            loading: false,
+            loadingMore: false,
+            errorMsg: "",
+            loadMoreError: "",
+            cacheNotice: "当前展示最近一次成功加载的数据",
+            page: cached.page || 1,
+            hasMore: Boolean(cached.hasMore)
+          });
+          return;
+        }
+        this.setData({
+          deals: [],
+          showEmpty: false,
+          loading: false,
+          loadingMore: false,
+          errorMsg: "线报加载失败，请检查网络后重试",
+          loadMoreError: "",
+          cacheNotice: ""
+        });
+      } else {
+        this.setData({
+          loadingMore: false,
+          loadMoreError: "加载更多失败"
+        });
+      }
     }
   },
 

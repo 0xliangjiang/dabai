@@ -103,7 +103,8 @@ export function createTaobaoOrderClient(
 function normalizeOrder(row: Record<string, unknown>): TaobaoOrder | null {
   const tradeId = String(row.trade_id ?? "").trim();
   const itemId = String(row.item_id ?? "").trim();
-  if (!tradeId || !itemId) return null;
+  // 新版加密商品偶尔不返回 item_id；订单仍需入库，后续会按商品详情或标题兜底归因。
+  if (!tradeId) return null;
 
   const tkStatus = Number(row.tk_status ?? 12);
   const payAmountCents = yuanToCents(row.alipay_total_price ?? row.pay_price);

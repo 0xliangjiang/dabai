@@ -30,6 +30,12 @@
   background: linear-gradient(160deg, #ffffff 0%, #f4faf7 100%);
 }
 
+.invite-value-skeleton {
+  width: 46%;
+  height: 84rpx;
+  margin: 12rpx auto;
+}
+
 .earn-label {
   font-size: 24rpx;
   color: #8aa093;

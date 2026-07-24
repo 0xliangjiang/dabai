@@ -5,7 +5,7 @@ services:
       dockerfile: server/Dockerfile
     restart: unless-stopped
     ports:
-      - "6543:3001"
+      - "127.0.0.1:6543:3001"
     env_file:
       - server/.env.production
     environment:
@@ -27,6 +27,6 @@ services:
         VITE_API_BASE_URL: ${ADMIN_API_BASE_URL:-https://dabai.discordbot.cn}
     restart: unless-stopped
     ports:
-      - "3666:80"
+      - "127.0.0.1:3666:80"
     depends_on:
       - api

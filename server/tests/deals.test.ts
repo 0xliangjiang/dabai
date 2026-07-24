@@ -13,8 +13,9 @@ const testConfig: AppConfig = {
   corsOrigins: ["http://localhost:5173"],
   wechatAppId: "",
   wechatAppSecret: "",
-    wechatDealTemplateId: "",
+  wechatDealTemplateId: "",
   commissionSharingRatio: 0.5,
+  referralCommissionRatio: 0.2,
   zhetaokeApiUrl: "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
   zhetaokeAppKey: "",
   zhetaokeSid: "",
@@ -29,8 +30,13 @@ const testConfig: AppConfig = {
   jdUnionPositionId: "",
   jdUnionSceneId: "",
   zhetaokeOrderApiUrl: "https://api.zhetaoke.com:10001/api/open_order.ashx",
-
-
+  minimaxApiUrl: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+  minimaxApiKey: "",
+  minimaxModel: "MiniMax-M3",
+  orderSyncIntervalMinutes: 15,
+  orderSyncLookbackMinutes: 170,
+  autoSettleThresholdYuan: 20,
+  autoSettleDelayDays: 7
 };
 
 const ADMIN = { "x-admin-token": "dev-admin-token" };

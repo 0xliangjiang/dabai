@@ -149,13 +149,21 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           }))
         };
       },
-      async listDownline(inviterId: string): Promise<DownlineRecord[]> {
-        const downlines = await prisma.user.findMany({
-          where: { inviterId, deletedAt: null },
-          orderBy: { createdAt: "desc" },
-          select: { id: true, nickname: true, openid: true, createdAt: true }
-        });
-        if (downlines.length === 0) return [];
+      async listDownline(inviterId: string, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+        const where = { inviterId, deletedAt: null };
+        const [total, downlines] = await Promise.all([
+          prisma.user.count({ where }),
+          prisma.user.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            select: { id: true, nickname: true, openid: true, createdAt: true }
+          })
+        ]);
+        if (downlines.length === 0) return { total, items: [] };
 
         // 上级的二级提成台账（referral_*），经 订单→归因 关联到具体下线，按下线累加
         const entries = await prisma.commissionLedger.findMany({
@@ -172,13 +180,16 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           contributedByUser.set(downlineId, (contributedByUser.get(downlineId) ?? 0) + entry.amountCents);
         }
 
-        return downlines.map((d) => ({
-          id: d.id,
-          nickname: d.nickname,
-          openid: d.openid,
-          createdAt: d.createdAt,
-          contributedCents: contributedByUser.get(d.id) ?? 0
-        }));
+        return {
+          total,
+          items: downlines.map((d) => ({
+            id: d.id,
+            nickname: d.nickname,
+            openid: d.openid,
+            createdAt: d.createdAt,
+            contributedCents: contributedByUser.get(d.id) ?? 0
+          }))
+        };
       },
       async deleteUser(id: string) {
         // 软删除：仅标记 deletedAt，保留订单、佣金等历史数据，便于复盘与防误删
@@ -191,7 +202,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         await prisma.pointAdjustment.create({
           data: {
             userId: id,
-            amountCents: input.delta,
+            amountCents: input.delta * 100,
             reason: input.reason,
             createdBy: "admin"
           }
@@ -426,13 +437,21 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       }
     },
     orders: {
-      async listByUser(userId: string) {
-        const records = await prisma.orderAttribution.findMany({
-          where: { userId },
-          orderBy: { createdAt: "desc" },
-          include: { tbkOrder: true }
-        });
-        if (records.length === 0) return [];
+      async listByUser(userId: string, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+        const where = { userId };
+        const [total, records] = await Promise.all([
+          prisma.orderAttribution.count({ where }),
+          prisma.orderAttribution.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            include: { tbkOrder: true }
+          })
+        ]);
+        if (records.length === 0) return { total, items: [] };
 
         // 一次性取这些订单的台账（避免 N+1 把用户全部台账 load 进内存）。
         const orderIds = records.map((r) => r.tbkOrderId);
@@ -444,7 +463,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         // 不能相加；按"已冲销 > 已到账 > 待结算"折叠成单一有效返利与状态。
         const aggByOrder = aggregateRebate(ledgers);
 
-        return records.map((record) => {
+        const items = records.map((record) => {
           const { rebateStatus, userRebateCents } = resolveRebate(aggByOrder.get(record.tbkOrderId));
           return {
             id: record.tbkOrder.id,
@@ -459,6 +478,21 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             rebateStatus
           };
         });
+        return { total, items };
+      },
+      async getRebateTotals(userId: string) {
+        const ledgers = await prisma.commissionLedger.findMany({
+          where: { userId },
+          select: { tbkOrderId: true, amountCents: true, status: true }
+        });
+        let settledPoints = 0;
+        let pendingPoints = 0;
+        for (const rebate of aggregateRebate(ledgers).values()) {
+          const resolved = resolveRebate(rebate);
+          if (resolved.rebateStatus === "available") settledPoints += resolved.userRebateCents;
+          if (resolved.rebateStatus === "pending") pendingPoints += resolved.userRebateCents;
+        }
+        return { settledPoints, pendingPoints };
       },
       async findById(id: string) {
         const record = await prisma.tbkOrder.findUnique({ where: { id } });
@@ -589,18 +623,15 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         };
       },
       async findByOrderNumber(orderNumber: string) {
-        const suffix = orderNumber.trim();
-        // tbkOrderId 精确匹配或后缀匹配；京东原始订单号走 rawPayload 单独查一次
-        let tbkOrder = await prisma.tbkOrder.findFirst({
-          where: { OR: [{ tbkOrderId: suffix }, { tbkOrderId: { endsWith: suffix } }] },
-          orderBy: { syncedAt: "desc" }
-        });
-        if (!tbkOrder && isNumeric(suffix)) {
+        const exact = orderNumber.trim();
+        // 自助绑定只允许完整订单号精确匹配，避免短尾号撞单或被枚举抢绑。
+        let tbkOrder = await prisma.tbkOrder.findUnique({ where: { tbkOrderId: exact } });
+        if (!tbkOrder && isNumeric(exact)) {
           // MySQL JSON_EXTRACT 通过 rawQuery 匹配京东 orderId 字段
           const rows = await prisma.$queryRaw<{ id: string }[]>`
             SELECT id FROM TbkOrder
-            WHERE JSON_EXTRACT(rawPayload, '$.orderId') = ${Number(suffix)}
-               OR JSON_EXTRACT(rawPayload, '$.trade_id') = ${suffix}
+            WHERE JSON_UNQUOTE(JSON_EXTRACT(rawPayload, '$.orderId')) = ${exact}
+               OR JSON_UNQUOTE(JSON_EXTRACT(rawPayload, '$.trade_id')) = ${exact}
             LIMIT 1`;
           if (rows.length > 0) {
             tbkOrder = await prisma.tbkOrder.findUnique({ where: { id: rows[0].id } });
@@ -748,13 +779,21 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       }
     },
     deals: {
-      async list(publishedOnly: boolean) {
-        const records = await prisma.dealPost.findMany({
-          where: publishedOnly ? { status: "published" } : undefined,
-          orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
-          include: { _count: { select: { visits: true } } }
-        });
-        return records.map(mapDeal);
+      async list(publishedOnly: boolean, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(publishedOnly ? 50 : 500, Math.max(1, options?.pageSize ?? 20));
+        const where = publishedOnly ? { status: "published" } : undefined;
+        const [total, records] = await Promise.all([
+          prisma.dealPost.count({ where }),
+          prisma.dealPost.findMany({
+            where,
+            orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            include: { _count: { select: { visits: true } } }
+          })
+        ]);
+        return { total, items: records.map(mapDeal) };
       },
       async findById(id: string) {
         const record = await prisma.dealPost.findUnique({
@@ -847,12 +886,20 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return mapWithdrawal(record);
       },
-      async listByUser(userId: string) {
-        const records = await prisma.withdrawal.findMany({
-          where: { userId },
-          orderBy: { createdAt: "desc" }
-        });
-        return records.map(mapWithdrawal);
+      async listByUser(userId: string, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+        const where = { userId };
+        const [total, records] = await Promise.all([
+          prisma.withdrawal.count({ where }),
+          prisma.withdrawal.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize
+          })
+        ]);
+        return { total, items: records.map(mapWithdrawal) };
       },
       async createIfAffordable(input) {
         // Serializable 事务：余额计算 + 创建在同一事务内，并发提交会被串行化，杜绝超额
@@ -911,7 +958,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             _sum: { amountCents: true }
           })
         ]);
-        // 100积分=1元，即 1积分=1分；签到积分、推广佣金、管理员调整合并为可兑换余额
+        // 1 奖励值 = 1 元奖励价值；金额仍以人民币分保存。
         const total =
           (earned._sum.amountCents ?? 0) +
           (points._sum.points ?? 0) +
@@ -952,6 +999,48 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async getLatest() {
         const record = await prisma.orderSyncRun.findFirst({ orderBy: { createdAt: "desc" } });
         return record ?? null;
+      },
+      async tryAcquireLock(owner: string, leaseMs: number) {
+        const now = new Date();
+        const leaseUntil = new Date(now.getTime() + leaseMs);
+        const updated = await prisma.$executeRaw`
+          UPDATE OrderSyncLease
+          SET owner = ${owner}, leaseUntil = ${leaseUntil}, updatedAt = ${now}
+          WHERE \`key\` = 'tbk-orders'
+            AND (leaseUntil <= ${now} OR owner = ${owner})
+        `;
+        if (updated > 0) return true;
+        try {
+          await prisma.$executeRaw`
+            INSERT INTO OrderSyncLease (\`key\`, owner, leaseUntil, updatedAt)
+            VALUES ('tbk-orders', ${owner}, ${leaseUntil}, ${now})
+          `;
+          return true;
+        } catch (error) {
+          const prismaError = error as { code?: string; meta?: Record<string, unknown> };
+          if (
+            prismaError.code === "P2002" ||
+            (prismaError.code === "P2010" && String(prismaError.meta?.code ?? "") === "1062")
+          ) {
+            return false;
+          }
+          throw error;
+        }
+      },
+      async renewLock(owner: string, leaseMs: number) {
+        const now = new Date();
+        const leaseUntil = new Date(now.getTime() + leaseMs);
+        const updated = await prisma.$executeRaw`
+          UPDATE OrderSyncLease
+          SET leaseUntil = ${leaseUntil}, updatedAt = ${now}
+          WHERE \`key\` = 'tbk-orders' AND owner = ${owner}
+        `;
+        return updated > 0;
+      },
+      async releaseLock(owner: string) {
+        await prisma.$executeRaw`
+          DELETE FROM OrderSyncLease WHERE \`key\` = 'tbk-orders' AND owner = ${owner}
+        `;
       }
     },
     admin: {

@@ -52,6 +52,7 @@ export function createRepositories(): Repositories {
     { id: string; userId: string; templateId: string; used: boolean }
   >();
   const syncRunList: OrderSyncRunRecord[] = [];
+  let syncLease: { owner: string; leaseUntil: number } | null = null;
 
   return {
     users: {
@@ -144,7 +145,9 @@ export function createRepositories(): Repositories {
         }));
         return { total: activeUsers.length, items };
       },
-      async listDownline(inviterId: string): Promise<DownlineRecord[]> {
+      async listDownline(inviterId: string, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
         const refEntries = [...ledger.values()].filter(
           (e) => e.userId === inviterId && e.ledgerType.startsWith("referral_")
         );
@@ -156,9 +159,11 @@ export function createRepositories(): Repositories {
           if (!downlineId) continue;
           contributedByUser.set(downlineId, (contributedByUser.get(downlineId) ?? 0) + e.amountCents);
         }
-        return [...users.values()]
+        const all = [...users.values()]
           .filter((u) => u.inviterId === inviterId && !deletedUserIds.has(u.id))
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const items = all
+          .slice((page - 1) * pageSize, page * pageSize)
           .map((u) => ({
             id: u.id,
             nickname: u.nickname,
@@ -166,13 +171,14 @@ export function createRepositories(): Repositories {
             createdAt: u.createdAt,
             contributedCents: contributedByUser.get(u.id) ?? 0
           }));
+        return { total: all.length, items };
       },
       async deleteUser(id: string) {
         deletedUserIds.add(id);
       },
       async adjustPoints(id: string, input: { delta: number; reason: string }) {
         const adjId = `adj-${pointAdjustments.size + 1}`;
-        pointAdjustments.set(adjId, { id: adjId, userId: id, amountCents: input.delta });
+        pointAdjustments.set(adjId, { id: adjId, userId: id, amountCents: input.delta * 100 });
       },
       async setRebateRatio(id: string, ratio: number | null) {
         const user = users.get(id);
@@ -335,9 +341,14 @@ export function createRepositories(): Repositories {
       }
     },
     orders: {
-      async listByUser(userId: string) {
-        return [...attributions.values()]
+      async listByUser(userId: string, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+        const matching = [...attributions.values()]
           .filter((attribution) => attribution.userId === userId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const items = matching
+          .slice((page - 1) * pageSize, page * pageSize)
           .map((attribution) => {
             const order = orders.get(attribution.tbkOrderId)!;
             // 折叠同一订单的多条台账（estimated/settled/reversal），按"冲销>到账>待结算"取单一有效值
@@ -375,6 +386,20 @@ export function createRepositories(): Repositories {
               rebateStatus
             };
           });
+        return { total: matching.length, items };
+      },
+      async getRebateTotals(userId: string) {
+        let settledPoints = 0;
+        let pendingPoints = 0;
+        for (let page = 1; ; page += 1) {
+          const result = await this.listByUser(userId, { page, pageSize: 100 });
+          for (const item of result.items) {
+            if (item.rebateStatus === "available") settledPoints += item.userRebateCents;
+            if (item.rebateStatus === "pending") pendingPoints += item.userRebateCents;
+          }
+          if (page * 100 >= result.total) break;
+        }
+        return { settledPoints, pendingPoints };
       },
       async findById(id: string) {
         return orders.get(id) ?? null;
@@ -455,10 +480,8 @@ export function createRepositories(): Repositories {
         };
       },
       async findByOrderNumber(orderNumber: string) {
-        const suffix = orderNumber.trim();
-        const order = [...orders.values()].find(
-          (o) => o.tbkOrderId === suffix || o.tbkOrderId.endsWith(suffix)
-        );
+        const exact = orderNumber.trim();
+        const order = [...orders.values()].find((o) => o.tbkOrderId === exact);
         if (!order) return undefined;
         const attributionId = attributionsByTbkOrderId.get(order.id);
         return {
@@ -597,9 +620,11 @@ export function createRepositories(): Repositories {
       }
     },
     deals: {
-      async list(publishedOnly: boolean) {
+      async list(publishedOnly: boolean, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(publishedOnly ? 50 : 500, Math.max(1, options?.pageSize ?? 20));
         // 带插入序号做时间相同时的次级排序（同一毫秒创建时保证后创建的在前）
-        return [...deals.values()]
+        const matching = [...deals.values()]
           .map((deal, index) => ({ deal, index }))
           .filter(({ deal }) => !publishedOnly || deal.status === "published")
           .sort((a, b) => {
@@ -608,8 +633,13 @@ export function createRepositories(): Repositories {
             const bTime = (b.deal.publishedAt ?? b.deal.createdAt).getTime();
             if (bTime !== aTime) return bTime - aTime;
             return b.index - a.index;
-          })
-          .map(({ deal }) => deal);
+          });
+        return {
+          total: matching.length,
+          items: matching
+            .slice((page - 1) * pageSize, page * pageSize)
+            .map(({ deal }) => deal)
+        };
       },
       async findById(id: string) {
         return deals.get(id);
@@ -712,10 +742,16 @@ export function createRepositories(): Repositories {
         withdrawalMap.set(record.id, record);
         return record;
       },
-      async listByUser(userId: string) {
-        return [...withdrawalMap.values()]
+      async listByUser(userId: string, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
+        const all = [...withdrawalMap.values()]
           .filter((r) => r.userId === userId)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return {
+          total: all.length,
+          items: all.slice((page - 1) * pageSize, page * pageSize)
+        };
       },
       async createIfAffordable(input) {
         const available = await this.getAvailableBalance(input.userId);
@@ -733,7 +769,7 @@ export function createRepositories(): Repositories {
         const earned = [...ledger.values()]
           .filter((r) => r.userId === userId && r.status === "available")
           .reduce((sum, r) => sum + r.amountCents, 0);
-        // 100积分=1元，即 1积分=1分；签到积分与推广佣金合并为可提现余额
+        // 签到奖励值按 0.01 存为整数；折算余额时恰好对应人民币金额分。
         const points = [...checkIns.values()]
           .filter((r) => r.userId === userId)
           .reduce((sum, r) => sum + r.points, 0);
@@ -779,6 +815,20 @@ export function createRepositories(): Repositories {
       },
       async getLatest() {
         return syncRunList.length > 0 ? syncRunList[syncRunList.length - 1] : null;
+      },
+      async tryAcquireLock(owner: string, leaseMs: number) {
+        const now = Date.now();
+        if (syncLease && syncLease.owner !== owner && syncLease.leaseUntil > now) return false;
+        syncLease = { owner, leaseUntil: now + leaseMs };
+        return true;
+      },
+      async renewLock(owner: string, leaseMs: number) {
+        if (syncLease?.owner !== owner) return false;
+        syncLease.leaseUntil = Date.now() + leaseMs;
+        return true;
+      },
+      async releaseLock(owner: string) {
+        if (syncLease?.owner === owner) syncLease = null;
       }
     },
     admin: {

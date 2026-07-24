@@ -1,6 +1,8 @@
 import type { TaobaoProductDetail, TaobaoProductClient } from "../integrations/taobao/client.js";
 import type { Platform, Repositories, UpsertProductSnapshotInput } from "../repositories/types.js";
 
+const PRODUCT_SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
+
 export type ProductFallback = {
   platform: Platform;
   itemId: string;
@@ -18,7 +20,7 @@ export async function resolveProductDetail(
   if (!itemId || fallback.platform !== "taobao") return fallback;
 
   const cached = await repositories.productSnapshots.find(fallback.platform, itemId);
-  if (cached) {
+  if (cached && Date.now() - cached.updatedAt.getTime() < PRODUCT_SNAPSHOT_TTL_MS) {
     return {
       platform: cached.platform,
       itemId: cached.itemId,
@@ -29,7 +31,17 @@ export async function resolveProductDetail(
   }
 
   const detail = await safeFetchProductDetail(client, itemId);
-  if (!detail?.itemTitle?.trim()) return fallback;
+  if (!detail?.itemTitle?.trim()) {
+    return cached
+      ? {
+          platform: cached.platform,
+          itemId: cached.itemId,
+          itemTitle: cached.itemTitle,
+          itemImageUrl: cached.itemImageUrl,
+          itemPriceCents: cached.itemPriceCents
+        }
+      : fallback;
+  }
 
   const snapshot = await repositories.productSnapshots.upsert(toSnapshotInput(detail));
   return {

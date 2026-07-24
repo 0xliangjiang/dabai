@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app.js";
 import type { AppConfig } from "../src/config/env.js";
 import { MockTaobaoClient } from "../src/integrations/taobao/client.js";
-import { chinaDateString, computeStreak } from "../src/routes/checkins.js";
+import { chinaDateString, computeStreak, randomCheckInPointHundredths } from "../src/routes/checkins.js";
 
 const testConfig: AppConfig = {
   nodeEnv: "test",
@@ -14,8 +14,9 @@ const testConfig: AppConfig = {
   corsOrigins: ["http://localhost:5173"],
   wechatAppId: "",
   wechatAppSecret: "",
-    wechatDealTemplateId: "",
+  wechatDealTemplateId: "",
   commissionSharingRatio: 0.5,
+  referralCommissionRatio: 0.2,
   zhetaokeApiUrl: "https://api.zhetaoke.com:10001/api/open_gaoyongzhuanlian_tkl.ashx",
   zhetaokeAppKey: "",
   zhetaokeSid: "",
@@ -30,8 +31,13 @@ const testConfig: AppConfig = {
   jdUnionPositionId: "",
   jdUnionSceneId: "",
   zhetaokeOrderApiUrl: "https://api.zhetaoke.com:10001/api/open_order.ashx",
-
-
+  minimaxApiUrl: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+  minimaxApiKey: "",
+  minimaxModel: "MiniMax-M3",
+  orderSyncIntervalMinutes: 15,
+  orderSyncLookbackMinutes: 170,
+  autoSettleThresholdYuan: 20,
+  autoSettleDelayDays: 7
 };
 
 describe("daily check-in", () => {
@@ -49,11 +55,11 @@ describe("daily check-in", () => {
       url: "/api/auth/wechat-login",
       payload: { code: "mock-checkin" }
     });
-    const { token } = login.json() as { token: string };
-    return { app, auth: { authorization: `Bearer ${token}` } };
+    const { token, user } = login.json() as { token: string; user: { id: string } };
+    return { app, user, auth: { authorization: `Bearer ${token}` } };
   }
 
-  test("first check-in awards base points, second same-day is rejected", async () => {
+  test("first check-in awards 0.01-0.10 points, second same-day is rejected", async () => {
     const { app, auth } = await buildAppWithUser();
 
     const before = await app.inject({ method: "GET", url: "/api/checkins/me", headers: auth });
@@ -61,18 +67,20 @@ describe("daily check-in", () => {
 
     const first = await app.inject({ method: "POST", url: "/api/checkins", headers: auth });
     expect(first.statusCode).toBe(200);
-    expect(first.json()).toMatchObject({
-      todayChecked: true,
-      pointsAwarded: 5,
-      streak: 1,
-      totalPoints: 5
-    });
+    expect(first.json()).toMatchObject({ todayChecked: true, streak: 1 });
+    expect(first.json().pointsAwarded).toBeGreaterThanOrEqual(0.01);
+    expect(first.json().pointsAwarded).toBeLessThanOrEqual(0.1);
+    expect(first.json().totalPoints).toBe(first.json().pointsAwarded);
 
     const second = await app.inject({ method: "POST", url: "/api/checkins", headers: auth });
     expect(second.statusCode).toBe(400);
 
     const after = await app.inject({ method: "GET", url: "/api/checkins/me", headers: auth });
-    expect(after.json()).toMatchObject({ todayChecked: true, streak: 0, totalPoints: 5 });
+    expect(after.json()).toMatchObject({
+      todayChecked: true,
+      streak: 0,
+      totalPoints: first.json().pointsAwarded
+    });
   });
 
   test("computeStreak counts consecutive days before today", () => {
@@ -82,8 +90,53 @@ describe("daily check-in", () => {
     expect(computeStreak(["2026-06-08"], "2026-06-10")).toBe(0);
   });
 
+  test("fractional check-in points contribute the same yuan value to the redeemable balance", async () => {
+    const { app, user, auth } = await buildAppWithUser();
+    const checkin = await app.inject({ method: "POST", url: "/api/checkins", headers: auth });
+    const awarded = checkin.json().pointsAwarded as number;
+    const awardedCents = Math.round(awarded * 100);
+
+    let balance = await app.inject({ method: "GET", url: "/api/withdrawals/me", headers: auth });
+    expect(balance.json()).toMatchObject({ availableBalance: awardedCents, availablePoints: awarded });
+
+    const belowMinimum = await app.inject({
+      method: "POST",
+      url: "/api/withdrawals",
+      headers: auth,
+      payload: { points: awarded }
+    });
+    expect(belowMinimum.statusCode).toBe(400);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/admin/users/${user.id}/adjust-points`,
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { delta: 10, reason: "ratio-test" }
+    });
+
+    balance = await app.inject({ method: "GET", url: "/api/withdrawals/me", headers: auth });
+    expect(balance.json()).toMatchObject({
+      availableBalance: 1000 + awardedCents,
+      availablePoints: 10 + awarded
+    });
+
+    const withdrawal = await app.inject({
+      method: "POST",
+      url: "/api/withdrawals",
+      headers: auth,
+      payload: { points: 10 }
+    });
+    expect(withdrawal.statusCode).toBe(200);
+    expect(withdrawal.json().withdrawal.amountCents).toBe(1000);
+  });
+
   test("chinaDateString uses UTC+8", () => {
     expect(chinaDateString(new Date("2026-06-10T17:00:00Z"))).toBe("2026-06-11");
     expect(chinaDateString(new Date("2026-06-10T15:59:00Z"))).toBe("2026-06-10");
+  });
+
+  test("random reward covers the inclusive 1-10 hundredths range", () => {
+    expect(randomCheckInPointHundredths(() => 0)).toBe(1);
+    expect(randomCheckInPointHundredths(() => 0.999999)).toBe(10);
   });
 });

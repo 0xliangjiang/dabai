@@ -28,10 +28,12 @@ const dealSchema = z.object({
 
 export async function registerDealRoutes(app: FastifyInstance, repositories: Repositories) {
   // 用户端：仅已发布
-  app.get("/api/deals", async () => {
-    const deals = await repositories.deals.list(true);
+  app.get<{ Querystring: { page?: string; pageSize?: string } }>("/api/deals", async (request) => {
+    const page = positiveInteger(request.query.page, 1);
+    const pageSize = Math.min(50, positiveInteger(request.query.pageSize, 20));
+    const result = await repositories.deals.list(true, { page, pageSize });
     return {
-      deals: deals.map((deal) => ({
+      deals: result.items.map((deal) => ({
         id: deal.id,
         title: deal.title,
         summary: deal.summary,
@@ -39,7 +41,11 @@ export async function registerDealRoutes(app: FastifyInstance, repositories: Rep
         stepCount: deal.steps.length,
         visitorCount: deal.visitorCount,
         publishedAt: deal.publishedAt ?? deal.createdAt
-      }))
+      })),
+      total: result.total,
+      page,
+      pageSize,
+      hasMore: page * pageSize < result.total
     };
   });
 
@@ -74,9 +80,10 @@ export async function registerAdminDealRoutes(
   repositories: Repositories,
   notifyDealPublished?: DealPublishedNotifier
 ) {
-  app.get("/api/admin/deals", async () => ({
-    deals: await repositories.deals.list(false)
-  }));
+  app.get("/api/admin/deals", async () => {
+    const result = await repositories.deals.list(false, { page: 1, pageSize: 500 });
+    return { deals: result.items, total: result.total };
+  });
 
   app.post("/api/admin/deals", async (request, reply) => {
     const parsed = dealSchema.safeParse(request.body);
@@ -110,4 +117,9 @@ export async function registerAdminDealRoutes(
     await repositories.deals.remove(request.params.id);
     return { ok: true };
   });
+}
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }

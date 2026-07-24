@@ -18,7 +18,7 @@
         <view class="cu-form margin-top">
           <view class="flex align-center gap">
             <button class="avatar-picker pressable" hover-class="pressed" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-              <image wx:if="{{draftAvatarTemp || displayAvatar}}" class="avatar-picker-img" src="{{draftAvatarTemp || displayAvatar}}" mode="aspectFill" />
+              <image wx:if="{{draftAvatarTemp || displayAvatar}}" class="avatar-picker-img" src="{{draftAvatarTemp || displayAvatar}}" mode="aspectFill" lazy-load binderror="onAvatarError" />
               <view wx:else class="avatar-picker-empty">选头像</view>
             </button>
             <view class="flex-sub">

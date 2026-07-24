@@ -1,7 +1,7 @@
 <view class="cu-page page-shell">
   <view class="hero hero-slim anim-up">
     <view class="hero-title">捷径一生工具箱</view>
-    <view class="hero-subtitle">粘贴商品口令 · 秒查隐藏优惠 · 下单返积分</view>
+    <view class="hero-subtitle">粘贴商品口令 · 秒查隐藏优惠 · 下单得奖励值</view>
   </view>
 
   <view class="content-stack floating-stack">
@@ -68,7 +68,7 @@
 
     <view wx:elif="{{result}}" class="cu-card product-card flex-direction gap anim-pop">
       <view class="flex align-start gap">
-        <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" />
+        <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" lazy-load binderror="onProductImageError" />
         <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
         <view class="flex-sub">
           <view class="flex align-center justify-between gap-sm">
@@ -80,13 +80,13 @@
             <view class="price">¥{{result.itemPrice}}</view>
           </view>
           <view class="rebate-panel margin-top-sm">
-            <view class="rebate-label">预估积分</view>
-            <view class="rebate-value">{{result.estimatedPoints}}<text class="rebate-unit"> 积分</text></view>
+            <view class="rebate-label">预估奖励值</view>
+            <view class="rebate-value">{{result.estimatedPoints}}<text class="rebate-unit"> 奖励值</text></view>
           </view>
         </view>
       </view>
 
-      <view class="hint-bar">积分为预估参考，订单确认后发放，可联系客服了解积分权益。</view>
+      <view class="hint-bar">1 奖励值对应 1 元奖励价值；预估结果最终以订单结算为准。</view>
       <view class="flex-direction gap">
         <view wx:if="{{result.hasPassword}}">
           <view class="flex align-center justify-between">
@@ -103,9 +103,9 @@
           <view class="code-box margin-top-xs"><text user-select>{{result.displayLink}}</text></view>
         </view>
       </view>
-      <view class="flex gap-sm">
-        <button wx:if="{{result.hasPassword}}" class="cu-btn secondary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制 ✓' : '复制文案'}}</button>
-        <button class="cu-btn success flex-sub pressable {{copied === 'link' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyLink">{{copied === 'link' ? '已复制 ✓' : '复制链接'}}</button>
+      <view class="flex gap-sm responsive-actions">
+        <button wx:if="{{result.hasPassword}}" class="cu-btn primary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制，去下单' : result.passwordActionLabel}}</button>
+        <button class="cu-btn {{result.hasPassword ? 'secondary' : 'primary'}} flex-sub pressable {{copied === 'link' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyLink">{{copied === 'link' ? '已复制，去下单' : result.linkActionLabel}}</button>
       </view>
     </view>
   </view>

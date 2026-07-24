@@ -2,9 +2,10 @@
   <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
+    <view wx:if="{{cacheNotice}}" class="hint-bar">{{cacheNotice}}，下拉可重新加载。</view>
     <view class="cu-card glass-card grid-2 anim-up delay-1">
       <view class="metric">
-        <view class="muted text-sm">已结算积分</view>
+        <view class="muted text-sm">已结算奖励值</view>
         <view class="metric-value">{{loading ? '—' : settledPoints}}</view>
       </view>
       <view class="metric">
@@ -21,10 +22,20 @@
       </view>
     </block>
 
+    <view wx:elif="{{errorMsg}}" class="cu-card cu-empty flex-direction align-center justify-center anim-up delay-2">
+      <view class="empty-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <button class="cu-btn secondary margin-top" bindtap="retryLoad">重新加载</button>
+    </view>
+
     <view wx:elif="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center anim-up delay-2">
       <view class="empty-icon">积</view>
       <view class="text-bold">暂未匹配到订单</view>
-      <view class="section-desc">下单后会显示在这里</view>
+      <view class="section-desc">下单后通常会自动匹配，也可以手动补充订单</view>
+      <view class="empty-actions flex gap-sm margin-top responsive-actions">
+        <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="goClaim">补充订单</button>
+        <button class="cu-btn primary flex-sub pressable" hover-class="pressed" bindtap="goHome">去查优惠</button>
+      </view>
     </view>
 
     <block wx:else>
@@ -48,9 +59,9 @@
           </view>
         </view>
         <view class="soft-panel flex align-center justify-between">
-          <view class="muted text-sm">我的积分</view>
+          <view class="muted text-sm">我的奖励值</view>
           <view class="flex align-center">
-            <view class="price">{{item.points}}<text class="points-unit"> 积分</text></view>
+            <view class="price">{{item.points}}<text class="points-unit"> 奖励值</text></view>
             <text class="points-state {{item.settled ? 'settled' : 'pending'}}">{{item.rebateLabel}}</text>
           </view>
         </view>
@@ -66,6 +77,12 @@
           >刷新返利</button>
         </view>
       </view>
+      <view wx:if="{{loadingMore}}" class="muted text-sm text-center padding">正在加载更多...</view>
+      <view wx:elif="{{loadMoreError}}" class="list-footer">
+        <text>{{loadMoreError}}</text>
+        <button class="footer-retry pressable" hover-class="pressed" bindtap="retryLoadMore">重试</button>
+      </view>
+      <view wx:elif="{{orders.length > 0 && !hasMore}}" class="list-footer muted">已经到底了</view>
     </block>
   </view>
 </view>

@@ -7,6 +7,7 @@ Page({
     deal: null,
     loading: true,
     notFound: false,
+    errorMsg: "",
     copiedIndex: -1,
     showShareModal: false,
     showTimelineGuide: false,
@@ -75,24 +76,42 @@ Page({
       this.setData({ loading: false, notFound: true });
       return;
     }
+    const requestId = (this.fetchRequestId || 0) + 1;
+    this.fetchRequestId = requestId;
+    this.setData({ loading: true, notFound: false, errorMsg: "" });
     // 登录尽力而为（用于后续归因），但不阻塞线报查看——接口已公开，分享打开无需登录
     ensureLogin().catch(() => {});
     try {
       const { deal } = await request(`/api/deals/${this.dealId}`);
+      if (requestId !== this.fetchRequestId) return;
       deal.steps = (deal.steps || []).map((step) => ({
         ...step,
         images: (step.images || []).map(toDisplayUrl),
         videoUrl: step.videoUrl ? toDisplayUrl(step.videoUrl) : ""
       }));
-      this.setData({ deal, loading: false });
+      this.setData({ deal, loading: false, notFound: false, errorMsg: "" });
       // 上报访问（PV+UV），失败静默
       request(`/api/deals/${this.dealId}/view`, {
         method: "POST",
         data: { visitorId: getVisitorId() }
       }).catch(() => {});
-    } catch (_error) {
-      this.setData({ loading: false, notFound: true });
+    } catch (error) {
+      if (requestId !== this.fetchRequestId) return;
+      if (error && error.statusCode === 404) {
+        this.setData({ deal: null, loading: false, notFound: true, errorMsg: "" });
+        return;
+      }
+      this.setData({
+        deal: null,
+        loading: false,
+        notFound: false,
+        errorMsg: "线报加载失败，请检查网络后重试"
+      });
     }
+  },
+
+  retryLoad() {
+    this.fetchDeal();
   },
 
   copyStep(event) {
@@ -150,7 +169,14 @@ Page({
 
   previewImage(event) {
     const { urls, current } = event.currentTarget.dataset;
-    wx.previewImage({ urls, current });
+    wx.previewImage({ urls: (urls || []).filter(Boolean), current });
+  },
+
+  onStepImageError(event) {
+    const stepIndex = Number(event.currentTarget.dataset.stepIndex);
+    const imageIndex = Number(event.currentTarget.dataset.imageIndex);
+    if (!Number.isInteger(stepIndex) || !Number.isInteger(imageIndex)) return;
+    this.setData({ [`deal.steps[${stepIndex}].images[${imageIndex}]`]: "" });
   },
 
   onUnload() {

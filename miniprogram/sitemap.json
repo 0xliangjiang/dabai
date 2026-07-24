@@ -1,8 +1,24 @@
 {
   "rules": [
     {
-      "action": "allow",
-      "page": "*"
+      "action": "disallow",
+      "page": "pages/orders/index"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/claim/index"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/profile/index"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/withdrawals/index"
+    },
+    {
+      "action": "disallow",
+      "page": "pages/invite/index"
     }
   ]
 }

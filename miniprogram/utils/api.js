@@ -14,6 +14,7 @@ function rawRequest(path, options = {}) {
     wx.request({
       url: `${app.globalData.apiBaseUrl}${path}`,
       method: options.method || "GET",
+      timeout: options.timeout || 20000,
       data: options.data || {},
       header: {
         "content-type": "application/json",
@@ -107,6 +108,7 @@ function rawUploadFile(path, filePath) {
       url: `${app.globalData.apiBaseUrl}${path}`,
       filePath,
       name: "file",
+      timeout: 60000,
       header: token ? { authorization: `Bearer ${token}` } : {},
       success(res) {
         let data = {};
@@ -143,6 +145,9 @@ async function uploadFile(path, filePath, _retried = false) {
 function logout() {
   wx.removeStorageSync("token");
   wx.removeStorageSync("user");
+  wx.removeStorageSync("orders_page_1_cache");
+  wx.removeStorageSync("orders_page_1_cache_v2");
+  wx.removeStorageSync("orders_page_1_cache_v3");
 }
 
 module.exports = {

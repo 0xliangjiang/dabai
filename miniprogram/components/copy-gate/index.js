@@ -88,6 +88,10 @@ Component({
       this.setData({ draftAvatarTemp: event.detail.avatarUrl });
     },
 
+    onAvatarError() {
+      this.setData({ displayAvatar: "", draftAvatarTemp: "" });
+    },
+
     onNicknameInput(event) {
       this.setData({ draftNickname: event.detail.value });
     },

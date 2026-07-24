@@ -1,9 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Repositories } from "../repositories/types.js";
+import { centsToPoints } from "../domain/points.js";
 
-const BASE_POINTS = 5;
-const STREAK_BONUS_POINTS = 30;
-const STREAK_BONUS_EVERY = 7;
 const CHINA_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 export async function registerCheckInRoutes(app: FastifyInstance, repositories: Repositories) {
@@ -18,7 +16,7 @@ export async function registerCheckInRoutes(app: FastifyInstance, repositories: 
     return {
       todayChecked: Boolean(todayRecord),
       streak: computeStreak(recentDates, today),
-      totalPoints
+      totalPoints: centsToPoints(totalPoints)
     };
   });
 
@@ -31,22 +29,26 @@ export async function registerCheckInRoutes(app: FastifyInstance, repositories: 
 
     const recentDates = await repositories.checkIns.listRecentDates(request.userId, 400);
     const streak = computeStreak(recentDates, today) + 1;
-    const points = BASE_POINTS + (streak % STREAK_BONUS_EVERY === 0 ? STREAK_BONUS_POINTS : 0);
+    const pointHundredths = randomCheckInPointHundredths();
 
     await repositories.checkIns.create({
       userId: request.userId,
       checkInDate: today,
-      points
+      points: pointHundredths
     });
     const totalPoints = await repositories.checkIns.totalPoints(request.userId);
 
     return {
       todayChecked: true,
-      pointsAwarded: points,
+      pointsAwarded: centsToPoints(pointHundredths),
       streak,
-      totalPoints
+      totalPoints: centsToPoints(totalPoints)
     };
   });
+}
+
+export function randomCheckInPointHundredths(random: () => number = Math.random): number {
+  return Math.floor(random() * 10) + 1;
 }
 
 // 以北京时间为准的日期串 YYYY-MM-DD

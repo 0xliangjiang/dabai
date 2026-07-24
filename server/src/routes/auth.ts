@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { signUserToken } from "../auth/token.js";
 import type { AppConfig } from "../config/env.js";
+import { fetchWithTimeout } from "../integrations/http.js";
 import type { Repositories } from "../repositories/types.js";
 
 type WechatCode2SessionResponse = {
@@ -64,7 +65,7 @@ async function resolveWechatSession(
   url.searchParams.set("js_code", code);
   url.searchParams.set("grant_type", "authorization_code");
 
-  const response = await wechatAuthFetch(url);
+  const response = await fetchWithTimeout(wechatAuthFetch, url, {}, 10000);
   if (!response.ok) {
     throw new WechatLoginError(`WeChat login HTTP ${response.status}`);
   }

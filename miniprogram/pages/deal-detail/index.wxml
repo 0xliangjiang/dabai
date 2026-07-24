@@ -17,6 +17,12 @@
       <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="backToList">返回线报列表</button>
     </view>
 
+    <view wx:elif="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
+      <view class="error-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="retryLoad">重新加载</button>
+    </view>
+
     <block wx:else>
       <view class="cu-card flex-direction gap-sm anim-up">
         <view class="section-title">{{deal.title}}</view>
@@ -37,17 +43,27 @@
             <view class="step-content">{{item.content}}</view>
 
             <view wx:if="{{item.images.length}}" class="step-images margin-top-sm">
-              <image
+              <block
                 wx:for="{{item.images}}"
                 wx:for-item="img"
+                wx:for-index="imageIndex"
                 wx:key="*this"
-                class="step-image"
-                src="{{img}}"
-                mode="aspectFill"
-                bindtap="previewImage"
-                data-urls="{{item.images}}"
-                data-current="{{img}}"
-              />
+              >
+                <image
+                  wx:if="{{img}}"
+                  class="step-image"
+                  src="{{img}}"
+                  mode="aspectFill"
+                  lazy-load
+                  show-menu-by-longpress
+                  bindtap="previewImage"
+                  binderror="onStepImageError"
+                  data-urls="{{item.images}}"
+                  data-current="{{img}}"
+                  data-step-index="{{index}}"
+                  data-image-index="{{imageIndex}}"
+                />
+              </block>
             </view>
 
             <video wx:if="{{item.videoUrl}}" class="step-video margin-top-sm" src="{{item.videoUrl}}" controls object-fit="contain"></video>
@@ -98,7 +114,7 @@
         <view class="timeline-guide-title">分享到朋友圈步骤</view>
         <view class="timeline-step"><text class="timeline-step-num">1</text>点击屏幕<text class="timeline-strong">右上角「⋯」</text></view>
         <view class="timeline-step"><text class="timeline-step-num">2</text>在弹出菜单里选择<text class="timeline-strong">「分享到朋友圈」</text></view>
-        <view class="timeline-step"><text class="timeline-step-num">3</text>编辑文字后发布，好友下单你得积分</view>
+        <view class="timeline-step"><text class="timeline-step-num">3</text>编辑文字后发布，好友下单你得奖励值</view>
         <view class="timeline-guide-tip">提示：微信规定朋友圈分享只能从「⋯」菜单发起，无法一键跳转，按上面三步即可。</view>
       </view>
 

@@ -16,7 +16,9 @@ const ZTK_CONFIG = {
   relationId: "",
   jdApiUrl: "https://api.zhetaoke.com:10001/api/open_jing_union_open_promotion_byunionid_get.ashx",
   jdUnionId: "",
-  jdPositionId: ""
+  jdPositionId: "",
+  jdItemInfoUrl: "https://j.zhetaoke.com/user/open/open_item_info3.aspx",
+  jdBigFieldUrl: "https://j.zhetaoke.com/user/open/open_item_query.aspx"
 };
 
 function ztkResponse(content: unknown, status = 200) {

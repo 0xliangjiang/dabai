@@ -1,4 +1,5 @@
 const { ensureLogin, request } = require("./api");
+const { trackEvent } = require("./analytics");
 
 // 拉起线报订阅（必须在用户点击事件里调用）。同意一次 = +1 条可推送额度。
 // 对勾选「总是保持以上选择」的用户不弹窗、静默授权——多点几个入口即可静默累积。
@@ -22,6 +23,7 @@ async function subscribeDeals(options = {}) {
       tmplIds: [templateId],
       success: async (result) => {
         if (result[templateId] !== "accept") {
+          trackEvent("subscription_rejected", { result: result[templateId] || "unknown" });
           if (!silent) wx.showToast({ title: "已取消订阅", icon: "none" });
           resolve({ ok: false, remaining: 0 });
           return;
@@ -29,6 +31,7 @@ async function subscribeDeals(options = {}) {
         try {
           await ensureLogin();
           const { remaining } = await request("/api/subscriptions", { method: "POST" });
+          trackEvent("subscription_accepted", { remaining });
           if (!silent) wx.showToast({ title: "订阅成功，新线报会通知你", icon: "none" });
           resolve({ ok: true, remaining });
         } catch (error) {

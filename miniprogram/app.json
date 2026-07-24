@@ -18,6 +18,11 @@
     "navigationBarTextStyle": "white",
     "backgroundColor": "#e9f5ee"
   },
+  "networkTimeout": {
+    "request": 20000,
+    "uploadFile": 60000,
+    "downloadFile": 30000
+  },
   "tabBar": {
     "custom": true,
     "color": "#66796d",
@@ -45,5 +50,5 @@
   },
   "style": "v2",
   "__usePrivacyCheck__": true,
-"sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json"
 }

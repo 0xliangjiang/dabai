@@ -113,6 +113,7 @@ export type AdminConfig = {
     exchangeEnabled: boolean;
     referralCommissionRatio: number;
     referralEnabled: boolean;
+    ordersTabEnabled: boolean;
   };
 };
 

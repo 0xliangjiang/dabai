@@ -33,8 +33,13 @@ describe("server API", () => {
   jdUnionPositionId: "",
   jdUnionSceneId: "",
   zhetaokeOrderApiUrl: "https://api.zhetaoke.com:10001/api/open_order.ashx",
-
-
+  minimaxApiUrl: "https://api.minimax.chat/v1/text/chatcompletion_v2",
+  minimaxApiKey: "",
+  minimaxModel: "MiniMax-M3",
+  orderSyncIntervalMinutes: 15,
+  orderSyncLookbackMinutes: 170,
+  autoSettleThresholdYuan: 20,
+  autoSettleDelayDays: 7
   };
 
   async function buildTestApp() {
@@ -56,6 +61,22 @@ describe("server API", () => {
     const response = await app.inject({ method: "GET", url: "/health" });
 
     expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+  });
+
+  test("POST /api/client-events accepts a whitelisted anonymous event", async () => {
+    const app = await buildTestApp();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/client-events",
+      payload: {
+        name: "conversion_success",
+        visitorId: "visitor-test",
+        properties: { platform: "taobao" }
+      }
+    });
+
+    expect(response.statusCode).toBe(202);
     expect(response.json()).toEqual({ ok: true });
   });
 
@@ -268,7 +289,88 @@ describe("server API", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ orders: [] });
+    expect(response.json()).toEqual({
+      orders: [],
+      totals: { settledPoints: 0, pendingPoints: 0 },
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      hasMore: false
+    });
+  });
+
+  test("POST /api/orders/bind requires an exact full order number and credits through the shared ledger path", async () => {
+    const app = await buildTestApp();
+    const user = await app.deps.repositories.users.findOrCreateByOpenid("bind-user");
+    const fullOrderNumber = "123456789012345678";
+    await app.deps.repositories.orders.upsert({
+      tbkOrderId: fullOrderNumber,
+      itemId: "bind-item",
+      itemTitle: "完整订单号测试商品",
+      payTime: new Date(),
+      payAmountCents: 10000,
+      estimatedCommissionCents: 1000,
+      settledCommissionCents: null,
+      orderStatus: "paid",
+      rawPayload: {}
+    });
+
+    const suffix = await app.inject({
+      method: "POST",
+      url: "/api/orders/bind",
+      headers: { authorization: `Bearer local_${user.id}` },
+      payload: { orderNumber: fullOrderNumber.slice(-12) }
+    });
+    expect(suffix.statusCode).toBe(404);
+
+    const exact = await app.inject({
+      method: "POST",
+      url: "/api/orders/bind",
+      headers: { authorization: `Bearer local_${user.id}` },
+      payload: { orderNumber: fullOrderNumber }
+    });
+    expect(exact.statusCode).toBe(200);
+
+    const summaries = await app.deps.repositories.orders.listByUser(user.id);
+    expect(summaries.items[0]).toMatchObject({
+      orderNumber: fullOrderNumber,
+      rebateStatus: "pending",
+      userRebateCents: 500
+    });
+  });
+
+  test("admin manual attribution immediately reconciles the user's rebate ledger", async () => {
+    const app = await buildTestApp();
+    const user = await app.deps.repositories.users.findOrCreateByOpenid("manual-user");
+    const order = await app.deps.repositories.orders.upsert({
+      tbkOrderId: "987654321098765432",
+      itemId: "manual-item",
+      itemTitle: "人工归因测试商品",
+      payTime: new Date(),
+      payAmountCents: 10000,
+      estimatedCommissionCents: 1000,
+      settledCommissionCents: 800,
+      orderStatus: "settled",
+      rawPayload: {}
+    });
+    const attribution = await app.deps.repositories.orders.upsertAttribution({
+      tbkOrderId: order.tbkOrderId,
+      status: "pending_review",
+      confidence: 0.4,
+      reason: "multiple_candidates",
+      userId: null
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/admin/orders/${attribution.id}/attribute`,
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { userId: user.id }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().rebate).toEqual({ credited: true, rebateStatus: "available" });
+    expect(await app.deps.repositories.withdrawals.getAvailableBalance(user.id)).toBe(400);
   });
 
   test("POST /api/orders/claim saves an order supplement record", async () => {
@@ -295,6 +397,35 @@ describe("server API", () => {
       headers: { "x-admin-token": "dev-admin-token" }
     });
     expect(overview.json().metrics.orderClaimCount).toBe(1);
+  });
+
+  test("avatar upload rejects files whose bytes do not match the declared image type", async () => {
+    const app = await buildTestApp();
+    const boundary = "----codex-upload-boundary";
+    const body = Buffer.from(
+      [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="file"; filename="fake.jpg"',
+        "Content-Type: image/jpeg",
+        "",
+        "this is not a jpeg",
+        `--${boundary}--`,
+        ""
+      ].join("\r\n")
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/uploads/avatar",
+      headers: {
+        authorization: "Bearer local_user-1",
+        "content-type": `multipart/form-data; boundary=${boundary}`
+      },
+      payload: body
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toContain("文件内容");
   });
 
   test("POST /api/jobs/sync-tbk-orders stores and attributes JD orders", async () => {
@@ -569,6 +700,7 @@ describe("server API", () => {
       url: `/api/admin/users/${inviterId}/downline`,
       headers: { "x-admin-token": "dev-admin-token" }
     });
+    expect(downlineDetail.json()).toMatchObject({ total: 1 });
     expect(downlineDetail.json().downlines).toHaveLength(1);
     expect(downlineDetail.json().downlines[0]).toMatchObject({
       id: downline.id,
@@ -578,9 +710,10 @@ describe("server API", () => {
     // 小程序端：邀请人看自己的下线列表
     const myDownline = await app.inject({
       method: "GET",
-      url: "/api/users/me/downline",
+      url: "/api/users/me/downline?page=1&pageSize=1",
       headers: { authorization: `Bearer local_${inviterId}` }
     });
+    expect(myDownline.json()).toMatchObject({ total: 1, page: 1, pageSize: 1, hasMore: false });
     expect(myDownline.json().downlines).toHaveLength(1);
     expect(myDownline.json().downlines[0]).toMatchObject({ id: downline.id, contributedCents: 30 });
   });

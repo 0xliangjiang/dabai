@@ -3,6 +3,8 @@ const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
 const { subscribeDeals } = require("../../utils/subscribe");
+const { trackEvent } = require("../../utils/analytics");
+const { centsToPoints, pointsToCents } = require("../../utils/points");
 
 Page({
   onShareAppMessage() {
@@ -45,8 +47,7 @@ Page({
     withdrawAmount: "",
     submittingWithdraw: false,
     exchangeEnabled: false,
-    referralEnabled: false,
-    showOnboard: false
+    referralEnabled: false
   },
 
   onShow() {
@@ -54,30 +55,21 @@ Page({
     this.refreshUser();
     this.syncUserFromServer();
     this.loadAppConfig();
-    this.checkOnboard();
-  },
-
-  // 硬门槛：未登录或未设昵称 → 全屏不可跳过的登录+昵称墙
-  checkOnboard() {
-    const user = getCurrentUser();
-    this.setData({ showOnboard: !user || !user.nickname });
-  },
-
-  onOnboardPass() {
-    this.setData({ showOnboard: false });
-    this.refreshUser();
-    this.syncUserFromServer();
   },
 
   // 拉取功能开关；兑换入口默认隐藏，开关打开才显示（审核期间关闭）
   async loadAppConfig() {
+    const requestId = (this.configRequestId || 0) + 1;
+    this.configRequestId = requestId;
     try {
       const { exchangeEnabled, referralEnabled } = await request("/api/app-config");
+      if (requestId !== this.configRequestId) return;
       this.setData({
         exchangeEnabled: Boolean(exchangeEnabled),
         referralEnabled: Boolean(referralEnabled)
       });
     } catch (_error) {
+      if (requestId !== this.configRequestId) return;
       this.setData({ exchangeEnabled: false, referralEnabled: false });
     }
   },
@@ -96,12 +88,15 @@ Page({
 
   async syncUserFromServer() {
     if (!getCurrentUser()) return;
+    const requestId = (this.userRequestId || 0) + 1;
+    this.userRequestId = requestId;
     try {
       const [{ user }, checkin, withdrawalData] = await Promise.all([
         request("/api/users/me"),
         request("/api/checkins/me"),
         request("/api/withdrawals/me").catch(() => ({ availableBalance: 0, withdrawals: [] }))
       ]);
+      if (requestId !== this.userRequestId) return;
       if (user) {
         wx.setStorageSync("user", user);
         this.refreshUser();
@@ -110,10 +105,11 @@ Page({
         totalPoints: checkin.totalPoints || 0,
         checkin: { todayChecked: checkin.todayChecked, streak: checkin.streak },
         availableBalance: withdrawalData.availableBalance || 0,
-        availablePoints: withdrawalData.availableBalance || 0,
+        availablePoints: withdrawalData.availablePoints ?? centsToPoints(withdrawalData.availableBalance),
         balanceText: ((withdrawalData.availableBalance || 0) / 100).toFixed(2)
       });
     } catch (_error) {
+      if (requestId !== this.userRequestId) return;
       // 静默失败，下次进入再同步
     }
   },
@@ -147,6 +143,10 @@ Page({
 
   onChooseAvatar(event) {
     this.setData({ draftAvatarTemp: event.detail.avatarUrl });
+  },
+
+  onAvatarError() {
+    this.setData({ displayAvatar: "", draftAvatarTemp: "" });
   },
 
   onNicknameInput(event) {
@@ -236,8 +236,8 @@ Page({
         checkin: { todayChecked: true, streak: result.streak },
         totalPoints: result.totalPoints
       });
-      this.refreshUser();
-      wx.showToast({ title: `签到成功 +${result.pointsAwarded}积分`, icon: "none" });
+      await this.syncUserFromServer();
+      wx.showToast({ title: `签到成功 +${result.pointsAwarded}奖励值`, icon: "none" });
     } catch (error) {
       if (error && error.error === "今日已签到") {
         this.setData({ "checkin.todayChecked": true });
@@ -282,13 +282,14 @@ Page({
 
   async submitWithdraw() {
     if (this.data.submittingWithdraw) return;
-    const points = parseInt(this.data.withdrawAmount, 10);
-    if (!points || points < 1000) {
-      wx.showToast({ title: "最低兑换 1000 积分", icon: "none" });
+    const points = Number(this.data.withdrawAmount);
+    const amountCents = pointsToCents(points);
+    if (!points || amountCents < 1000 || Math.abs(amountCents - points * 100) > 1e-6) {
+      wx.showToast({ title: "最低兑换 10 奖励值，最多两位小数", icon: "none" });
       return;
     }
-    if (points > this.data.availableBalance) {
-      wx.showToast({ title: "超出可兑换积分", icon: "none" });
+    if (amountCents > this.data.availableBalance) {
+      wx.showToast({ title: "超出可兑换奖励值", icon: "none" });
       return;
     }
 
@@ -297,13 +298,15 @@ Page({
       await ensureLogin();
       await request("/api/withdrawals", {
         method: "POST",
-        data: { amountCents: points }
+        data: { points }
       });
+      trackEvent("withdrawal_submitted", { points });
       this.closeWithdrawForm();
       this.syncUserFromServer();
       wx.navigateTo({ url: "/pages/withdrawals/index" });
       wx.showToast({ title: "兑换申请已提交", icon: "success" });
     } catch (error) {
+      trackEvent("withdrawal_failed", { reason: error.error || "unknown" });
       wx.showToast({ title: error.error || "提交失败，请重试", icon: "none" });
     } finally {
       this.setData({ submittingWithdraw: false });

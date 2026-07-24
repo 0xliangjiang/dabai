@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
+import { open, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -25,20 +26,14 @@ export async function registerUploadRoutes(app: FastifyInstance, uploadDir: stri
 }
 
 async function handleAvatarUpload(request: FastifyRequest, reply: FastifyReply, uploadDir: string) {
-  const file = await request.file({ limits: { fileSize: 5 * 1024 * 1024 } });
-  if (!file) return reply.code(400).send({ error: "缺少文件" });
-
-  // 微信头像可能报任意 image/* 类型或空类型，统一存为 jpg
-  const isImage = !file.mimetype || file.mimetype.startsWith("image/") || file.mimetype === "application/octet-stream";
-  if (!isImage) return reply.code(400).send({ error: "仅支持图片文件" });
-
-  const ext = IMAGE_MIME_EXTENSIONS[file.mimetype] ?? "jpg";
-  const filename = `${randomUUID()}.${ext}`;
-  await pipeline(file.file, createWriteStream(path.join(uploadDir, filename)));
-
-  if (file.file.truncated) return reply.code(400).send({ error: "文件超出大小限制" });
-
-  return { url: `/uploads/${filename}` };
+  return handleMediaUpload(
+    request,
+    reply,
+    uploadDir,
+    { ...IMAGE_MIME_EXTENSIONS, "application/octet-stream": "jpg", "": "jpg" },
+    "仅支持 JPG、PNG、WebP 图片",
+    5 * 1024 * 1024
+  );
 }
 
 export async function handleMediaUpload(
@@ -54,17 +49,50 @@ export async function handleMediaUpload(
     return reply.code(400).send({ error: "缺少文件" });
   }
 
-  const extension = allowedMimes[file.mimetype];
-  if (!extension) {
+  if (!allowedMimes[file.mimetype]) {
     return reply.code(400).send({ error: mimeError });
   }
 
-  const filename = `${randomUUID()}.${extension}`;
-  await pipeline(file.file, createWriteStream(path.join(uploadDir, filename)));
+  const uploadId = randomUUID();
+  const temporaryPath = path.join(uploadDir, `${uploadId}.uploading`);
+  try {
+    await pipeline(file.file, createWriteStream(temporaryPath, { flags: "wx" }));
+    if (file.file.truncated) {
+      await unlink(temporaryPath).catch(() => undefined);
+      return reply.code(400).send({ error: "文件超出大小限制" });
+    }
 
-  if (file.file.truncated) {
-    return reply.code(400).send({ error: "文件超出大小限制" });
+    const detectedExtension = await detectMediaExtension(temporaryPath);
+    const allowedExtensions = new Set(Object.values(allowedMimes));
+    if (!detectedExtension || !allowedExtensions.has(detectedExtension)) {
+      await unlink(temporaryPath).catch(() => undefined);
+      return reply.code(400).send({ error: "文件内容与支持的图片或视频格式不符" });
+    }
+
+    const filename = `${uploadId}.${detectedExtension}`;
+    await rename(temporaryPath, path.join(uploadDir, filename));
+    return { url: `/uploads/${filename}` };
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => undefined);
+    throw error;
   }
+}
 
-  return { url: `/uploads/${filename}` };
+async function detectMediaExtension(filePath: string): Promise<string | undefined> {
+  const handle = await open(filePath, "r");
+  try {
+    const header = Buffer.alloc(16);
+    const { bytesRead } = await handle.read(header, 0, header.length, 0);
+    if (bytesRead >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) return "jpg";
+    if (bytesRead >= 8 && header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+      return "png";
+    }
+    if (bytesRead >= 12 && header.toString("ascii", 0, 4) === "RIFF" && header.toString("ascii", 8, 12) === "WEBP") {
+      return "webp";
+    }
+    if (bytesRead >= 12 && header.toString("ascii", 4, 8) === "ftyp") return "mp4";
+    return undefined;
+  } finally {
+    await handle.close();
+  }
 }

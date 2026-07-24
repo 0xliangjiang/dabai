@@ -26,3 +26,16 @@ page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
   text-align: right;
   word-break: break-all;
 }
+
+@media (max-width: 360px) {
+  .refresh-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .refresh-rebate-btn {
+    width: 100%;
+    height: 76rpx;
+    line-height: 76rpx;
+  }
+}

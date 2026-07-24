@@ -2,8 +2,9 @@ const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
-const { ensureNickname } = require("../../utils/guard");
 const { subscribeDeals } = require("../../utils/subscribe");
+const { trackEvent } = require("../../utils/analytics");
+const { centsToPoints } = require("../../utils/points");
 
 Page({
   onShareAppMessage() {
@@ -86,7 +87,9 @@ Page({
       return;
     }
 
+    this.lastSeenClipboardContent = content;
     this.fillRawContent(content);
+    trackEvent("clipboard_paste", { automatic: false });
     wx.showToast({ title: "已粘贴", icon: "success" });
   },
 
@@ -94,35 +97,20 @@ Page({
     if (this.data.loading) return;
 
     const { content } = await this.readClipboard();
-    if (!content || !looksLikeProductContent(content)) return;
+    if (!content || content === this.lastSeenClipboardContent) return;
+    this.lastSeenClipboardContent = content;
+    if (!looksLikeProductContent(content)) return;
     if (content === this.data.rawContent.trim()) return;
     // 剪贴板里是本次会话刚复制出去的文案/链接时跳过，防止自我循环
     if (content === this.lastCopiedContent) return;
-    // 用户在弹窗里拒绝过的内容不再重复询问
-    if (content === this.dismissedContent) return;
-
-    // 没有查询结果时直接填入；有结果时弹窗确认，避免静默覆盖用户正在看的内容
-    if (!this.data.result) {
-      this.fillRawContent(content);
-      return;
-    }
-    wx.showModal({
-      title: "检测到新的商品内容",
-      content: "是否替换当前内容并查询新的优惠？",
-      confirmText: "查询",
-      cancelText: "保留当前",
-      success: (res) => {
-        if (res.confirm) {
-          this.fillRawContent(content);
-          this.convert();
-        } else {
-          this.dismissedContent = content;
-        }
-      }
-    });
+    // 仅在输入框为空时自动填充，避免覆盖用户正在编辑或查看的商品。
+    if (this.data.rawContent.trim()) return;
+    this.fillRawContent(content);
+    trackEvent("clipboard_paste", { automatic: true });
   },
 
   async convert() {
+    if (this.data.loading) return;
     if (!hasConsent()) {
       this.setData({ showPrivacy: true });
       return;
@@ -140,10 +128,14 @@ Page({
         data: { rawContent: this.data.rawContent }
       });
       this.setData({ result: this.formatResult(result) });
+      trackEvent("conversion_success", { platform: result.platform || "unknown" });
     } catch (error) {
       this.setData({
         result: null,
         errorMsg: error.error || "未识别到商品"
+      });
+      trackEvent("conversion_failed", {
+        reason: (error && error.error) || "unknown"
       });
     } finally {
       this.setData({ loading: false });
@@ -177,11 +169,13 @@ Page({
     return {
       ...result,
       itemPrice: ((result.itemPriceCents || 0) / 100).toFixed(2),
-      estimatedPoints: Math.round(result.estimatedRebateCents || 0),
+      estimatedPoints: centsToPoints(result.estimatedRebateCents),
       commissionPercent: `${Math.round((result.commissionRate || 0) * 100)}%`,
       displayLink,
       platformLabel: this.platformLabel(result.platform),
       hasPassword: Boolean(result.generatedPassword),
+      passwordActionLabel: result.platform === "taobao" ? "复制淘口令" : "复制文案",
+      linkActionLabel: result.generatedPassword ? "复制链接" : "复制链接，去下单",
       shareText: buildShareText(result, displayLink)
     };
   },
@@ -204,6 +198,10 @@ Page({
     await wx.setClipboardData({ data: content });
     this.lastCopiedContent = content;
     this.setData({ copied: copyType });
+    trackEvent("copy_success", {
+      copyType,
+      platform: this.data.result.platform || "unknown"
+    });
     clearTimeout(this.copiedTimer);
     this.copiedTimer = setTimeout(() => {
       this.setData({ copied: "" });
@@ -223,8 +221,8 @@ Page({
 
     const app = this.platformLabel(result.platform);
     const content = copyType === "password"
-      ? `打开「${app}」App，会自动弹出该商品，确认下单即可获得返积分。`
-      : `打开「${app}」App 或浏览器，粘贴刚复制的链接即可打开商品，下单后返积分。`;
+      ? `打开「${app}」App，会自动弹出该商品，确认下单即可获得奖励值。`
+      : `打开「${app}」App 或浏览器，粘贴刚复制的链接即可打开商品，下单后获得奖励值。`;
     wx.showModal({
       title: `已复制，去${app}下单`,
       content,
@@ -240,8 +238,6 @@ Page({
   async loginQuietly() {
     try {
       await ensureLogin();
-      // 登录后没昵称 → 引导去「我的」页完善
-      ensureNickname();
     } catch (_error) {
       wx.showToast({ title: "请先完成微信登录", icon: "none" });
     }
@@ -264,6 +260,10 @@ Page({
   clearContent() {
     if (!this.data.rawContent) return;
     this.setData({ rawContent: "", result: null, errorMsg: "", copied: "" });
+  },
+
+  onProductImageError() {
+    this.setData({ "result.itemImageUrl": "" });
   },
 
   fillRawContent(content) {

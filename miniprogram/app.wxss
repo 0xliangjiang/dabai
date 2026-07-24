@@ -13,8 +13,10 @@ page {
 }
 
 .cu-page {
+  width: 100%;
   min-height: 100vh;
   padding: 28rpx 30rpx 184rpx;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 
@@ -604,6 +606,37 @@ page {
   text-align: center;
 }
 
+.empty-actions {
+  width: 100%;
+}
+
+.list-footer {
+  min-height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  color: #6b7f74;
+  font-size: 22rpx;
+}
+
+.footer-retry {
+  min-width: 112rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 20rpx;
+  border: 1rpx solid rgba(10, 122, 82, 0.2);
+  border-radius: 8rpx;
+  background: #ffffff;
+  color: #0a7a52;
+  font-size: 22rpx;
+  line-height: 70rpx;
+}
+
+.footer-retry::after {
+  border: 0;
+}
+
 .empty-icon {
   width: 96rpx;
   height: 96rpx;
@@ -947,11 +980,99 @@ page {
 
 .modal-card {
   width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #ffffff;
   border-radius: 40rpx 40rpx 0 0;
   padding: 40rpx 34rpx calc(env(safe-area-inset-bottom) + 40rpx);
   box-sizing: border-box;
   box-shadow: 0 -16rpx 48rpx rgba(7, 26, 18, 0.18);
+}
+
+@media (min-width: 768px) {
+  .cu-page {
+    max-width: 760px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
+  .hero {
+    margin-left: -32px;
+    margin-right: -32px;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  .modal-overlay {
+    align-items: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  .modal-card {
+    max-width: 680px;
+    border-radius: 16px;
+    padding-bottom: 40px;
+  }
+}
+
+@media (max-width: 360px) {
+  .cu-page {
+    padding-left: 22rpx;
+    padding-right: 22rpx;
+  }
+
+  .hero {
+    margin-left: -22rpx;
+    margin-right: -22rpx;
+    padding-left: 30rpx;
+    padding-right: 30rpx;
+  }
+
+  .quick-steps {
+    gap: 8rpx;
+  }
+
+  .step-pill {
+    min-height: 104rpx;
+    padding-left: 6rpx;
+    padding-right: 6rpx;
+  }
+
+  .section-title {
+    font-size: 29rpx;
+  }
+
+  .responsive-actions {
+    flex-direction: column;
+  }
+
+  .responsive-actions .cu-btn {
+    width: 100%;
+    flex: none;
+  }
+
+  .deal-meta,
+  .soft-panel,
+  .profile-card {
+    flex-wrap: wrap;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .modal-overlay {
+    align-items: center;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+  }
+
+  .modal-card {
+    max-width: 680px;
+    max-height: calc(100vh - 24px);
+    border-radius: 16px;
+    padding-top: 24px;
+  }
 }
 
 .modal-title {

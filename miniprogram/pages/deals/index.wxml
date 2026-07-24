@@ -2,6 +2,7 @@
   <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
+    <view wx:if="{{cacheNotice}}" class="hint-bar">{{cacheNotice}}，下拉可重新加载。</view>
     <view wx:if="{{subscribeTemplateId}}" class="cu-card subscribe-card flex align-center justify-between gap anim-up">
       <view class="flex-sub">
         <view class="section-title">新线报提醒</view>
@@ -16,6 +17,12 @@
         <view class="skeleton-block skeleton-line half"></view>
       </view>
     </block>
+
+    <view wx:elif="{{errorMsg}}" class="cu-card cu-empty flex-direction align-center justify-center anim-up delay-1">
+      <view class="empty-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <button class="cu-btn secondary margin-top" bindtap="retryLoad">重新加载</button>
+    </view>
 
     <view wx:elif="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center anim-up delay-1">
       <view class="empty-icon">报</view>
@@ -54,6 +61,12 @@
           >分享</button>
         </view>
       </view>
+      <view wx:if="{{loadingMore}}" class="muted text-sm text-center padding">正在加载更多...</view>
+      <view wx:elif="{{loadMoreError}}" class="list-footer">
+        <text>{{loadMoreError}}</text>
+        <button class="footer-retry pressable" hover-class="pressed" bindtap="retryLoadMore">重试</button>
+      </view>
+      <view wx:elif="{{deals.length > 0 && !hasMore}}" class="list-footer muted">已经到底了</view>
     </block>
   </view>
 </view>

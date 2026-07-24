@@ -6,8 +6,12 @@
       class="tab-item {{item.activeClass}}"
       data-index="{{index}}"
       bindtap="switchTab"
+      aria-role="button"
+      aria-label="{{item.label}}"
     >
-      <view class="tab-mark">{{item.mark}}</view>
+      <view class="tab-mark">
+        <image class="tab-icon" src="{{item.icon}}" mode="aspectFit" />
+      </view>
       <view class="tab-label">{{item.label}}</view>
     </view>
   </view>

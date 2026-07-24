@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   matchOrderAttribution,
   titleSimilarity,
@@ -22,6 +23,9 @@ import { resolveProductDetail } from "./product-detail.js";
 
 const DEFAULT_AUTO_SETTLE_THRESHOLD_CENTS = 2000; // 20 元
 const DEFAULT_AUTO_SETTLE_DELAY_DAYS = 7;
+const ORDER_SYNC_LEASE_MS = 30 * 60 * 1000;
+const MAX_SYNC_PAGES = 50;
+const ORDER_PROCESS_CONCURRENCY = 5;
 
 // 已收货订单的"有效结算状态"：佣金≤阈值→收货即结算；超过阈值→收货满 N 天才结算（控风险）。
 // 已结算/退款/失效按原状态；其余（已付款）维持待结算。
@@ -272,6 +276,7 @@ export type SyncOrdersOptions = {
   // 已收货自动结算：佣金≤阈值立即结算；超过则收货满 N 天再结算
   autoSettleThresholdCents?: number;
   autoSettleDelayDays?: number;
+  onPageProcessed?: () => Promise<void>;
 };
 
 export type OrderSyncRunResult = {
@@ -289,6 +294,47 @@ export type OrderSyncRunResult = {
 // - 任一平台失败 → ok=false，errorMessage 汇总失败平台与原因（失败才是最该看到的）
 // - 记录写库失败只吞掉（记录功能不能拖垮同步本身），交由调用方记日志
 export async function runOrderSync(
+  repositories: Repositories,
+  clients: { taobaoOrderClient: TaobaoOrderClient; taobaoProductClient?: TaobaoProductClient; orderClient: JdOrderClient },
+  options: SyncOrdersOptions,
+  trigger: "auto" | "manual"
+): Promise<OrderSyncRunResult> {
+  const owner = randomUUID();
+  const acquired = await repositories.syncRuns.tryAcquireLock(owner, ORDER_SYNC_LEASE_MS);
+  if (!acquired) {
+    return {
+      ok: false,
+      taobaoSynced: 0,
+      taobaoAttributed: 0,
+      jdSynced: 0,
+      jdAttributed: 0,
+      errorMessage: "订单同步任务正在运行，请稍后重试",
+      durationMs: 0
+    };
+  }
+  try {
+    return await runOrderSyncUnlocked(
+      repositories,
+      clients,
+      {
+        ...options,
+        onPageProcessed: async () => {
+          const renewed = await repositories.syncRuns.renewLock(owner, ORDER_SYNC_LEASE_MS);
+          if (!renewed) throw new Error("订单同步锁已失效");
+        }
+      },
+      trigger
+    );
+  } finally {
+    try {
+      await repositories.syncRuns.releaseLock(owner);
+    } catch (error) {
+      console.error("[order-sync] 释放同步锁失败:", (error as Error).message);
+    }
+  }
+}
+
+async function runOrderSyncUnlocked(
   repositories: Repositories,
   clients: { taobaoOrderClient: TaobaoOrderClient; taobaoProductClient?: TaobaoProductClient; orderClient: JdOrderClient },
   options: SyncOrdersOptions,
@@ -388,8 +434,11 @@ export async function syncJdOrders(
   let attributed = 0;
 
   while (true) {
+    if (pageIndex > MAX_SYNC_PAGES) {
+      throw new Error(`京东订单分页超过上限 ${MAX_SYNC_PAGES}`);
+    }
     const page = await orderClient.fetchJdOrders({ startTime, endTime, pageIndex, pageSize });
-    for (const incoming of page.orders) {
+    await forEachConcurrent(page.orders, ORDER_PROCESS_CONCURRENCY, async (incoming) => {
       try {
         const order = await repositories.orders.upsert(incoming);
         const result = await processOrder(repositories, order, options);
@@ -399,7 +448,8 @@ export async function syncJdOrders(
         // 单条订单处理失败不应中断整批同步（如个别归因外键/数据异常）
         console.error(`[order-sync] 订单 ${incoming.tbkOrderId} 处理失败:`, (error as Error).message);
       }
-    }
+    });
+    await options.onPageProcessed?.();
 
     if (!page.hasNext || page.orders.length === 0) {
       break;
@@ -426,10 +476,16 @@ export async function syncTaobaoOrders(
   const startTime = options.startTime ?? new Date(endTime.getTime() - 2 * 60 * 60 * 1000);
   const pageSize = options.pageSize ?? 100;
   let positionIndex: string | undefined;
+  const seenPositions = new Set<string>();
+  let pageCount = 0;
   let synced = 0;
   let attributed = 0;
 
   while (true) {
+    pageCount += 1;
+    if (pageCount > MAX_SYNC_PAGES) {
+      throw new Error(`淘宝订单分页超过上限 ${MAX_SYNC_PAGES}`);
+    }
     const page = await orderClient.fetchTaobaoOrders({
       startTime,
       endTime,
@@ -437,7 +493,7 @@ export async function syncTaobaoOrders(
       pageSize,
       queryType: options.queryType ?? 4
     });
-    for (const incoming of page.orders) {
+    await forEachConcurrent(page.orders, ORDER_PROCESS_CONCURRENCY, async (incoming) => {
       try {
         const product = await resolveProductDetail(repositories, productClient, {
           platform: "taobao",
@@ -455,10 +511,16 @@ export async function syncTaobaoOrders(
         // 单条订单处理失败不应中断整批同步（如个别归因外键/数据异常）
         console.error(`[order-sync] 订单 ${incoming.tbkOrderId} 处理失败:`, (error as Error).message);
       }
-    }
+    });
+    await options.onPageProcessed?.();
 
     if (!page.hasNext || page.orders.length === 0) break;
-    positionIndex = page.positionIndex;
+    const nextPosition = page.positionIndex?.trim();
+    if (!nextPosition || seenPositions.has(nextPosition)) {
+      throw new Error("淘宝订单分页游标缺失或重复");
+    }
+    seenPositions.add(nextPosition);
+    positionIndex = nextPosition;
   }
 
   return { ok: true, synced, attributed, startTime, endTime };
@@ -469,4 +531,20 @@ function normalizeCommissionStatus(status: string): OrderCommissionStatus {
     return status;
   }
   return "paid";
+}
+
+async function forEachConcurrent<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>
+): Promise<void> {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      await worker(items[index]);
+    }
+  });
+  await Promise.all(runners);
 }

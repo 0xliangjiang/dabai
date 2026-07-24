@@ -5,13 +5,13 @@
     "include": []
   },
   "setting": {
-    "urlCheck": false,
+    "urlCheck": true,
     "es6": true,
     "postcss": true,
     "minified": true,
     "compileWorklet": false,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "enhance": false,
     "packNpmManually": false,
     "packNpmRelationList": [],
@@ -30,7 +30,7 @@
     }
   },
   "compileType": "miniprogram",
-  "libVersion": "latest",
+  "libVersion": "3.15.2",
   "appid": "wx6d7e2eacac4b36ff",
   "projectname": "taobaoke-wx",
   "condition": {},

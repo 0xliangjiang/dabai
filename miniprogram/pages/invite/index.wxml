@@ -6,7 +6,26 @@
   </view>
 
   <view class="content-stack floating-stack">
-    <view wx:if="{{!enabled && !loading}}" class="cu-card error-card flex-direction align-center anim-pop">
+    <block wx:if="{{loading}}">
+      <view class="cu-card flex-direction gap-sm anim-up">
+        <view class="skeleton-block skeleton-line half"></view>
+        <view class="skeleton-block invite-value-skeleton"></view>
+        <view class="skeleton-block skeleton-line"></view>
+      </view>
+      <view class="cu-card flex-direction gap-sm anim-up delay-1">
+        <view class="skeleton-block skeleton-line"></view>
+        <view class="skeleton-block skeleton-line half"></view>
+        <view class="skeleton-block skeleton-line tall"></view>
+      </view>
+    </block>
+
+    <view wx:elif="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
+      <view class="error-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="retryLoad">重新加载</button>
+    </view>
+
+    <view wx:elif="{{!enabled}}" class="cu-card error-card flex-direction align-center anim-pop">
       <view class="error-icon">!</view>
       <view class="text-bold">邀请活动暂未开启</view>
       <view class="section-desc margin-top-sm">敬请期待，开启后即可邀请好友赚提成</view>
@@ -15,7 +34,7 @@
     <block wx:else>
       <!-- 收益概况 -->
       <view class="cu-card earn-card anim-up">
-        <view class="earn-label">累计已到账提成（元）</view>
+        <view class="earn-label">累计已到账奖励值</view>
         <view class="earn-value">{{earnedText}}</view>
         <view class="earn-grid">
           <view class="earn-cell">
@@ -25,7 +44,7 @@
           <view class="earn-divider"></view>
           <view class="earn-cell">
             <view class="earn-cell-num">{{pendingText}}</view>
-            <view class="earn-cell-cap">待结算（元）</view>
+            <view class="earn-cell-cap">待结算奖励值</view>
           </view>
         </view>
       </view>
@@ -40,7 +59,7 @@
           </view>
         </view>
         <button class="cta-btn pressable" hover-class="pressed" bindtap="openShareModal">立即邀请好友</button>
-        <view class="invite-tip">提成会自动并入你的积分余额，可在「我的」页查看与兑换</view>
+        <view class="invite-tip">提成会自动并入你的奖励值，可在「我的」页查看与兑换</view>
       </view>
 
       <!-- 已邀请好友列表 -->
@@ -60,9 +79,15 @@
               <view class="downline-name">{{item.name}}</view>
               <view class="downline-date">{{item.joinedAt}} 加入</view>
             </view>
-            <view class="downline-contrib">+{{item.contributedText}}<text class="dc-unit">元</text></view>
+            <view class="downline-contrib">+{{item.contributedText}}<text class="dc-unit"> 奖励值</text></view>
           </view>
         </view>
+        <view wx:if="{{loadingMore}}" class="list-footer muted">正在加载更多...</view>
+        <view wx:elif="{{loadMoreError}}" class="list-footer">
+          <text>{{loadMoreError}}</text>
+          <button class="footer-retry pressable" hover-class="pressed" bindtap="retryLoadMore">重试</button>
+        </view>
+        <view wx:elif="{{downlines.length > 0 && !hasMore}}" class="list-footer muted">已经到底了</view>
       </view>
     </block>
   </view>

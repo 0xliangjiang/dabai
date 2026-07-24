@@ -52,9 +52,10 @@ export async function registerAdminRoutes(
   );
 
   // 某会员的下线明细（昵称、加入时间、累计为上级贡献的提成）
-  app.get<{ Params: { id: string } }>("/api/admin/users/:id/downline", async (request) => ({
-    downlines: await repositories.users.listDownline(request.params.id)
-  }));
+  app.get<{ Params: { id: string } }>("/api/admin/users/:id/downline", async (request) => {
+    const { total, items } = await repositories.users.listDownline(request.params.id, { page: 1, pageSize: 100 });
+    return { downlines: items, total };
+  });
 
   // 查询历史：按 商品标题/itemId/用户昵称 搜索转化记录，用于人工归因兜底
   app.get<{ Querystring: { search?: string; page?: string; pageSize?: string } }>(
@@ -247,11 +248,22 @@ export async function registerAdminRoutes(
 
   app.post<{ Params: { id: string }; Body: { userId?: string } }>(
     "/api/admin/orders/:id/attribute",
-    async (request) => {
-      return repositories.orders.attributeOrder(request.params.id, {
-        userId: request.body?.userId,
+    async (request, reply) => {
+      const userId = request.body?.userId?.trim();
+      if (!userId) {
+        return reply.code(400).send({ error: "userId is required" });
+      }
+      const attribution = await repositories.orders.attributeOrder(request.params.id, {
+        userId,
         reviewedBy: "admin"
       });
+      const order = await repositories.orders.findById(attribution.tbkOrderId);
+      if (!order) {
+        return reply.code(404).send({ error: "order not found" });
+      }
+      const options = await resolveCommissionOptions(repositories, config);
+      const rebate = await reconcileOrderLedger(repositories, order, options);
+      return { attribution, rebate };
     }
   );
 
@@ -264,7 +276,7 @@ export async function registerAdminRoutes(
       }
       const order = await repositories.orders.markOrderStatus(request.params.id, status!);
 
-      // 标记结算/退款时，把积分流转到归属用户（契合手动履约）
+      // 标记结算/退款时，把奖励值流转到归属用户（契合手动履约）
       if (status === "settled" || status === "refunded") {
         const attribution = await repositories.orders.getAttribution(order.tbkOrderId);
         if (attribution?.userId) {

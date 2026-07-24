@@ -9,9 +9,15 @@
   "scripts": {
     "dev": "npm run dev --workspace server",
     "test": "npm test --workspace server",
-    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace admin"
+    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace admin",
+    "check:miniprogram": "node scripts/check-miniprogram.mjs"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.8",
+    "fast-uri": "3.1.4",
+    "find-my-way": "9.7.0"
   }
 }

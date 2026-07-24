@@ -1,7 +1,7 @@
 -- AlterTable: 用户软删除标记
 ALTER TABLE `User` ADD COLUMN `deletedAt` DATETIME(3) NULL;
 
--- CreateTable: 管理员手动积分调整
+-- CreateTable: 管理员手动奖励值调整
 CREATE TABLE `PointAdjustment` (
     `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,

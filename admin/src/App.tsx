@@ -236,7 +236,7 @@ export function App() {
 
   async function markOrderStatus(orderId: string, status: "received" | "settled") {
     const label = status === "received" ? "已收货" : "已结算";
-    if (status === "settled" && !window.confirm("标记已结算会把佣金积分发放到归属用户，确定吗？")) return;
+    if (status === "settled" && !window.confirm("标记已结算会把奖励值发放到归属用户，确定吗？")) return;
     setMarkingOrderId(orderId);
     try {
       await fetchAdminApi(`/api/admin/orders/${orderId}/status`, adminToken, {
@@ -411,12 +411,12 @@ export function App() {
   async function submitAdjustPoints() {
     if (!pointsModal) return;
     const delta = parseInt(pointsDelta, 10);
-    if (!delta || isNaN(delta)) { toast("请输入有效的积分数量", "error"); return; }
+    if (!delta || isNaN(delta)) { toast("请输入有效的奖励值", "error"); return; }
     await fetchAdminApi(`/api/admin/users/${pointsModal.userId}/adjust-points`, adminToken, {
       method: "POST",
       body: JSON.stringify({ delta, reason: "admin_manual" })
     });
-    toast(`已为「${pointsModal.nickname}」${delta > 0 ? "增加" : "扣除"} ${Math.abs(delta)} 积分`);
+    toast(`已为「${pointsModal.nickname}」${delta > 0 ? "增加" : "扣除"} ${Math.abs(delta)} 奖励值`);
     setPointsModal(null);
     setPointsDelta("");
   }
@@ -933,7 +933,7 @@ export function App() {
                           返利%
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => { setPointsModal({ userId: user.id, nickname: user.nickname ?? user.id }); setPointsDelta(""); }}>
-                          调积分
+                          调奖励值
                         </Button>
                         {user.status === "banned" ? (
                           <Button size="sm" variant="outline" onClick={() => void setUserStatus(user.id, "active")}>解封</Button>
@@ -1434,12 +1434,12 @@ export function App() {
       {pointsModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPointsModal(null)}>
           <div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold">调整积分</h3>
+            <h3 className="font-semibold">调整奖励值</h3>
             <p className="mt-1 text-sm text-slate-500">用户：{pointsModal.nickname}</p>
             <input
               autoFocus
               className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-400"
-              placeholder="积分数量，负数为扣除（如 -500）"
+              placeholder="奖励值，1 奖励值对应 1 元（如 -5）"
               type="number"
               value={pointsDelta}
               onChange={(e) => setPointsDelta(e.target.value)}

@@ -2,10 +2,10 @@ const { request } = require("../utils/api");
 
 // 完整 tab 列表；订单 tab 可在审核期间由后台开关隐藏
 const FULL_LIST = [
-  { pagePath: "/pages/home/index", label: "优惠", mark: "惠", activeClass: "active" },
-  { pagePath: "/pages/deals/index", label: "线报", mark: "报", activeClass: "" },
-  { pagePath: "/pages/orders/index", label: "订单", mark: "单", activeClass: "" },
-  { pagePath: "/pages/profile/index", label: "我的", mark: "我", activeClass: "" }
+  { pagePath: "/pages/home/index", label: "优惠", icon: "/assets/tab/badge-percent.svg", activeClass: "active" },
+  { pagePath: "/pages/deals/index", label: "线报", icon: "/assets/tab/newspaper.svg", activeClass: "" },
+  { pagePath: "/pages/orders/index", label: "订单", icon: "/assets/tab/receipt-text.svg", activeClass: "" },
+  { pagePath: "/pages/profile/index", label: "我的", icon: "/assets/tab/user-round.svg", activeClass: "" }
 ];
 
 Component({

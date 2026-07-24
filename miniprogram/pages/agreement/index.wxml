@@ -13,18 +13,18 @@
     </view>
 
     <view class="cu-card article-card">
-      <view class="section-title">积分来源</view>
-      <view class="article-text">用户通过本平台生成的推广链接或口令，引导他人在淘宝、京东等电商平台完成购买后，本平台可从电商联盟获得 CPS（按销售付费）佣金。平台据此将相应的活动积分作为用户奖励计入「可兑换积分」，具体比例以页面展示为准。</view>
+      <view class="section-title">奖励值来源</view>
+      <view class="article-text">用户通过本平台生成的推广链接或口令，引导他人在淘宝、京东等电商平台完成购买后，本平台可从电商联盟获得 CPS（按销售付费）佣金。平台据此将相应奖励计入「可兑换奖励值」，1 奖励值对应 1 元奖励价值。</view>
     </view>
 
     <view class="cu-card article-card">
       <view class="section-title">结算规则</view>
-      <view class="article-text">预估积分会根据平台活动、订单状态、退款、售后、风控等因素变化。最终是否有效及具体积分，以相关平台和合作服务方返回的结算结果为准。签到等活动获得的积分一并计入可兑换积分。</view>
+      <view class="article-text">预估奖励值会根据平台活动、订单状态、退款、售后、风控等因素变化。最终是否有效及具体奖励值，以相关平台和合作服务方返回的结算结果为准。签到等活动获得的奖励值一并计入可兑换奖励值。</view>
     </view>
 
     <view class="cu-card article-card">
       <view class="section-title">兑换规则</view>
-      <view class="article-text">「可兑换积分」由已结算的推广奖励与活动积分共同构成，最低兑换 1000 积分。用户提交兑换申请后，运营团队将在 3 个工作日内完成核实并安排发放对应奖励。如遇节假日顺延。平台有权对违规行为取消兑换资格。</view>
+      <view class="article-text">「可兑换奖励值」由已结算的推广奖励与活动奖励值共同构成，最低兑换 10 奖励值。用户提交兑换申请后，运营团队将在 3 个工作日内完成核实并安排发放对应奖励。如遇节假日顺延。平台有权对违规行为取消兑换资格。</view>
     </view>
 
     <view class="cu-card article-card">

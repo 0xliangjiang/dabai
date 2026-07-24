@@ -7,6 +7,9 @@
   padding: 14rpx 28rpx calc(14rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   pointer-events: none;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 .tab-shell {
@@ -70,12 +73,14 @@
   height: 42rpx;
   border-radius: 999rpx;
   background: #e6f6ee;
-  color: #0a7a52;
-  font-size: 22rpx;
-  font-weight: 900;
-  line-height: 42rpx;
-  text-align: center;
   transition: background 0.24s ease, color 0.24s ease;
+}
+
+.tab-icon {
+  display: block;
+  width: 28rpx;
+  height: 28rpx;
+  margin: 7rpx;
 }
 
 .tab-item.active .tab-mark {
@@ -86,4 +91,21 @@
 
 .tab-label {
   line-height: 1;
+}
+
+@media (max-width: 360px) {
+  .tab-safe {
+    padding-left: 16rpx;
+    padding-right: 16rpx;
+  }
+
+  .tab-shell {
+    padding-left: 6rpx;
+    padding-right: 6rpx;
+  }
+
+  .tab-item {
+    gap: 4rpx;
+    font-size: 22rpx;
+  }
 }

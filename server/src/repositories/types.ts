@@ -113,7 +113,7 @@ export type CheckInRecord = {
   id: string;
   userId: string;
   checkInDate: string;
-  points: number;
+  points: number; // 签到奖励值的存储单位为 0.01，字段名为兼容既有数据而保留
   createdAt: Date;
 };
 
@@ -284,7 +284,10 @@ export type Repositories = {
       pageSize?: number;
       search?: string;
     }): Promise<{ total: number; items: AdminUserRecord[] }>;
-    listDownline(inviterId: string): Promise<DownlineRecord[]>;
+    listDownline(
+      inviterId: string,
+      options?: { page?: number; pageSize?: number }
+    ): Promise<{ total: number; items: DownlineRecord[] }>;
     deleteUser(id: string): Promise<void>;
     adjustPoints(id: string, input: { delta: number; reason: string }): Promise<void>;
     setRebateRatio(id: string, ratio: number | null): Promise<UserRecord>;
@@ -327,7 +330,11 @@ export type Repositories = {
     upsert(input: UpsertProductSnapshotInput): Promise<ProductSnapshotRecord>;
   };
   orders: {
-    listByUser(userId: string): Promise<OrderSummary[]>;
+    listByUser(
+      userId: string,
+      options?: { page?: number; pageSize?: number }
+    ): Promise<{ total: number; items: OrderSummary[] }>;
+    getRebateTotals(userId: string): Promise<{ settledPoints: number; pendingPoints: number }>;
     findById(id: string): Promise<OrderRecord | null>;
     upsert(input: UpsertOrderInput): Promise<OrderRecord>;
     upsertAttribution(input: UpsertAttributionInput): Promise<AttributionRecord>;
@@ -363,7 +370,10 @@ export type Repositories = {
     markUsed(grantIds: string[]): Promise<void>;
   };
   deals: {
-    list(publishedOnly: boolean): Promise<DealPostRecord[]>;
+    list(
+      publishedOnly: boolean,
+      options?: { page?: number; pageSize?: number }
+    ): Promise<{ total: number; items: DealPostRecord[] }>;
     findById(id: string): Promise<DealPostRecord | undefined>;
     create(input: DealPostInput): Promise<DealPostRecord>;
     update(id: string, input: DealPostInput): Promise<DealPostRecord>;
@@ -384,7 +394,10 @@ export type Repositories = {
       payType: string;
       notes?: string | null;
     }): Promise<WithdrawalRecord>;
-    listByUser(userId: string): Promise<WithdrawalRecord[]>;
+    listByUser(
+      userId: string,
+      options?: { page?: number; pageSize?: number }
+    ): Promise<{ total: number; items: WithdrawalRecord[] }>;
     getAvailableBalance(userId: string): Promise<number>;
     // 原子地校验余额并创建提现，防止并发重复提交导致超额
     createIfAffordable(input: {
@@ -397,6 +410,9 @@ export type Repositories = {
   syncRuns: {
     record(input: Omit<OrderSyncRunRecord, "id" | "createdAt">): Promise<void>;
     getLatest(): Promise<OrderSyncRunRecord | null>;
+    tryAcquireLock(owner: string, leaseMs: number): Promise<boolean>;
+    renewLock(owner: string, leaseMs: number): Promise<boolean>;
+    releaseLock(owner: string): Promise<void>;
   };
   admin: {
     overview(): Promise<{

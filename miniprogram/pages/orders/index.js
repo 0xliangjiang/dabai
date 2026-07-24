@@ -1,6 +1,10 @@
-const { ensureLogin, request } = require("../../utils/api");
+const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
-const { ensureNickname } = require("../../utils/guard");
+const { readCache, writeCache } = require("../../utils/cache");
+const { centsToPoints } = require("../../utils/points");
+
+const ORDERS_CACHE_KEY = "orders_page_1_cache_v3";
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 Page({
   onShareAppMessage() {
@@ -19,7 +23,13 @@ Page({
   data: {
     orders: [],
     loading: true,
+    loadingMore: false,
     showEmpty: false,
+    errorMsg: "",
+    loadMoreError: "",
+    cacheNotice: "",
+    page: 1,
+    hasMore: false,
     settledPoints: 0,
     pendingPoints: 0
   },
@@ -28,58 +38,136 @@ Page({
     syncTabBar(this);
     try {
       await ensureLogin();
-      if (!ensureNickname()) return; // 没昵称 → 已跳转去完善
     } catch (_e) {
       // 登录失败下方 fetchOrders 会再处理
     }
-    await this.fetchOrders();
+    await this.fetchOrders(true);
   },
 
   async onPullDownRefresh() {
-    await this.fetchOrders();
+    await this.fetchOrders(true);
     wx.stopPullDownRefresh();
   },
 
-  async fetchOrders() {
-    try {
-      await ensureLogin();
-      const data = await request("/api/orders/me");
-      let settledPoints = 0;
-      let pendingPoints = 0;
-      const orders = data.orders.map((order) => decorateOrder(order));
-      for (const order of orders) {
-        if (order.rebateStatus === "available") settledPoints += order.points;
-        else if (order.rebateStatus === "pending") pendingPoints += order.points;
-      }
-      this.setData({
-        orders,
-        settledPoints,
-        pendingPoints,
-        loading: false,
-        showEmpty: orders.length === 0
-      });
-    } catch (_error) {
-      this.setData({ orders: [], loading: false, showEmpty: true });
+  async onReachBottom() {
+    if (this.data.hasMore && !this.data.loadingMore && !this.data.loadMoreError) {
+      await this.fetchOrders(false);
     }
   },
 
-  // 刷新返利：后台已结算但这里仍显示待返利时，点一下重算台账（已结算→积分到账）
+  retryLoad() {
+    this.fetchOrders(true);
+  },
+
+  retryLoadMore() {
+    this.fetchOrders(false);
+  },
+
+  goClaim() {
+    wx.navigateTo({ url: "/pages/claim/index" });
+  },
+
+  goHome() {
+    wx.switchTab({ url: "/pages/home/index" });
+  },
+
+  async fetchOrders(reset = true) {
+    if (!reset && (this.data.loadingMore || !this.data.hasMore)) return;
+    const requestId = (this.fetchRequestId || 0) + 1;
+    this.fetchRequestId = requestId;
+    const page = reset ? 1 : this.data.page + 1;
+    this.setData(reset
+      ? { loading: true, errorMsg: "", loadMoreError: "" }
+      : { loadingMore: true, loadMoreError: "" });
+    try {
+      await ensureLogin();
+      const data = await request(`/api/orders/me?page=${page}&pageSize=50`);
+      if (requestId !== this.fetchRequestId) return;
+      const incoming = data.orders.map((order) => decorateOrder(order));
+      const orders = reset ? incoming : this.data.orders.concat(incoming);
+      this.setData({
+        orders,
+        settledPoints: data.totals?.settledPoints || 0,
+        pendingPoints: data.totals?.pendingPoints || 0,
+        loading: false,
+        loadingMore: false,
+        showEmpty: orders.length === 0,
+        errorMsg: "",
+        loadMoreError: "",
+        cacheNotice: "",
+        page,
+        hasMore: Boolean(data.hasMore)
+      });
+      if (reset) {
+        const user = getCurrentUser();
+        writeCache(ORDERS_CACHE_KEY, {
+          userId: user && user.id,
+          orders,
+          settledPoints: data.totals?.settledPoints || 0,
+          pendingPoints: data.totals?.pendingPoints || 0,
+          page,
+          hasMore: Boolean(data.hasMore)
+        });
+      }
+    } catch (_error) {
+      if (requestId !== this.fetchRequestId) return;
+      if (reset) {
+        const cached = readCache(ORDERS_CACHE_KEY, CACHE_MAX_AGE_MS);
+        const user = getCurrentUser();
+        if (cached && user && cached.userId === user.id && cached.orders && cached.orders.length > 0) {
+          this.setData({
+            orders: cached.orders,
+            settledPoints: cached.settledPoints || 0,
+            pendingPoints: cached.pendingPoints || 0,
+            showEmpty: false,
+            loading: false,
+            loadingMore: false,
+            errorMsg: "",
+            loadMoreError: "",
+            cacheNotice: "当前展示最近一次成功加载的数据",
+            page: cached.page || 1,
+            hasMore: Boolean(cached.hasMore)
+          });
+          return;
+        }
+        this.setData({
+          orders: [],
+          showEmpty: false,
+          loading: false,
+          loadingMore: false,
+          errorMsg: "订单加载失败，请检查网络后重试",
+          loadMoreError: "",
+          cacheNotice: ""
+        });
+      } else {
+        this.setData({
+          loadingMore: false,
+          loadMoreError: "加载更多失败"
+        });
+      }
+    }
+  },
+
+  // 刷新返利：后台已结算但这里仍显示待返利时，点一下重算台账（已结算→奖励值到账）
   async refreshRebate(event) {
     const { id, index } = event.currentTarget.dataset;
     if (this.data.orders[index] && this.data.orders[index].refreshing) return;
     this.setData({ [`orders[${index}].refreshing`]: true });
     try {
-      const { order } = await request(`/api/orders/me/${id}/recheck`, { method: "POST" });
+      const { order, totals } = await request(`/api/orders/me/${id}/recheck`, { method: "POST" });
       if (!order) {
         wx.showToast({ title: "未找到该订单", icon: "none" });
         return;
       }
       const before = this.data.orders[index] ? this.data.orders[index].rebateStatus : "pending";
       const decorated = decorateOrder(order);
-      this.setData({ [`orders[${index}]`]: decorated });
-      this.recomputeTotals();
+      this.setData({
+        [`orders[${index}]`]: decorated,
+        settledPoints: totals?.settledPoints || 0,
+        pendingPoints: totals?.pendingPoints || 0
+      });
       if (decorated.rebateStatus === "available" && before !== "available") {
-        wx.showToast({ title: `返利已到账 +${decorated.points} 积分`, icon: "success" });
+        wx.showToast({ title: `奖励值已到账 +${decorated.points}`, icon: "success" });
       } else if (decorated.rebateStatus === "available") {
         wx.showToast({ title: "返利已到账", icon: "success" });
       } else if (decorated.rebateStatus === "reversed") {
@@ -100,19 +188,10 @@ Page({
     wx.setClipboardData({ data: String(no) }); // 系统自带「已复制」提示
   },
 
-  recomputeTotals() {
-    let settledPoints = 0;
-    let pendingPoints = 0;
-    for (const order of this.data.orders) {
-      if (order.rebateStatus === "available") settledPoints += order.points;
-      else if (order.rebateStatus === "pending") pendingPoints += order.points;
-    }
-    this.setData({ settledPoints, pendingPoints });
-  }
 });
 
 function decorateOrder(order) {
-  const points = Math.round(order.userRebateCents || 0);
+  const points = centsToPoints(order.userRebateCents);
   const rebateStatus = order.rebateStatus || (order.status === "settled" ? "available" : "pending");
   return {
     ...order,

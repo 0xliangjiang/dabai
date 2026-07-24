@@ -1,4 +1,5 @@
 const { ensureLogin, request } = require("../../utils/api");
+const { centsToPoints } = require("../../utils/points");
 
 const STATUS_TEXT = {
   pending: "审核中",
@@ -11,38 +12,82 @@ Page({
     list: [],
     availablePoints: 0,
     loading: true,
-    showEmpty: false
+    loadingMore: false,
+    showEmpty: false,
+    errorMsg: "",
+    loadMoreError: "",
+    page: 1,
+    hasMore: false
   },
 
   onShow() {
-    this.load();
+    this.load(true);
   },
 
   async onPullDownRefresh() {
-    await this.load();
+    await this.load(true);
     wx.stopPullDownRefresh();
   },
 
-  async load() {
+  async onReachBottom() {
+    if (!this.data.hasMore || this.data.loadingMore || this.data.loadMoreError) return;
+    await this.load(false);
+  },
+
+  async load(reset = true) {
+    if (!reset && (this.data.loadingMore || !this.data.hasMore)) return;
+    const requestId = (this.fetchRequestId || 0) + 1;
+    this.fetchRequestId = requestId;
+    const page = reset ? 1 : this.data.page + 1;
+    this.setData(reset
+      ? { loading: true, errorMsg: "", loadMoreError: "" }
+      : { loadingMore: true, loadMoreError: "" });
     try {
       await ensureLogin();
-      const { withdrawals, availableBalance } = await request("/api/withdrawals/me");
-      const list = (withdrawals || []).map((w) => ({
+      const { withdrawals, availableBalance, availablePoints, hasMore } = await request(
+        `/api/withdrawals/me?page=${page}&pageSize=20`
+      );
+      if (requestId !== this.fetchRequestId) return;
+      const incoming = (withdrawals || []).map((w) => ({
         ...w,
-        points: w.amountCents,
+        points: centsToPoints(w.amountCents),
         dateText: formatDateTime(w.createdAt),
         statusText: STATUS_TEXT[w.status] || w.status
       }));
+      const list = reset ? incoming : this.data.list.concat(incoming);
       this.setData({
         list,
-        availablePoints: availableBalance || 0,
+        availablePoints: availablePoints ?? centsToPoints(availableBalance),
         loading: false,
-        showEmpty: list.length === 0
+        loadingMore: false,
+        showEmpty: list.length === 0,
+        errorMsg: "",
+        loadMoreError: "",
+        page,
+        hasMore: Boolean(hasMore)
       });
     } catch (_error) {
-      this.setData({ loading: false, showEmpty: this.data.list.length === 0 });
-      wx.showToast({ title: "加载失败，下拉重试", icon: "none" });
+      if (requestId !== this.fetchRequestId) return;
+      if (reset) {
+        this.setData({
+          loading: false,
+          loadingMore: false,
+          showEmpty: false,
+          errorMsg: "兑换记录加载失败，请检查网络后重试",
+          loadMoreError: ""
+        });
+      } else {
+        this.setData({ loadingMore: false, loadMoreError: "加载更多失败" });
+      }
     }
+  },
+
+  retryLoad() {
+    this.load(true);
+  },
+
+  retryLoadMore() {
+    this.load(false);
   }
 });
 

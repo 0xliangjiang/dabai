@@ -1,5 +1,6 @@
 const { ensureLogin, request } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
+const { trackEvent } = require("../../utils/analytics");
 
 Page({
   data: {
@@ -33,8 +34,8 @@ Page({
     }
 
     const orderNumber = this.data.orderNumber.trim();
-    if (!orderNumber || orderNumber.length < 4) {
-      wx.showToast({ title: "请输入至少4位订单号", icon: "none" });
+    if (!orderNumber || orderNumber.length < 12) {
+      wx.showToast({ title: "请输入完整订单号（至少12位）", icon: "none" });
       return;
     }
 
@@ -45,9 +46,10 @@ Page({
         method: "POST",
         data: { orderNumber }
       });
+      trackEvent("order_bind_success", { platform: res.order?.platform || "unknown" });
       wx.showModal({
         title: "绑定成功",
-        content: `「${res.order?.itemTitle || "订单"}」已绑定到您的账户，预计积分已入账。`,
+        content: `「${res.order?.itemTitle || "订单"}」已绑定到您的账户，预计奖励值已入账。`,
         showCancel: false,
         confirmText: "查看订单",
         success: () => {
@@ -55,6 +57,7 @@ Page({
         }
       });
     } catch (error) {
+      trackEvent("order_bind_failed", { reason: error.error || "unknown" });
       wx.showToast({ title: error.error || "绑定失败，请检查订单号", icon: "none", duration: 3000 });
     } finally {
       this.setData({ submitting: false });

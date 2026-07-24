@@ -3,29 +3,45 @@
 
   <view class="content-stack floating-stack">
     <view class="cu-card flex align-center justify-between anim-up delay-1" style="padding: 28rpx 32rpx;">
-      <view class="muted text-sm">当前可兑换积分</view>
-      <view class="balance-inline">{{availablePoints}} 积分</view>
+      <view class="muted text-sm">当前可兑换奖励值</view>
+      <view class="balance-inline">{{loading || errorMsg ? '—' : availablePoints + ' 奖励值'}}</view>
     </view>
 
-    <view wx:if="{{loading}}" class="cu-card empty-card anim-up">加载中…</view>
+    <view wx:if="{{loading}}" class="cu-card flex-direction gap-sm anim-up">
+      <view class="skeleton-block skeleton-line"></view>
+      <view class="skeleton-block skeleton-line half"></view>
+      <view class="skeleton-block skeleton-line tall"></view>
+    </view>
+
+    <view wx:elif="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
+      <view class="error-icon">!</view>
+      <view class="text-bold">{{errorMsg}}</view>
+      <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="retryLoad">重新加载</button>
+    </view>
 
     <view wx:elif="{{showEmpty}}" class="cu-card empty-card anim-up">
       <view class="empty-title">暂无兑换记录</view>
-      <view class="muted text-sm margin-top-xs">在「我的」页面点击「积分兑换」即可发起申请</view>
+      <view class="muted text-sm margin-top-xs">在「我的」页面点击「奖励兑换」即可发起申请</view>
     </view>
 
     <view wx:else class="cu-card anim-up delay-2">
       <view wx:for="{{list}}" wx:key="id" class="withdraw-record">
         <view class="flex align-center justify-between">
-          <view class="withdraw-amount">-{{item.points}} 积分</view>
+          <view class="withdraw-amount">-{{item.points}} 奖励值</view>
           <view class="withdraw-status {{item.status}}">{{item.statusText}}</view>
         </view>
         <view class="record-meta flex align-center justify-between margin-top-xs">
-          <view class="muted text-sm">积分兑换</view>
+          <view class="muted text-sm">奖励兑换</view>
           <view class="muted" style="font-size: 22rpx;">{{item.dateText}}</view>
         </view>
         <view wx:if="{{item.status === 'rejected' && item.notes}}" class="reject-note">驳回说明：{{item.notes}}</view>
       </view>
+      <view wx:if="{{loadingMore}}" class="list-footer muted">正在加载更多...</view>
+      <view wx:elif="{{loadMoreError}}" class="list-footer">
+        <text>{{loadMoreError}}</text>
+        <button class="footer-retry pressable" hover-class="pressed" bindtap="retryLoadMore">重试</button>
+      </view>
+      <view wx:elif="{{list.length > 0 && !hasMore}}" class="list-footer muted">已经到底了</view>
     </view>
 
     <view class="hint-bar anim-up delay-3">兑换申请提交后 3 个工作日内审核并安排发放，节假日顺延；如有疑问可通过「我的 → 联系客服」联系我们。</view>

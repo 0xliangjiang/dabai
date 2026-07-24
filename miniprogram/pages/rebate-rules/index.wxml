@@ -8,18 +8,18 @@
     </view>
 
     <view class="cu-card article-card">
-      <view class="section-title">积分预估</view>
-      <view class="article-text">预估积分受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终结算积分不同。取消、退款、风控、跨店活动变化等情况可能导致积分无法发放或数量调整。</view>
+      <view class="section-title">奖励值预估</view>
+      <view class="article-text">1 奖励值对应 1 元奖励价值。预估奖励值受商品价格、活动、优惠券、平台结算规则、订单状态等因素影响，可能与最终结算奖励值不同。取消、退款、风控、跨店活动变化等情况可能导致奖励值无法发放或数量调整。</view>
     </view>
 
     <view class="cu-card article-card">
       <view class="section-title">订单展示</view>
-      <view class="article-text">订单数据存在同步延迟，页面展示的订单状态仅作进度参考。最终积分以相关平台和合作服务方返回的结算数据为准。积分权益与使用方式可联系客服了解。</view>
+      <view class="article-text">订单数据存在同步延迟，页面展示的订单状态仅作进度参考。最终奖励值以相关平台和合作服务方返回的结算数据为准。奖励值权益与使用方式可联系客服了解。</view>
     </view>
 
     <view class="cu-card article-card">
-      <view class="section-title">积分兑换</view>
-      <view class="article-text">累计满 1000 积分即可在「我的」页面申请兑换奖励，提交后运营方将在 3 个工作日内安排发放。</view>
+      <view class="section-title">奖励兑换</view>
+      <view class="article-text">累计满 10 奖励值即可在「我的」页面申请兑换奖励，提交后运营方将在 3 个工作日内安排发放。</view>
     </view>
   </view>
 </view>

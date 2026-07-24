@@ -46,7 +46,7 @@ describe("reconcileOrderLedger", () => {
     const result = await reconcileOrderLedger(repos, order, OPTIONS);
     expect(result).toEqual({ credited: true, rebateStatus: "pending" });
 
-    const [summary] = await repos.orders.listByUser("u1");
+    const summary = (await repos.orders.listByUser("u1")).items[0];
     expect(summary.rebateStatus).toBe("pending");
     expect(summary.userRebateCents).toBe(500); // 1000 * 0.5
   });
@@ -59,7 +59,7 @@ describe("reconcileOrderLedger", () => {
     const result = await reconcileOrderLedger(repos, settled, OPTIONS);
     expect(result).toEqual({ credited: true, rebateStatus: "available" });
 
-    const [summary] = await repos.orders.listByUser("u1");
+    const summary = (await repos.orders.listByUser("u1")).items[0];
     expect(summary.rebateStatus).toBe("available");
     expect(summary.userRebateCents).toBe(400); // 800 * 0.5，不是 500+400
     const balance = await repos.withdrawals.getAvailableBalance("u1");
@@ -82,7 +82,7 @@ describe("reconcileOrderLedger", () => {
     const result = await reconcileOrderLedger(repos, refunded, OPTIONS);
     expect(result.rebateStatus).toBe("reversed");
 
-    const [summary] = await repos.orders.listByUser("u1");
+    const summary = (await repos.orders.listByUser("u1")).items[0];
     expect(summary.rebateStatus).toBe("reversed");
     expect(summary.userRebateCents).toBe(0);
     expect(await repos.withdrawals.getAvailableBalance("u1")).toBe(0);
@@ -437,5 +437,48 @@ describe("runOrderSync 结算兜底扫描", () => {
     expect(result.ok).toBe(true);
     expect(queryTypes).toContain(4); // 常规更新窗
     expect(queryTypes).toContain(3); // 结算兜底
+  });
+
+  test("淘宝分页游标缺失时立即失败，避免反复抓取第一页", async () => {
+    const repos = createRepositories();
+    let calls = 0;
+    const taobaoOrderClient: TaobaoOrderClient = {
+      async fetchTaobaoOrders() {
+        calls += 1;
+        return {
+          orders: [
+            {
+              tbkOrderId: `CURSOR-${calls}`,
+              itemId: "item-cursor",
+              itemTitle: "游标测试商品",
+              payTime: new Date(),
+              payAmountCents: 100,
+              estimatedCommissionCents: 10,
+              settledCommissionCents: null,
+              orderStatus: "paid",
+              rawPayload: {}
+            }
+          ],
+          hasNext: true
+        };
+      }
+    };
+    const orderClient: JdOrderClient = {
+      async fetchJdOrders() {
+        return { orders: [], hasNext: false };
+      }
+    };
+
+    const result = await runOrderSync(
+      repos,
+      { taobaoOrderClient, orderClient },
+      { commissionSharingRatio: 0.5 },
+      "manual"
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.errorMessage).toContain("分页游标");
+    // 常规扫描失败后还会执行一次结算兜底，但不会无限翻页。
+    expect(calls).toBe(2);
   });
 });
