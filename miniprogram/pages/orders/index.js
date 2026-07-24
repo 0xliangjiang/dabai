@@ -2,6 +2,7 @@ const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
 const { syncTabBar } = require("../../utils/tabbar");
 const { readCache, writeCache } = require("../../utils/cache");
 const { centsToPoints } = require("../../utils/points");
+const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 const ORDERS_CACHE_KEY = "orders_page_1_cache_v3";
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -10,13 +11,14 @@ Page({
   onShareAppMessage() {
     return {
       title: "查优惠神器，粘贴商品就能看预估优惠",
-      path: "/pages/home/index"
+      path: `/pages/home/index${inviterSuffix(getCurrentUser())}`
     };
   },
 
   onShareTimeline() {
     return {
-      title: "查优惠神器，粘贴商品就能看预估优惠"
+      title: "查优惠神器，粘贴商品就能看预估优惠",
+      query: inviterQuery(getCurrentUser())
     };
   },
 

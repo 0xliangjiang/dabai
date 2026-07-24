@@ -8,13 +8,16 @@ const API_BASE_URLS = {
 
 App({
   globalData: {
-    apiBaseUrl: API_BASE_URLS.develop
+    apiBaseUrl: API_BASE_URLS.develop,
+    launchScene: 0,
+    singlePageMode: false,
+    pendingInviter: ""
   },
 
   onLaunch(options) {
     const envVersion = wx.getAccountInfoSync?.().miniProgram?.envVersion || "develop";
     this.globalData.apiBaseUrl = API_BASE_URLS[envVersion] || API_BASE_URLS.release;
-    this.captureInviter(options);
+    this.updateLaunchContext(options);
     this.setupUpdateManager();
 
     // 系统级隐私授权请求（如直接调用隐私接口时触发）：交给当前页面的同意弹窗处理
@@ -49,6 +52,14 @@ App({
   },
 
   onShow(options) {
+    this.updateLaunchContext(options);
+    this.routeInvitedGuest();
+  },
+
+  updateLaunchContext(options) {
+    const scene = Number(options && options.scene) || 0;
+    this.globalData.launchScene = scene;
+    this.globalData.singlePageMode = scene === 1154;
     this.captureInviter(options);
   },
 
@@ -59,11 +70,42 @@ App({
     if (!inviter) return;
     try {
       if (wx.getStorageSync("token")) return;
-      if (wx.getStorageSync("pending_inviter")) return;
-      wx.setStorageSync("pending_inviter", inviter);
+      const pending = wx.getStorageSync("pending_inviter");
+      const firstInviter = pending || this.globalData.pendingInviter || inviter;
+      this.globalData.pendingInviter = firstInviter;
+      if (!pending) wx.setStorageSync("pending_inviter", firstInviter);
     } catch (_e) {
-      // ignore
+      // 朋友圈 1154 单页模式下部分存储能力不可用，先保存在当前运行上下文。
+      if (!this.globalData.pendingInviter) this.globalData.pendingInviter = inviter;
     }
+  },
+
+  routeInvitedGuest() {
+    if (this.globalData.singlePageMode || this.routingInvitedGuest) return;
+    let token = "";
+    let inviter = this.globalData.pendingInviter || "";
+    try {
+      token = wx.getStorageSync("token") || "";
+      inviter = wx.getStorageSync("pending_inviter") || inviter;
+    } catch (_e) {
+      // 使用当前运行上下文中的邀请参数。
+    }
+    if (token || !inviter) return;
+
+    this.routingInvitedGuest = true;
+    setTimeout(() => {
+      const current = getCurrentPages().pop();
+      if (current && current.route === "pages/invite/index") {
+        this.routingInvitedGuest = false;
+        return;
+      }
+      wx.reLaunch({
+        url: `/pages/invite/index?inviter=${encodeURIComponent(inviter)}`,
+        complete: () => {
+          this.routingInvitedGuest = false;
+        }
+      });
+    }, 0);
   },
 
   resolvePrivacy(agreed) {

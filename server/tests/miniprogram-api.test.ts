@@ -9,11 +9,15 @@ type MiniProgramApi = {
   request(path: string): Promise<unknown>;
 };
 
-function loadApi(wx: Record<string, unknown>): MiniProgramApi {
+function loadApi(
+  wx: Record<string, unknown>,
+  globalData: Record<string, unknown> = { apiBaseUrl: "https://example.test" }
+): MiniProgramApi {
   delete require.cache[apiModulePath];
   (globalThis as Record<string, unknown>).wx = wx;
+  if (!globalData.apiBaseUrl) globalData.apiBaseUrl = "https://example.test";
   (globalThis as Record<string, unknown>).getApp = () => ({
-    globalData: { apiBaseUrl: "https://example.test" }
+    globalData
   });
   return require(apiModulePath) as MiniProgramApi;
 }
@@ -36,6 +40,46 @@ afterEach(() => {
 });
 
 describe("mini program login client", () => {
+  test("does not call wx.login in timeline single-page mode", async () => {
+    const storage = createStorage();
+    const login = vi.fn();
+    const api = loadApi({ ...storage, login }, { singlePageMode: true });
+
+    await expect(api.ensureLogin()).rejects.toMatchObject({ code: "TIMELINE_SINGLE_PAGE" });
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  test("uses the inviter preserved by App when creating a new session", async () => {
+    const storage = createStorage();
+    let loginPayload: { inviterId?: string } | null = null;
+    const globalData = { pendingInviter: "inviter-from-timeline" };
+    const api = loadApi({
+      ...storage,
+      login({ success }: { success: (result: { code: string }) => void }) {
+        success({ code: "fresh-code" });
+      },
+      request(options: {
+        data: { inviterId?: string };
+        success: (result: { statusCode: number; data: unknown }) => void;
+      }) {
+        loginPayload = options.data;
+        options.success({
+          statusCode: 200,
+          data: {
+            token: "new-token",
+            user: { id: "new-user", inviterId: "inviter-from-timeline" }
+          }
+        });
+      }
+    }, globalData);
+
+    await expect(api.ensureLogin()).resolves.toMatchObject({
+      user: { inviterId: "inviter-from-timeline" }
+    });
+    expect(loginPayload).toMatchObject({ inviterId: "inviter-from-timeline" });
+    expect(globalData.pendingInviter).toBe("");
+  });
+
   test("gets a fresh WeChat code for each transient login retry", async () => {
     vi.useFakeTimers();
     const storage = createStorage();

@@ -92,7 +92,12 @@ function shouldRetryLogin(error) {
 async function loginOnce() {
   const code = await wxLogin();
   // 二级分销：把暂存的邀请人带上（仅新用户首次注册会被后端绑定）
-  const inviterId = wx.getStorageSync("pending_inviter") || "";
+  let inviterId = (app.globalData && app.globalData.pendingInviter) || "";
+  try {
+    inviterId = wx.getStorageSync("pending_inviter") || inviterId;
+  } catch (_error) {
+    // 使用 App 在朋友圈入口保留的邀请参数。
+  }
   return request("/api/auth/wechat-login", {
     method: "POST",
     data: inviterId ? { code, inviterId } : { code },
@@ -127,6 +132,7 @@ async function doLogin() {
   } catch (_e) {
     // ignore
   }
+  if (app.globalData) app.globalData.pendingInviter = "";
   return data;
 }
 
@@ -143,7 +149,14 @@ async function ensureLogin() {
   if (getToken()) {
     return { token: getToken(), user: getCurrentUser() };
   }
+  if (app.globalData && app.globalData.singlePageMode) {
+    throw { code: "TIMELINE_SINGLE_PAGE", error: "请进入完整小程序后登录" };
+  }
   return loginWithWechat();
+}
+
+function isTimelineSinglePage() {
+  return Boolean(app.globalData && app.globalData.singlePageMode);
 }
 
 function rawUploadFile(path, filePath) {
@@ -201,6 +214,7 @@ module.exports = {
   ensureLogin,
   getToken,
   getCurrentUser,
+  isTimelineSinglePage,
   loginWithWechat,
   logout
 };

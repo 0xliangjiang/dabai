@@ -6,7 +6,42 @@
   </view>
 
   <view class="content-stack floating-stack">
-    <block wx:if="{{loading}}">
+    <view wx:if="{{singlePageMode}}" class="cu-card timeline-entry-card anim-pop">
+      <view class="entry-mark">好友邀请</view>
+      <view class="entry-title">你收到了一份省钱邀请</view>
+      <view class="entry-desc">进入完整小程序后，可使用微信安全登录。首次加入会自动绑定邀请关系，你的返利不会受到影响。</view>
+      <view class="entry-steps">
+        <view class="entry-step">
+          <view class="entry-step-num">1</view>
+          <view class="entry-step-text">
+            <view class="entry-step-title">前往完整小程序</view>
+            <view class="entry-step-desc">点击页面底部微信提供的「前往小程序」</view>
+          </view>
+        </view>
+        <view class="entry-line"></view>
+        <view class="entry-step">
+          <view class="entry-step-num">2</view>
+          <view class="entry-step-text">
+            <view class="entry-step-title">登录并自动加入</view>
+            <view class="entry-step-desc">阅读协议并授权登录后，即可开始查询优惠</view>
+          </view>
+        </view>
+      </view>
+      <view class="entry-safe">邀请参数已保留，进入后会自动完成绑定</view>
+    </view>
+
+    <view wx:elif="{{needsLogin}}" class="cu-card login-entry-card anim-pop">
+      <view class="login-entry-icon">✓</view>
+      <view class="entry-title">登录后接受好友邀请</view>
+      <view class="entry-desc">登录仅用于保存你的优惠、订单和邀请关系。首次登录后，你会自动成为该好友邀请的用户。</view>
+      <button class="cta-btn pressable" hover-class="pressed" loading="{{loggingIn}}" disabled="{{loggingIn}}" bindtap="startLogin">
+        {{loggingIn ? "正在登录..." : "微信登录并加入"}}
+      </button>
+      <view wx:if="{{errorMsg}}" class="login-error">{{errorMsg}}</view>
+      <view class="entry-agreement">继续即表示你已阅读并同意隐私政策与用户协议</view>
+    </view>
+
+    <block wx:elif="{{loading}}">
       <view class="cu-card flex-direction gap-sm anim-up">
         <view class="skeleton-block skeleton-line half"></view>
         <view class="skeleton-block invite-value-skeleton"></view>

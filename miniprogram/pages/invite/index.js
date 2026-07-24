@@ -1,4 +1,10 @@
-const { ensureLogin, getCurrentUser, request } = require("../../utils/api");
+const {
+  ensureLogin,
+  getCurrentUser,
+  getToken,
+  isTimelineSinglePage,
+  request
+} = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { trackEvent } = require("../../utils/analytics");
 const { centsToPoints } = require("../../utils/points");
@@ -26,7 +32,10 @@ Page({
     hasMore: false,
     showShareModal: false,
     showTimelineGuide: false,
-    showPrivacy: false
+    showPrivacy: false,
+    singlePageMode: false,
+    needsLogin: false,
+    loggingIn: false
   },
 
   onShareAppMessage() {
@@ -47,11 +56,84 @@ Page({
     };
   },
 
+  onLoad(options) {
+    // 页面参数再兜底捕获一次，确保朋友圈单页模式切换到完整小程序后仍能绑定邀请人。
+    if (options && options.inviter) {
+      getApp().captureInviter({ query: { inviter: options.inviter } });
+    }
+  },
+
   async onShow() {
+    const singlePageMode = isTimelineSinglePage();
+    if (singlePageMode) {
+      this.setData({
+        singlePageMode: true,
+        needsLogin: false,
+        loading: false,
+        errorMsg: ""
+      });
+      return;
+    }
     if (wx.showShareMenu) {
       wx.showShareMenu({ withShareTicket: true, menus: ["shareAppMessage", "shareTimeline"] });
     }
+    if (!getToken()) {
+      this.setData({
+        singlePageMode: false,
+        needsLogin: true,
+        loading: false,
+        errorMsg: ""
+      });
+      return;
+    }
+    this.setData({ singlePageMode: false, needsLogin: false });
     await this.refresh();
+  },
+
+  startLogin() {
+    if (!hasConsent()) {
+      this.privacyAction = "login";
+      this.setData({ showPrivacy: true });
+      return;
+    }
+    this.loginAndBind();
+  },
+
+  async loginAndBind() {
+    if (this.data.loggingIn) return;
+    this.setData({ loggingIn: true, errorMsg: "" });
+    try {
+      let expectedInviter = getApp().globalData.pendingInviter || "";
+      try {
+        expectedInviter = wx.getStorageSync("pending_inviter") || expectedInviter;
+      } catch (_error) {
+        // 使用 App 中保留的邀请参数。
+      }
+      const result = await ensureLogin();
+      const accepted = Boolean(
+        expectedInviter &&
+        result.user &&
+        result.user.inviterId === expectedInviter
+      );
+      this.setData({ needsLogin: false, loggingIn: false, errorMsg: "" });
+      if (expectedInviter) {
+        wx.showToast({
+          title: accepted ? "已接受好友邀请" : "登录成功",
+          icon: "success"
+        });
+        setTimeout(() => {
+          wx.reLaunch({ url: "/pages/home/index?from=invite" });
+        }, 600);
+        return;
+      }
+      await this.refresh();
+    } catch (_error) {
+      this.setData({
+        loggingIn: false,
+        needsLogin: true,
+        errorMsg: "登录暂时没有成功，请点击重试"
+      });
+    }
   },
 
   async refresh() {
@@ -104,6 +186,10 @@ Page({
   },
 
   retryLoad() {
+    if (this.data.needsLogin) {
+      this.startLogin();
+      return;
+    }
     this.refresh();
   },
 
@@ -151,6 +237,7 @@ Page({
 
   openShareModal() {
     if (!hasConsent()) {
+      this.privacyAction = "share";
       this.setData({ showPrivacy: true });
       return;
     }
@@ -176,13 +263,20 @@ Page({
     setConsent();
     getApp().resolvePrivacy(true);
     this.setData({ showPrivacy: false });
+    const action = this.privacyAction;
+    this.privacyAction = "";
+    if (action === "login") {
+      this.loginAndBind();
+      return;
+    }
     this.openShareModal();
   },
 
   onPrivacyReject() {
     getApp().resolvePrivacy(false);
+    this.privacyAction = "";
     this.setData({ showPrivacy: false });
-    wx.showToast({ title: "同意后才能分享", icon: "none" });
+    wx.showToast({ title: "同意后才能继续使用", icon: "none" });
   },
 
   stopProp() {}
