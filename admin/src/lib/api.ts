@@ -51,6 +51,75 @@ export type Downline = {
   contributedCents: number;
 };
 
+export type AdminUserOrder = {
+  id: string;
+  orderNumber: string;
+  itemTitle: string;
+  status: string;
+  payTime: string;
+  payAmountCents: number;
+  estimatedCommissionCents: number;
+  settledCommissionCents: number | null;
+  userRebateCents: number;
+  rebateStatus: "available" | "pending" | "reversed" | "none";
+};
+
+export type AdminUserDetail = {
+  user: {
+    id: string;
+    openid: string;
+    unionid: string | null;
+    nickname: string | null;
+    avatarUrl: string | null;
+    status: string;
+    rebateRatio: number | null;
+    inviterId: string | null;
+    createdAt: string;
+    inviter: { id: string; nickname: string | null; openid: string } | null;
+  };
+  balance: {
+    availableCents: number;
+    availableRewardValue: number;
+    settledCents: number;
+    settledRewardValue: number;
+    pendingCents: number;
+    pendingRewardValue: number;
+  };
+  referral: {
+    downlineCount: number;
+    earnedCents: number;
+    pendingCents: number;
+    earnedRewardValue: number;
+    pendingRewardValue: number;
+  };
+  orders: {
+    total: number;
+    items: AdminUserOrder[];
+    page: number;
+    pageSize: number;
+    hasMore: boolean;
+  };
+  downlines: {
+    total: number;
+    items: Downline[];
+    page: number;
+    pageSize: number;
+    hasMore: boolean;
+  };
+  withdrawals: {
+    total: number;
+    items: Array<{
+      id: string;
+      amountCents: number;
+      status: string;
+      createdAt: string;
+    }>;
+    page: number;
+    pageSize: number;
+    hasMore: boolean;
+  };
+};
+
 export type AdminConversion = {
   id: string;
   userId: string;

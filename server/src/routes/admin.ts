@@ -9,6 +9,7 @@ import { reattributePendingOrders, reconcileOrderLedger, resolveCommissionOption
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { handleMediaUpload } from "./uploads.js";
+import { centsToPoints } from "../domain/points.js";
 
 export async function registerAdminRoutes(
   app: FastifyInstance,
@@ -50,6 +51,70 @@ export async function registerAdminRoutes(
       return { users: items, total, page, pageSize };
     }
   );
+
+  app.get<{
+    Params: { id: string };
+    Querystring: { orderPage?: string; downlinePage?: string; pageSize?: string };
+  }>("/api/admin/users/:id/detail", async (request, reply) => {
+    const user = await repositories.users.findById(request.params.id);
+    if (!user) {
+      return reply.code(404).send({ error: "用户不存在" });
+    }
+
+    const orderPage = positivePage(request.query.orderPage);
+    const downlinePage = positivePage(request.query.downlinePage);
+    const pageSize = Math.min(50, Math.max(1, Number(request.query.pageSize) || 20));
+    const [inviter, availableCents, rebateTotals, referral, orders, downlines, withdrawals] =
+      await Promise.all([
+        user.inviterId ? repositories.users.findById(user.inviterId) : Promise.resolve(undefined),
+        repositories.withdrawals.getAvailableBalance(user.id),
+        repositories.orders.getRebateTotals(user.id),
+        repositories.users.referralSummary(user.id),
+        repositories.orders.listByUser(user.id, { page: orderPage, pageSize }),
+        repositories.users.listDownline(user.id, { page: downlinePage, pageSize }),
+        repositories.withdrawals.listByUser(user.id, { page: 1, pageSize: 20 })
+      ]);
+
+    return {
+      user: {
+        ...user,
+        inviter: inviter
+          ? { id: inviter.id, nickname: inviter.nickname, openid: inviter.openid }
+          : null
+      },
+      balance: {
+        availableCents,
+        availableRewardValue: centsToPoints(availableCents),
+        settledCents: rebateTotals.settledPoints,
+        settledRewardValue: centsToPoints(rebateTotals.settledPoints),
+        pendingCents: rebateTotals.pendingPoints,
+        pendingRewardValue: centsToPoints(rebateTotals.pendingPoints)
+      },
+      referral: {
+        ...referral,
+        earnedRewardValue: centsToPoints(referral.earnedCents),
+        pendingRewardValue: centsToPoints(referral.pendingCents)
+      },
+      orders: {
+        ...orders,
+        page: orderPage,
+        pageSize,
+        hasMore: orderPage * pageSize < orders.total
+      },
+      downlines: {
+        ...downlines,
+        page: downlinePage,
+        pageSize,
+        hasMore: downlinePage * pageSize < downlines.total
+      },
+      withdrawals: {
+        ...withdrawals,
+        page: 1,
+        pageSize: 20,
+        hasMore: withdrawals.total > withdrawals.items.length
+      }
+    };
+  });
 
   // 某会员的下线明细（昵称、加入时间、累计为上级贡献的提成）
   app.get<{ Params: { id: string } }>("/api/admin/users/:id/downline", async (request) => {
@@ -422,4 +487,8 @@ export async function registerAdminRoutes(
       });
     }
   );
+}
+
+function positivePage(value?: string): number {
+  return Math.max(1, Number(value) || 1);
 }

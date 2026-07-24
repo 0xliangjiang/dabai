@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Copy,
   Download,
+  Eye,
   Inbox,
   LayoutDashboard,
   Menu,
@@ -21,6 +22,7 @@ import {
   ShieldQuestion,
   Users,
   WalletCards,
+  X,
   XCircle
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -39,6 +41,7 @@ import {
   type AdminOverview,
   type AdminSetting,
   type AdminUser,
+  type AdminUserDetail,
   type AdminWithdrawal,
   type AdminConversion,
   type Downline,
@@ -150,6 +153,9 @@ export function App() {
   const [downlineModal, setDownlineModal] = useState<{ nickname: string } | null>(null);
   const [downlines, setDownlines] = useState<Downline[]>([]);
   const [downlineLoading, setDownlineLoading] = useState(false);
+  const [userDetailTarget, setUserDetailTarget] = useState<{ id: string; nickname: string } | null>(null);
+  const [userDetail, setUserDetail] = useState<AdminUserDetail | null>(null);
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
   const [globalRatioInput, setGlobalRatioInput] = useState("");
   const [savingGlobalRatio, setSavingGlobalRatio] = useState(false);
   const [referralRatioInput, setReferralRatioInput] = useState("");
@@ -554,6 +560,37 @@ export function App() {
     }
   }
 
+  async function loadUserDetail(userId: string, orderPage = 1, downlinePage = 1) {
+    setUserDetailLoading(true);
+    try {
+      const query = new URLSearchParams({
+        orderPage: String(orderPage),
+        downlinePage: String(downlinePage),
+        pageSize: "20"
+      });
+      const detail = await fetchAdminApi<AdminUserDetail>(
+        `/api/admin/users/${userId}/detail?${query.toString()}`,
+        adminToken
+      );
+      setUserDetail(detail);
+    } catch {
+      toast("用户详情加载失败，请重试", "error");
+    } finally {
+      setUserDetailLoading(false);
+    }
+  }
+
+  function openUserDetail(user: AdminUser) {
+    setUserDetailTarget({ id: user.id, nickname: user.nickname || "未设置昵称" });
+    setUserDetail(null);
+    void loadUserDetail(user.id);
+  }
+
+  function closeUserDetail() {
+    setUserDetailTarget(null);
+    setUserDetail(null);
+  }
+
   async function submitRebateRatio() {
     if (!ratioModal) return;
     const raw = ratioInput.trim();
@@ -929,6 +966,10 @@ export function App() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openUserDetail(user)}>
+                          <Eye className="h-4 w-4" />
+                          详情
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => { setRatioModal({ userId: user.id, nickname: user.nickname ?? user.id }); setRatioInput(user.rebateRatio != null ? String(Math.round(user.rebateRatio * 100)) : ""); }}>
                           返利%
                         </Button>
@@ -1520,7 +1561,268 @@ export function App() {
           </div>
         </div>
       ) : null}
+
+      {userDetailTarget ? (
+        <UserDetailModal
+          target={userDetailTarget}
+          detail={userDetail}
+          loading={userDetailLoading}
+          onClose={closeUserDetail}
+          onRefresh={() =>
+            void loadUserDetail(
+              userDetailTarget.id,
+              userDetail?.orders.page ?? 1,
+              userDetail?.downlines.page ?? 1
+            )
+          }
+          onOrderPage={(page) =>
+            void loadUserDetail(userDetailTarget.id, page, userDetail?.downlines.page ?? 1)
+          }
+          onDownlinePage={(page) =>
+            void loadUserDetail(userDetailTarget.id, userDetail?.orders.page ?? 1, page)
+          }
+        />
+      ) : null}
     </main>
+  );
+}
+
+function UserDetailModal({
+  target,
+  detail,
+  loading,
+  onClose,
+  onRefresh,
+  onOrderPage,
+  onDownlinePage
+}: {
+  target: { id: string; nickname: string };
+  detail: AdminUserDetail | null;
+  loading: boolean;
+  onClose: () => void;
+  onRefresh: () => void;
+  onOrderPage: (page: number) => void;
+  onDownlinePage: (page: number) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-6" onClick={onClose}>
+      <div
+        className="flex max-h-[92vh] w-[96vw] max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6">
+          <div className="min-w-0">
+            <h3 className="truncate font-semibold">用户详情 · {detail?.user.nickname || target.nickname}</h3>
+            <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{target.id}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" disabled={loading} onClick={onRefresh} title="刷新">
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onClose} title="关闭">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loading && !detail ? (
+            <div className="flex min-h-80 items-center justify-center gap-2 text-sm text-slate-400">
+              <RefreshCw className="h-5 w-5 animate-spin" />
+              加载用户资料…
+            </div>
+          ) : detail ? (
+            <>
+              <div className="grid grid-cols-2 border-b border-slate-200 sm:grid-cols-4">
+                <DetailMetric label="可用奖励值" value={formatRewardValue(detail.balance.availableCents)} />
+                <DetailMetric label="订单已到账" value={formatRewardValue(detail.balance.settledCents)} />
+                <DetailMetric label="待结算奖励值" value={formatRewardValue(detail.balance.pendingCents)} />
+                <DetailMetric label="直接下线" value={`${detail.downlines.total} 人`} />
+              </div>
+
+              <section className="border-b border-slate-200 px-4 py-5 sm:px-6">
+                <h4 className="text-sm font-semibold text-slate-800">账户信息</h4>
+                <dl className="mt-3 grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                  <DetailField label="昵称" value={detail.user.nickname || "未设置"} />
+                  <DetailField label="状态" value={detail.user.status === "banned" ? "已封禁" : "正常"} />
+                  <DetailField label="注册时间" value={new Date(detail.user.createdAt).toLocaleString("zh-CN")} />
+                  <DetailField label="OpenID" value={detail.user.openid} mono />
+                  <DetailField label="UnionID" value={detail.user.unionid || "—"} mono />
+                  <DetailField
+                    label="上级"
+                    value={detail.user.inviter?.nickname || detail.user.inviter?.openid || "无"}
+                  />
+                  <DetailField
+                    label="返利比例"
+                    value={detail.user.rebateRatio == null ? "使用全局比例" : `${Math.round(detail.user.rebateRatio * 100)}%`}
+                  />
+                  <DetailField
+                    label="下线提成"
+                    value={`已到账 ${formatRewardValue(detail.referral.earnedCents)} · 待结算 ${formatRewardValue(detail.referral.pendingCents)}`}
+                  />
+                  <DetailField label="提现申请" value={`${detail.withdrawals.total} 笔`} />
+                </dl>
+              </section>
+
+              <DetailTableHeader
+                title="订单"
+                total={detail.orders.total}
+                page={detail.orders.page}
+                pageSize={detail.orders.pageSize}
+                loading={loading}
+                onPage={onOrderPage}
+              />
+              <div className="overflow-x-auto border-b border-slate-200">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>订单号</TableHead>
+                      <TableHead>商品</TableHead>
+                      <TableHead>付款时间</TableHead>
+                      <TableHead>实付</TableHead>
+                      <TableHead>奖励值</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detail.orders.items.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono text-xs">{order.orderNumber}</TableCell>
+                        <TableCell className="max-w-72 truncate">{order.itemTitle}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                          {new Date(order.payTime).toLocaleString("zh-CN")}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{formatMoney(order.payAmountCents)}</TableCell>
+                        <TableCell className="tabular-nums">{formatRewardValue(order.userRebateCents)}</TableCell>
+                        <TableCell><Badge variant={rebateBadgeVariant(order.rebateStatus)}>{rebateStatusLabel(order.rebateStatus)}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                    {detail.orders.items.length === 0 ? <EmptyRow colSpan={6} text="暂无订单" /> : null}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <DetailTableHeader
+                title="直接下线"
+                total={detail.downlines.total}
+                page={detail.downlines.page}
+                pageSize={detail.downlines.pageSize}
+                loading={loading}
+                onPage={onDownlinePage}
+              />
+              <div className="overflow-x-auto border-b border-slate-200">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>昵称</TableHead>
+                      <TableHead>OpenID</TableHead>
+                      <TableHead>加入时间</TableHead>
+                      <TableHead className="text-right">贡献奖励值</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detail.downlines.items.map((downline) => (
+                      <TableRow key={downline.id}>
+                        <TableCell className="font-medium">{downline.nickname || "未设置"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-500">{downline.openid}</TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                          {new Date(downline.createdAt).toLocaleString("zh-CN")}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{formatRewardValue(downline.contributedCents)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {detail.downlines.items.length === 0 ? <EmptyRow colSpan={4} text="暂无下线" /> : null}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="px-4 py-4 sm:px-6">
+                <h4 className="text-sm font-semibold text-slate-800">最近提现</h4>
+                <p className="mt-0.5 text-xs text-slate-400">显示最近 20 笔，共 {detail.withdrawals.total} 笔</p>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>时间</TableHead>
+                      <TableHead>奖励值</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detail.withdrawals.items.map((withdrawal) => (
+                      <TableRow key={withdrawal.id}>
+                        <TableCell className="text-xs text-slate-500">
+                          {new Date(withdrawal.createdAt).toLocaleString("zh-CN")}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{formatRewardValue(withdrawal.amountCents)}</TableCell>
+                        <TableCell>{withdrawalStatusLabel(withdrawal.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {detail.withdrawals.items.length === 0 ? <EmptyRow colSpan={3} text="暂无提现记录" /> : null}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          ) : (
+            <div className="flex min-h-80 items-center justify-center text-sm text-slate-400">用户详情加载失败</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-r border-slate-100 px-4 py-4 last:border-r-0 sm:px-6">
+      <div className="truncate text-xs text-slate-400">{label}</div>
+      <div className="mt-1 truncate text-xl font-semibold tabular-nums text-slate-800">{value}</div>
+    </div>
+  );
+}
+
+function DetailField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-slate-400">{label}</dt>
+      <dd className={`mt-0.5 break-all text-slate-700 ${mono ? "font-mono text-xs" : ""}`}>{value}</dd>
+    </div>
+  );
+}
+
+function DetailTableHeader({
+  title,
+  total,
+  page,
+  pageSize,
+  loading,
+  onPage
+}: {
+  title: string;
+  total: number;
+  page: number;
+  pageSize: number;
+  loading: boolean;
+  onPage: (page: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6">
+      <div>
+        <h4 className="text-sm font-semibold text-slate-800">{title}</h4>
+        <p className="mt-0.5 text-xs text-slate-400">共 {total} 条</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button size="sm" variant="ghost" disabled={page <= 1 || loading} onClick={() => onPage(page - 1)}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="min-w-16 text-center text-xs text-slate-500">{page} / {totalPages}</span>
+        <Button size="sm" variant="ghost" disabled={page >= totalPages || loading} onClick={() => onPage(page + 1)}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -1691,6 +1993,37 @@ function EmptyRow({ colSpan, text, loading = false }: { colSpan: number; text: s
       </TableCell>
     </TableRow>
   );
+}
+
+function formatRewardValue(amountCents: number): string {
+  const value = amountCents / 100;
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function rebateStatusLabel(status: AdminUserDetail["orders"]["items"][number]["rebateStatus"]): string {
+  return {
+    available: "已到账",
+    pending: "待结算",
+    reversed: "已冲销",
+    none: "未入账"
+  }[status];
+}
+
+function rebateBadgeVariant(
+  status: AdminUserDetail["orders"]["items"][number]["rebateStatus"]
+): "secondary" | "warning" | "success" | "danger" {
+  if (status === "available") return "success";
+  if (status === "pending") return "warning";
+  if (status === "reversed") return "danger";
+  return "secondary";
+}
+
+function withdrawalStatusLabel(status: string): string {
+  return {
+    pending: "待处理",
+    paid: "已发放",
+    rejected: "已驳回"
+  }[status] ?? status;
 }
 
 function formatMoney(amountCents: number) {

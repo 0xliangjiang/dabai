@@ -257,4 +257,59 @@ describe("user management and claim review", () => {
     });
     expect(response.statusCode).toBe(400);
   });
+
+  test("admin user detail includes balance, orders, withdrawals and downlines", async () => {
+    const app = await buildApp();
+    const parent = await app.deps.repositories.users.findOrCreateByOpenid("detail-parent");
+    await app.deps.repositories.users.findOrCreateByOpenid("detail-child", { inviterId: parent.id });
+    const order = await app.deps.repositories.orders.upsert({
+      tbkOrderId: "detail-order-001",
+      itemId: "detail-item",
+      itemTitle: "用户详情测试商品",
+      payTime: new Date("2026-07-24T08:00:00Z"),
+      payAmountCents: 2990,
+      estimatedCommissionCents: 300,
+      settledCommissionCents: null,
+      orderStatus: "paid",
+      rawPayload: {}
+    });
+    await app.deps.repositories.orders.upsertAttribution({
+      tbkOrderId: order.tbkOrderId,
+      status: "manual_matched",
+      confidence: 1,
+      reason: "admin_test",
+      userId: parent.id
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/admin/users/${parent.id}/adjust-points`,
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { delta: 10, reason: "detail-test" }
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/admin/users/${parent.id}/detail`,
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      user: { id: parent.id, openid: "detail-parent" },
+      balance: { availableCents: 1000, availableRewardValue: 10 },
+      orders: { total: 1, page: 1, items: [{ orderNumber: "detail-order-001" }] },
+      downlines: { total: 1, page: 1, items: [{ openid: "detail-child" }] },
+      withdrawals: { total: 0, items: [] }
+    });
+  });
+
+  test("admin user detail returns 404 for an unknown user", async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/admin/users/missing-user/detail",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(response.statusCode).toBe(404);
+  });
 });
