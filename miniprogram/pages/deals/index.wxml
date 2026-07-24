@@ -108,18 +108,18 @@
         >
           <image wx:if="{{item.coverUrl}}" class="article-list-cover" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
           <view class="article-list-body">
-            <view class="flex align-start justify-between gap-sm">
-              <view class="flex align-center gap-xs flex-sub">
-                <view wx:if="{{item.pinned}}" class="pin-tag">置顶</view>
-                <view class="section-title flex-sub text-cut-2">{{item.title}}</view>
+            <view class="article-list-heading">
+              <view class="article-list-title text-cut-2">
+                <text wx:if="{{item.pinned}}" class="article-pin-tag">置顶</text>
+                <text>{{item.title}}</text>
               </view>
-              <view class="cu-arrow">›</view>
+              <view class="cu-arrow article-list-arrow">›</view>
             </view>
             <view wx:if="{{item.summary}}" class="section-desc text-cut-2">{{item.summary}}</view>
-            <view class="deal-meta flex align-center gap-sm">
+            <view class="deal-meta article-list-meta flex align-center gap-sm">
               <view wx:if="{{item.visitorCount > 0}}" class="muted text-sm">{{item.visitorCount}} 人读过</view>
               <view class="muted text-sm">{{item.dateText}}</view>
-              <button class="deal-share-btn pressable" hover-class="pressed" open-type="share" catchtap="noop" data-kind="article" data-id="{{item.id}}" data-title="{{item.title}}">分享</button>
+              <button class="deal-share-btn article-share-btn pressable" hover-class="pressed" open-type="share" catchtap="noop" data-kind="article" data-id="{{item.id}}" data-title="{{item.title}}">分享</button>
             </view>
           </view>
         </view>

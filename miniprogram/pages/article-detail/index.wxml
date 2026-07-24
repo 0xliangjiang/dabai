@@ -40,7 +40,9 @@
           >{{item.text}}</view>
 
           <view wx:elif="{{item.type === 'image'}}" class="article-image-block">
-            <image class="article-image" src="{{item.url}}" mode="widthFix" lazy-load show-menu-by-longpress bindtap="previewImage" data-url="{{item.url}}" />
+            <view class="article-image-frame">
+              <image class="article-image" src="{{item.url}}" mode="widthFix" lazy-load show-menu-by-longpress bindtap="previewImage" data-url="{{item.url}}" />
+            </view>
             <view wx:if="{{item.caption}}" class="article-caption">{{item.caption}}</view>
           </view>
 

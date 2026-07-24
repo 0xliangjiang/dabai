@@ -26,7 +26,20 @@ describe("mini program article experience", () => {
       expect(template).toContain(`item.type === '${type}'`);
     }
     expect(template).toContain("bindtap=\"previewImage\"");
+    expect(template).toContain("class=\"article-image-frame\"");
     expect(template).not.toContain("<article");
+  });
+
+  test("article list keeps pinned labels inline so narrow screens retain title width", () => {
+    const template = read("miniprogram/pages/deals/index.wxml");
+    const styles = read("miniprogram/pages/deals/index.wxss");
+
+    expect(template).toContain("class=\"article-pin-tag\"");
+    expect(template).toContain("class=\"cu-arrow article-list-arrow\"");
+    expect(styles).toContain(".article-pin-tag");
+    expect(styles).toContain("display: inline-block");
+    expect(styles).toContain(".article-list-heading");
+    expect(styles).toContain("padding-right: 40rpx");
   });
 
   test("article detail sharing carries the article and inviter", () => {

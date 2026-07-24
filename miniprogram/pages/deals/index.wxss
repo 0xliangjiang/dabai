@@ -53,8 +53,53 @@ page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
 .article-list-body {
   display: flex;
   flex-direction: column;
-  gap: 12rpx;
+  gap: 14rpx;
   padding: 28rpx;
+}
+
+.article-list-heading {
+  position: relative;
+  min-width: 0;
+  padding-right: 40rpx;
+}
+
+.article-list-title {
+  color: #122019;
+  font-size: 31rpx;
+  font-weight: 800;
+  line-height: 1.38;
+}
+
+.article-pin-tag {
+  display: inline-block;
+  margin-right: 12rpx;
+  padding: 3rpx 10rpx;
+  border-radius: 6rpx;
+  background: #fff0ec;
+  color: #d4380d;
+  font-size: 19rpx;
+  font-weight: 800;
+  line-height: 1.45;
+  vertical-align: 4rpx;
+}
+
+.article-list-arrow {
+  position: absolute;
+  top: -4rpx;
+  right: 0;
+  line-height: 1;
+}
+
+.article-list-meta {
+  min-height: 52rpx;
+  margin-top: 2rpx;
+}
+
+.article-share-btn {
+  width: auto;
+  min-width: 120rpx;
+  flex: 0 0 auto;
+  margin-right: 0;
 }
 
 .deal-meta {
@@ -86,4 +131,18 @@ page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
   color: #d4380d;
   font-size: 20rpx;
   font-weight: 800;
+}
+
+@media (max-width: 360px) {
+  .article-list-body {
+    padding: 24rpx;
+  }
+
+  .article-list-title {
+    font-size: 29rpx;
+  }
+
+  .article-list-meta {
+    gap: 12rpx;
+  }
 }
