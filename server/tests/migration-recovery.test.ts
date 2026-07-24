@@ -15,6 +15,8 @@ describe("production migration recovery", () => {
     expect(entrypoint).toContain('grep -q "P3005"');
     expect(entrypoint).toContain('grep -q "20260724180000_articles"');
     expect(entrypoint).toContain("repair-articles-migration.mjs");
+    expect(entrypoint).toContain('RESOLVE_ACTION="--rolled-back"');
+    expect(entrypoint).toContain('RESOLVE_ACTION="--applied"');
     expect(entrypoint).toContain("has no automatic recovery path");
   });
 
@@ -25,7 +27,8 @@ describe("production migration recovery", () => {
     expect(repair).toContain("verifyColumns");
     expect(repair).toContain("ensureIndex");
     expect(repair).toContain("ensureArticleForeignKey");
-    expect(repair).toContain("finished_at IS NULL");
+    expect(repair).toContain("finished_at AS finishedAt");
     expect(repair).toContain("rolled_back_at IS NULL");
+    expect(repair).toContain("RESOLVE_MODE=");
   });
 });

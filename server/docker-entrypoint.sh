@@ -25,9 +25,22 @@ else
       --schema prisma/schema.prisma
   elif grep -q "20260724180000_articles" "$MIGRATE_LOG"; then
     echo "Failed articles migration detected, checking its database objects..."
-    node scripts/repair-articles-migration.mjs
+    REPAIR_RESULT=$(node scripts/repair-articles-migration.mjs)
+    echo "$REPAIR_RESULT"
+    case "$REPAIR_RESULT" in
+      *"RESOLVE_MODE=rolled-back"*)
+        RESOLVE_ACTION="--rolled-back"
+        ;;
+      *"RESOLVE_MODE=applied"*)
+        RESOLVE_ACTION="--applied"
+        ;;
+      *)
+        echo "Articles migration repair did not return a safe resolve mode." >&2
+        exit 1
+        ;;
+    esac
     npx prisma migrate resolve \
-      --applied 20260724180000_articles \
+      "$RESOLVE_ACTION" 20260724180000_articles \
       --schema prisma/schema.prisma
   else
     echo "Database migration failed and has no automatic recovery path." >&2

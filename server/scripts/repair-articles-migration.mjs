@@ -34,17 +34,16 @@ const articleVisitSql = `
 `;
 
 async function main() {
-  const failedRows = await prisma.$queryRawUnsafe(
-    `SELECT migration_name, logs
+  const migrationRows = await prisma.$queryRawUnsafe(
+    `SELECT migration_name, logs, finished_at AS finishedAt
      FROM _prisma_migrations
      WHERE migration_name = ?
-       AND finished_at IS NULL
        AND rolled_back_at IS NULL
-     ORDER BY started_at DESC
-     LIMIT 1`,
+     ORDER BY started_at DESC`,
     MIGRATION
   );
 
+  const failedRows = migrationRows.filter((row) => row.finishedAt === null);
   if (failedRows.length === 0) {
     throw new Error(`No unresolved ${MIGRATION} migration was found`);
   }
@@ -89,6 +88,10 @@ async function main() {
   await ensureArticleForeignKey();
 
   console.log(`${MIGRATION} database objects are complete and verified.`);
+  const hasAppliedRecord = migrationRows.some((row) => row.finishedAt !== null);
+  // An applied + failed duplicate needs the failed row rolled back. With only
+  // a failed row, the verified objects should be marked as applied.
+  console.log(`RESOLVE_MODE=${hasAppliedRecord ? "rolled-back" : "applied"}`);
 }
 
 async function verifyColumns(tableName, expectedColumns) {
