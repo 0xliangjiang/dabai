@@ -106,21 +106,35 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return mapUser(user);
       },
-      async list(options?: { page?: number; pageSize?: number; search?: string }) {
+      async list(options) {
         const pageSize = Math.min(200, Math.max(1, options?.pageSize ?? 50));
         const page = Math.max(1, options?.page ?? 1);
         const search = options?.search?.trim();
         const where: Prisma.UserWhereInput = {
           deletedAt: null,
+          ...(options?.status ? { status: options.status } : {}),
+          ...(options?.relation === "has_downline"
+            ? { invitees: { some: { deletedAt: null } } }
+            : options?.relation === "has_inviter"
+              ? { inviterId: { not: null } }
+              : options?.relation === "no_inviter"
+                ? { inviterId: null }
+                : {}),
           ...(search
             ? { OR: [{ nickname: { contains: search } }, { openid: { contains: search } }, { id: { contains: search } }] }
             : {})
         };
+        const orderBy: Prisma.UserOrderByWithRelationInput[] =
+          options?.sort === "oldest"
+            ? [{ createdAt: "asc" }]
+            : options?.sort === "downline_desc"
+              ? [{ invitees: { _count: "desc" } }, { createdAt: "desc" }]
+              : [{ createdAt: "desc" }];
         const [total, users] = await Promise.all([
           prisma.user.count({ where }),
           prisma.user.findMany({
             where,
-            orderBy: { createdAt: "desc" },
+            orderBy,
             skip: (page - 1) * pageSize,
             take: pageSize,
             include: {
@@ -130,12 +144,44 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
                   conversions: true,
                   copyEvents: true,
                   orderClaims: true,
+                  orderAttributions: true,
                   invitees: { where: { deletedAt: null } }
                 }
               }
             }
           })
         ]);
+
+        const userIds = users.map((user) => user.id);
+        const [earnedRows, checkInRows, adjustmentRows, withdrawalRows] =
+          userIds.length === 0
+            ? [[], [], [], []]
+            : await Promise.all([
+                prisma.commissionLedger.groupBy({
+                  by: ["userId"],
+                  where: { userId: { in: userIds }, status: "available" },
+                  _sum: { amountCents: true }
+                }),
+                prisma.checkIn.groupBy({
+                  by: ["userId"],
+                  where: { userId: { in: userIds } },
+                  _sum: { points: true }
+                }),
+                prisma.pointAdjustment.groupBy({
+                  by: ["userId"],
+                  where: { userId: { in: userIds } },
+                  _sum: { amountCents: true }
+                }),
+                prisma.withdrawal.groupBy({
+                  by: ["userId"],
+                  where: { userId: { in: userIds }, status: { in: ["pending", "paid"] } },
+                  _sum: { amountCents: true }
+                })
+              ]);
+        const earnedByUser = new Map(earnedRows.map((row) => [row.userId, row._sum.amountCents ?? 0]));
+        const checkInByUser = new Map(checkInRows.map((row) => [row.userId, row._sum.points ?? 0]));
+        const adjustmentByUser = new Map(adjustmentRows.map((row) => [row.userId, row._sum.amountCents ?? 0]));
+        const withdrawalByUser = new Map(withdrawalRows.map((row) => [row.userId, row._sum.amountCents ?? 0]));
 
         return {
           total,
@@ -144,8 +190,16 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             conversionCount: user._count.conversions,
             copyEventCount: user._count.copyEvents,
             claimCount: user._count.orderClaims,
+            orderCount: user._count.orderAttributions,
             inviterNickname: user.inviter?.nickname ?? null,
-            downlineCount: user._count.invitees
+            downlineCount: user._count.invitees,
+            availableBalanceCents: Math.max(
+              0,
+              (earnedByUser.get(user.id) ?? 0) +
+                (checkInByUser.get(user.id) ?? 0) +
+                (adjustmentByUser.get(user.id) ?? 0) -
+                (withdrawalByUser.get(user.id) ?? 0)
+            )
           }))
         };
       },

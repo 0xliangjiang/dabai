@@ -207,8 +207,10 @@ export type AdminUserRecord = UserRecord & {
   conversionCount: number;
   copyEventCount: number;
   claimCount: number;
+  orderCount: number;
   inviterNickname: string | null;
   downlineCount: number;
+  availableBalanceCents: number;
 };
 
 export type DownlineRecord = {
@@ -283,6 +285,9 @@ export type Repositories = {
       page?: number;
       pageSize?: number;
       search?: string;
+      status?: UserStatus;
+      relation?: "has_downline" | "has_inviter" | "no_inviter";
+      sort?: "newest" | "oldest" | "downline_desc";
     }): Promise<{ total: number; items: AdminUserRecord[] }>;
     listDownline(
       inviterId: string,

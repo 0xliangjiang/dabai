@@ -12,6 +12,7 @@ import {
   Inbox,
   LayoutDashboard,
   Menu,
+  MoreHorizontal,
   LogOut,
   Megaphone,
   PackageSearch,
@@ -140,6 +141,9 @@ export function App() {
   const [usersPage, setUsersPage] = useState(1);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersSearch, setUsersSearch] = useState("");
+  const [usersStatus, setUsersStatus] = useState("");
+  const [usersRelation, setUsersRelation] = useState("");
+  const [usersSort, setUsersSort] = useState("newest");
   const [conversions, setConversions] = useState<AdminConversion[]>([]);
   const [conversionsTotal, setConversionsTotal] = useState(0);
   const [conversionsPage, setConversionsPage] = useState(1);
@@ -156,6 +160,7 @@ export function App() {
   const [userDetailTarget, setUserDetailTarget] = useState<{ id: string; nickname: string } | null>(null);
   const [userDetail, setUserDetail] = useState<AdminUserDetail | null>(null);
   const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [userActionTarget, setUserActionTarget] = useState<AdminUser | null>(null);
   const [globalRatioInput, setGlobalRatioInput] = useState("");
   const [savingGlobalRatio, setSavingGlobalRatio] = useState(false);
   const [referralRatioInput, setReferralRatioInput] = useState("");
@@ -205,6 +210,10 @@ export function App() {
       });
       setUsersTotal(usersResponse.total ?? usersResponse.users.length);
       setUsersPage(1);
+      setUsersSearch("");
+      setUsersStatus("");
+      setUsersRelation("");
+      setUsersSort("newest");
       localStorage.setItem("dabai-admin-token", token);
       setAdminToken(token);
       setAuthed(true);
@@ -296,11 +305,20 @@ export function App() {
     }
   }
 
-  async function loadUsers(page = usersPage, search = usersSearch) {
+  async function loadUsers(
+    page = usersPage,
+    search = usersSearch,
+    status = usersStatus,
+    relation = usersRelation,
+    sort = usersSort
+  ) {
     setUsersLoading(true);
     try {
       const q = new URLSearchParams({ page: String(page), pageSize: "50" });
       if (search.trim()) q.set("search", search.trim());
+      if (status) q.set("status", status);
+      if (relation) q.set("relation", relation);
+      if (sort !== "newest") q.set("sort", sort);
       const r = await fetchAdminApi<{ users: AdminUser[]; total: number }>(
         `/api/admin/users?${q.toString()}`,
         adminToken
@@ -313,6 +331,14 @@ export function App() {
     } finally {
       setUsersLoading(false);
     }
+  }
+
+  function resetUserFilters() {
+    setUsersSearch("");
+    setUsersStatus("");
+    setUsersRelation("");
+    setUsersSort("newest");
+    void loadUsers(1, "", "", "", "newest");
   }
 
   async function exportAllOrders() {
@@ -870,20 +896,10 @@ export function App() {
           {activeNav === "users" && (
           <SectionCard
             id="users"
-            title="用户"
-            subtitle={`共 ${usersTotal} 人，每页 50 条`}
+            title="用户管理"
+            subtitle={`当前条件共 ${usersTotal} 人`}
             headerRight={
               <div className="flex items-center gap-2">
-                <input
-                  className="h-8 w-48 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
-                  placeholder="搜昵称 / OpenID / ID"
-                  value={usersSearch}
-                  onChange={(e) => setUsersSearch(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void loadUsers(1, usersSearch); }}
-                />
-                <Button size="sm" variant="outline" disabled={usersLoading} onClick={() => void loadUsers(1, usersSearch)}>
-                  搜索
-                </Button>
                 <Button size="sm" variant="ghost" disabled={usersPage <= 1 || usersLoading} onClick={() => void loadUsers(usersPage - 1)}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -897,60 +913,135 @@ export function App() {
               </div>
             }
           >
-            <Table>
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3">
+              <div className="relative min-w-56 flex-1 sm:max-w-80">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                  placeholder="搜索昵称、OpenID 或用户 ID"
+                  value={usersSearch}
+                  onChange={(e) => setUsersSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void loadUsers(1); }}
+                />
+              </div>
+              <select
+                aria-label="用户状态"
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-emerald-400"
+                value={usersStatus}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setUsersStatus(value);
+                  void loadUsers(1, usersSearch, value, usersRelation, usersSort);
+                }}
+              >
+                <option value="">全部状态</option>
+                <option value="active">正常用户</option>
+                <option value="banned">已封禁</option>
+              </select>
+              <select
+                aria-label="邀请关系"
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-emerald-400"
+                value={usersRelation}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setUsersRelation(value);
+                  void loadUsers(1, usersSearch, usersStatus, value, usersSort);
+                }}
+              >
+                <option value="">全部关系</option>
+                <option value="has_downline">有直接下线</option>
+                <option value="has_inviter">有上级</option>
+                <option value="no_inviter">无上级</option>
+              </select>
+              <select
+                aria-label="排序方式"
+                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-emerald-400"
+                value={usersSort}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setUsersSort(value);
+                  void loadUsers(1, usersSearch, usersStatus, usersRelation, value);
+                }}
+              >
+                <option value="newest">最新注册</option>
+                <option value="oldest">最早注册</option>
+                <option value="downline_desc">下线最多</option>
+              </select>
+              <Button size="sm" disabled={usersLoading} onClick={() => void loadUsers(1)}>
+                查询
+              </Button>
+              {(usersSearch || usersStatus || usersRelation || usersSort !== "newest") ? (
+                <Button size="sm" variant="ghost" disabled={usersLoading} onClick={resetUserFilters}>
+                  <X className="h-4 w-4" />
+                  重置
+                </Button>
+              ) : null}
+            </div>
+
+            <Table className="min-w-[980px]">
               <TableHeader>
-                <TableRow>
-                  <TableHead>昵称</TableHead>
-                  <TableHead>用户 ID</TableHead>
-                  <TableHead>OpenID</TableHead>
-                  <TableHead>转化</TableHead>
-                  <TableHead>复制</TableHead>
-                  <TableHead>申诉</TableHead>
-                  <TableHead>上级</TableHead>
-                  <TableHead>下级</TableHead>
-                  <TableHead>返利比例</TableHead>
+                <TableRow className="bg-white">
+                  <TableHead className="w-[260px]">用户</TableHead>
+                  <TableHead className="w-[130px]">可用奖励值</TableHead>
+                  <TableHead className="w-[150px]">订单与活跃</TableHead>
+                  <TableHead className="w-[150px]">邀请关系</TableHead>
+                  <TableHead className="w-[90px]">返利</TableHead>
                   <TableHead>状态</TableHead>
+                  <TableHead className="w-[120px]">注册时间</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">
-                      <span className="flex items-center gap-2">
+                  <TableRow key={user.id} className="group cursor-pointer" onClick={() => openUserDetail(user)}>
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-3">
                         {user.avatarUrl ? (
-                          <img alt="" className="h-7 w-7 rounded-full object-cover" src={mediaUrl(user.avatarUrl)} />
+                          <img alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" src={mediaUrl(user.avatarUrl)} />
                         ) : (
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-xs font-semibold text-emerald-600">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-600">
                             {(user.nickname || "未")[0]}
                           </span>
                         )}
-                        {user.nickname || "未设置"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-slate-500">{user.id}</TableCell>
-                    <TableCell className="max-w-40 truncate font-mono text-xs text-slate-500">{user.openid}</TableCell>
-                    <TableCell>{user.conversionCount}</TableCell>
-                    <TableCell>{user.copyEventCount}</TableCell>
-                    <TableCell>{user.claimCount}</TableCell>
-                    <TableCell>
-                      {user.inviterId ? (
-                        <span className="text-xs text-slate-600">{user.inviterNickname || user.inviterId.slice(0, 8)}</span>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-slate-800">{user.nickname || "未设置昵称"}</div>
+                          <div className="mt-0.5 max-w-48 truncate font-mono text-[11px] text-slate-400">{user.openid}</div>
+                          <div className="max-w-48 truncate font-mono text-[10px] text-slate-300">{user.id}</div>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {user.downlineCount > 0 ? (
+                      <div className="text-lg font-semibold tabular-nums text-emerald-700">
+                        {formatRewardValue(user.availableBalanceCents)}
+                      </div>
+                      <div className="text-[11px] text-slate-400">奖励值</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium tabular-nums text-slate-700">{user.orderCount} 笔订单</div>
+                      <div className="mt-1 text-xs tabular-nums text-slate-400">
+                        {user.conversionCount} 查询 · {user.copyEventCount} 复制
+                        {user.claimCount > 0 ? ` · ${user.claimCount} 申诉` : ""}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="truncate text-xs text-slate-500">
+                        上级：{user.inviterId ? user.inviterNickname || user.inviterId.slice(0, 8) : "无"}
+                      </div>
+                      <div className="mt-1">
+                        {user.downlineCount > 0 ? (
                         <button
-                          className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100"
-                          onClick={() => void openDownline(user.id, user.nickname ?? user.id)}
+                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void openDownline(user.id, user.nickname ?? user.id);
+                          }}
                         >
-                          {user.downlineCount} 人 ›
+                          {user.downlineCount} 名直接下线 ›
                         </button>
                       ) : (
-                        <span className="text-xs text-slate-400">0</span>
+                          <span className="text-xs text-slate-400">暂无下线</span>
                       )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {user.rebateRatio != null ? (
@@ -964,29 +1055,22 @@ export function App() {
                         {user.status === "banned" ? "已封禁" : "正常"}
                       </Badge>
                     </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                      {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openUserDetail(user)}>
+                      <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+                        <Button size="sm" variant="ghost" onClick={() => openUserDetail(user)} title="查看详情">
                           <Eye className="h-4 w-4" />
-                          详情
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setRatioModal({ userId: user.id, nickname: user.nickname ?? user.id }); setRatioInput(user.rebateRatio != null ? String(Math.round(user.rebateRatio * 100)) : ""); }}>
-                          返利%
+                        <Button size="sm" variant="ghost" onClick={() => setUserActionTarget(user)} title="更多操作">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setPointsModal({ userId: user.id, nickname: user.nickname ?? user.id }); setPointsDelta(""); }}>
-                          调奖励值
-                        </Button>
-                        {user.status === "banned" ? (
-                          <Button size="sm" variant="outline" onClick={() => void setUserStatus(user.id, "active")}>解封</Button>
-                        ) : (
-                          <Button size="sm" variant="danger" onClick={() => void setUserStatus(user.id, "banned")}>封禁</Button>
-                        )}
-                        <Button size="sm" variant="danger" onClick={() => void deleteUser(user.id, user.nickname ?? user.id)}>删除</Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.users.length === 0 ? <EmptyRow colSpan={11} loading={usersLoading} text={usersLoading ? "加载中…" : "暂无用户数据"} /> : null}
+                {data.users.length === 0 ? <EmptyRow colSpan={8} loading={usersLoading} text={usersLoading ? "加载中…" : "没有符合条件的用户"} /> : null}
               </TableBody>
             </Table>
           </SectionCard>
@@ -1471,6 +1555,76 @@ export function App() {
           )}
         </section>
       </div>
+
+      {userActionTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setUserActionTarget(null)}>
+          <div className="w-full max-w-sm overflow-hidden rounded-xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="min-w-0">
+                <h3 className="truncate font-semibold">{userActionTarget.nickname || "未设置昵称"}</h3>
+                <p className="mt-0.5 truncate font-mono text-xs text-slate-400">{userActionTarget.id}</p>
+              </div>
+              <Button size="sm" variant="ghost" title="关闭" onClick={() => setUserActionTarget(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid gap-1 p-2">
+              <button
+                className="flex items-center justify-between px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  openUserDetail(userActionTarget);
+                  setUserActionTarget(null);
+                }}
+              >
+                查看完整资料 <Eye className="h-4 w-4 text-slate-400" />
+              </button>
+              <button
+                className="flex items-center justify-between px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setPointsModal({ userId: userActionTarget.id, nickname: userActionTarget.nickname ?? userActionTarget.id });
+                  setPointsDelta("");
+                  setUserActionTarget(null);
+                }}
+              >
+                调整奖励值 <WalletCards className="h-4 w-4 text-slate-400" />
+              </button>
+              <button
+                className="flex items-center justify-between px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setRatioModal({ userId: userActionTarget.id, nickname: userActionTarget.nickname ?? userActionTarget.id });
+                  setRatioInput(userActionTarget.rebateRatio != null ? String(Math.round(userActionTarget.rebateRatio * 100)) : "");
+                  setUserActionTarget(null);
+                }}
+              >
+                设置返利比例 <Settings className="h-4 w-4 text-slate-400" />
+              </button>
+              <button
+                className={`flex items-center justify-between px-3 py-3 text-left text-sm hover:bg-slate-50 ${
+                  userActionTarget.status === "banned" ? "text-emerald-700" : "text-amber-700"
+                }`}
+                onClick={() => {
+                  const user = userActionTarget;
+                  setUserActionTarget(null);
+                  void setUserStatus(user.id, user.status === "banned" ? "active" : "banned");
+                }}
+              >
+                {userActionTarget.status === "banned" ? "解除封禁" : "封禁用户"}
+                <ShieldQuestion className="h-4 w-4" />
+              </button>
+              <button
+                className="flex items-center justify-between px-3 py-3 text-left text-sm text-rose-600 hover:bg-rose-50"
+                onClick={() => {
+                  const user = userActionTarget;
+                  setUserActionTarget(null);
+                  void deleteUser(user.id, user.nickname ?? user.id);
+                }}
+              >
+                删除用户 <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {pointsModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPointsModal(null)}>

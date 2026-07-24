@@ -121,12 +121,21 @@ export function createRepositories(): Repositories {
         if (input.avatarUrl !== undefined) user.avatarUrl = input.avatarUrl;
         return user;
       },
-      async list(options?: { page?: number; pageSize?: number; search?: string }) {
+      async list(options) {
         const pageSize = Math.min(200, Math.max(1, options?.pageSize ?? 50));
         const page = Math.max(1, options?.page ?? 1);
         const search = options?.search?.trim().toLowerCase();
-        const activeUsers = [...users.values()]
-          .filter((user) => !deletedUserIds.has(user.id))
+        const allActiveUsers = [...users.values()].filter((user) => !deletedUserIds.has(user.id));
+        const filteredUsers = allActiveUsers
+          .filter((user) => !options?.status || user.status === options.status)
+          .filter((user) => {
+            if (options?.relation === "has_downline") {
+              return allActiveUsers.some((candidate) => candidate.inviterId === user.id);
+            }
+            if (options?.relation === "has_inviter") return Boolean(user.inviterId);
+            if (options?.relation === "no_inviter") return !user.inviterId;
+            return true;
+          })
           .filter(
             (user) =>
               !search ||
@@ -134,16 +143,45 @@ export function createRepositories(): Repositories {
               user.openid.toLowerCase().includes(search) ||
               user.id.toLowerCase().includes(search)
           )
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        const items = activeUsers.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize).map((user) => ({
-          ...user,
-          conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
-          copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
-          claimCount: [...claims.values()].filter((record) => record.userId === user.id).length,
-          inviterNickname: user.inviterId ? users.get(user.inviterId)?.nickname ?? null : null,
-          downlineCount: activeUsers.filter((u) => u.inviterId === user.id).length
-        }));
-        return { total: activeUsers.length, items };
+          .sort((a, b) => {
+            if (options?.sort === "oldest") return a.createdAt.getTime() - b.createdAt.getTime();
+            if (options?.sort === "downline_desc") {
+              const aCount = allActiveUsers.filter((candidate) => candidate.inviterId === a.id).length;
+              const bCount = allActiveUsers.filter((candidate) => candidate.inviterId === b.id).length;
+              if (aCount !== bCount) return bCount - aCount;
+            }
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          });
+        const items = filteredUsers
+          .slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
+          .map((user) => {
+            const earned = [...ledger.values()]
+              .filter((record) => record.userId === user.id && record.status === "available")
+              .reduce((sum, record) => sum + record.amountCents, 0);
+            const checkInValue = [...checkIns.values()]
+              .filter((record) => record.userId === user.id)
+              .reduce((sum, record) => sum + record.points, 0);
+            const adjustment = [...pointAdjustments.values()]
+              .filter((record) => record.userId === user.id)
+              .reduce((sum, record) => sum + record.amountCents, 0);
+            const requested = [...withdrawalMap.values()]
+              .filter(
+                (record) =>
+                  record.userId === user.id && (record.status === "pending" || record.status === "paid")
+              )
+              .reduce((sum, record) => sum + record.amountCents, 0);
+            return {
+              ...user,
+              conversionCount: [...conversions.values()].filter((record) => record.userId === user.id).length,
+              copyEventCount: [...copyEvents.values()].filter((record) => record.userId === user.id).length,
+              claimCount: [...claims.values()].filter((record) => record.userId === user.id).length,
+              orderCount: [...attributions.values()].filter((record) => record.userId === user.id).length,
+              inviterNickname: user.inviterId ? users.get(user.inviterId)?.nickname ?? null : null,
+              downlineCount: allActiveUsers.filter((candidate) => candidate.inviterId === user.id).length,
+              availableBalanceCents: Math.max(0, earned + checkInValue + adjustment - requested)
+            };
+          });
+        return { total: filteredUsers.length, items };
       },
       async listDownline(inviterId: string, options) {
         const page = Math.max(1, options?.page ?? 1);

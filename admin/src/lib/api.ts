@@ -37,9 +37,11 @@ export type AdminUser = {
   conversionCount: number;
   copyEventCount: number;
   claimCount: number;
+  orderCount: number;
   inviterId: string | null;
   inviterNickname: string | null;
   downlineCount: number;
+  availableBalanceCents: number;
   createdAt: string;
 };
 

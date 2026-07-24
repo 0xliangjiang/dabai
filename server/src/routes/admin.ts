@@ -42,12 +42,42 @@ export async function registerAdminRoutes(
     };
   });
 
-  app.get<{ Querystring: { page?: string; pageSize?: string; search?: string } }>(
+  app.get<{
+    Querystring: {
+      page?: string;
+      pageSize?: string;
+      search?: string;
+      status?: string;
+      relation?: string;
+      sort?: string;
+    };
+  }>(
     "/api/admin/users",
     async (request) => {
       const page = request.query.page ? Number(request.query.page) : 1;
       const pageSize = request.query.pageSize ? Number(request.query.pageSize) : 50;
-      const { total, items } = await repositories.users.list({ page, pageSize, search: request.query.search });
+      const status =
+        request.query.status === "active" || request.query.status === "banned"
+          ? request.query.status
+          : undefined;
+      const relation =
+        request.query.relation === "has_downline" ||
+        request.query.relation === "has_inviter" ||
+        request.query.relation === "no_inviter"
+          ? request.query.relation
+          : undefined;
+      const sort =
+        request.query.sort === "oldest" || request.query.sort === "downline_desc"
+          ? request.query.sort
+          : "newest";
+      const { total, items } = await repositories.users.list({
+        page,
+        pageSize,
+        search: request.query.search,
+        status,
+        relation,
+        sort
+      });
       return { users: items, total, page, pageSize };
     }
   );

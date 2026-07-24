@@ -301,6 +301,34 @@ describe("user management and claim review", () => {
       downlines: { total: 1, page: 1, items: [{ openid: "detail-child" }] },
       withdrawals: { total: 0, items: [] }
     });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/admin/users?relation=has_downline&status=active&sort=downline_desc",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(listResponse.json()).toMatchObject({
+      total: 1,
+      users: [
+        {
+          id: parent.id,
+          orderCount: 1,
+          downlineCount: 1,
+          availableBalanceCents: 1000
+        }
+      ]
+    });
+
+    const childList = await app.inject({
+      method: "GET",
+      url: "/api/admin/users?relation=has_inviter",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(childList.json()).toMatchObject({
+      total: 1,
+      users: [{ openid: "detail-child", inviterId: parent.id }]
+    });
   });
 
   test("admin user detail returns 404 for an unknown user", async () => {
