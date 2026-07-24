@@ -7,11 +7,33 @@ if [ -z "$DATABASE_URL" ] && [ -n "$DB_HOST" ]; then
   export DATABASE_URL
 fi
 
-# 启动前执行数据库迁移（幂等）。
-# P3005：库里已有手动建的表但无迁移历史 → 把初始迁移标记为已应用（基线）后重试
-if ! npx prisma migrate deploy --schema prisma/schema.prisma; then
-  echo "migrate deploy failed, trying to baseline the init migration..."
-  npx prisma migrate resolve --applied 20260610100000_init_mysql --schema prisma/schema.prisma
+# Run migrations before starting the API. Recovery is deliberately narrow:
+# - P3005 means an old manually-created database needs the init baseline.
+# - The known articles migration can be repaired only after its schema is verified.
+# Other failures stop startup instead of being incorrectly marked as applied.
+MIGRATE_LOG=$(mktemp)
+trap 'rm -f "$MIGRATE_LOG"' EXIT
+
+if npx prisma migrate deploy --schema prisma/schema.prisma >"$MIGRATE_LOG" 2>&1; then
+  cat "$MIGRATE_LOG"
+else
+  cat "$MIGRATE_LOG" >&2
+  if grep -q "P3005" "$MIGRATE_LOG"; then
+    echo "P3005 detected, baselining the init migration..."
+    npx prisma migrate resolve \
+      --applied 20260610100000_init_mysql \
+      --schema prisma/schema.prisma
+  elif grep -q "20260724180000_articles" "$MIGRATE_LOG"; then
+    echo "Failed articles migration detected, checking its database objects..."
+    node scripts/repair-articles-migration.mjs
+    npx prisma migrate resolve \
+      --applied 20260724180000_articles \
+      --schema prisma/schema.prisma
+  else
+    echo "Database migration failed and has no automatic recovery path." >&2
+    exit 1
+  fi
+
   npx prisma migrate deploy --schema prisma/schema.prisma
 fi
 

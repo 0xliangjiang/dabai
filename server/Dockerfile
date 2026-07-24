@@ -34,6 +34,7 @@ RUN find server/prisma/migrations -mindepth 1 -maxdepth 1 -type d \
 
 COPY --from=build /app/server/dist server/dist
 COPY server/docker-entrypoint.sh server/docker-entrypoint.sh
+COPY server/scripts server/scripts
 RUN chmod +x server/docker-entrypoint.sh && mkdir -p server/data server/uploads
 
 WORKDIR /app/server
