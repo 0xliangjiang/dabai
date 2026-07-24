@@ -401,16 +401,19 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
         const page = Math.max(1, options?.page ?? 1);
         const search = options?.search?.trim();
-        const where: Prisma.ConversionWhereInput = search
-          ? {
-              OR: [
+        const where: Prisma.ConversionWhereInput = {
+          ...(options?.platform ? { platform: options.platform } : {}),
+          ...(search
+            ? {
+                OR: [
                 { itemTitle: { contains: search } },
                 { itemId: { contains: search } },
                 { user: { is: { nickname: { contains: search } } } },
                 { user: { is: { openid: { contains: search } } } }
               ]
             }
-          : {};
+            : {})
+        };
         const [total, records] = await Promise.all([
           prisma.conversion.count({ where }),
           prisma.conversion.findMany({
@@ -640,15 +643,25 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           order: mapOrder(record.tbkOrder)
         }));
       },
-      async listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }) {
+      async listAllOrders(options) {
         const page = Math.max(1, options?.page ?? 1);
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
         const skip = (page - 1) * pageSize;
 
-        const where = {
+        const search = options?.search?.trim();
+        const where: Prisma.TbkOrderWhereInput = {
           ...(options?.orderStatus ? { orderStatus: options.orderStatus } : {}),
           ...(options?.attributionStatus
             ? { attribution: { status: options.attributionStatus } }
+            : {}),
+          ...(search
+            ? {
+                OR: [
+                  { tbkOrderId: { contains: search } },
+                  { itemTitle: { contains: search } },
+                  { attribution: { user: { is: { nickname: { contains: search } } } } }
+                ]
+              }
             : {})
         };
 

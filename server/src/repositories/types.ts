@@ -321,6 +321,7 @@ export type Repositories = {
     // 后台「查询历史」：按 商品标题/itemId/用户昵称 搜索，分页，便于人工归因兜底
     listForAdmin(options?: {
       search?: string;
+      platform?: string;
       page?: number;
       pageSize?: number;
     }): Promise<{ total: number; items: ConversionAdminRecord[] }>;
@@ -346,7 +347,13 @@ export type Repositories = {
     getAttribution(tbkOrderId: string): Promise<{ status: string; userId: string | null } | null>;
     markOrderStatus(id: string, status: string): Promise<OrderRecord>;
     listPendingAttributions(): Promise<Array<AttributionRecord & { order: OrderRecord }>>;
-    listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }): Promise<{
+    listAllOrders(options?: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      orderStatus?: string;
+      attributionStatus?: string;
+    }): Promise<{
       total: number;
       items: Array<OrderRecord & { attribution: (AttributionRecord & { userNickname: string | null }) | null }>;
     }>;

@@ -310,6 +310,7 @@ export function createRepositories(): Repositories {
         const page = Math.max(1, options?.page ?? 1);
         const search = options?.search?.trim().toLowerCase();
         let all = [...conversions.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        if (options?.platform) all = all.filter((c) => c.platform === options.platform);
         if (search) {
           all = all.filter((c) => {
             const u = users.get(c.userId);
@@ -502,11 +503,30 @@ export function createRepositories(): Repositories {
           .filter((record) => record.status === "pending_review" || record.status === "unmatched")
           .map((record) => ({ ...record, order: orders.get(record.tbkOrderId)! }));
       },
-      async listAllOrders(options?: { page?: number; pageSize?: number; orderStatus?: string; attributionStatus?: string }) {
+      async listAllOrders(options) {
         const page = Math.max(1, options?.page ?? 1);
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 50));
         let items = [...orders.values()].sort((a, b) => b.payTime.getTime() - a.payTime.getTime());
         if (options?.orderStatus) items = items.filter((o) => o.orderStatus === options.orderStatus);
+        if (options?.attributionStatus) {
+          items = items.filter((order) => {
+            const attributionId = attributionsByTbkOrderId.get(order.id);
+            return attributionId ? attributions.get(attributionId)?.status === options.attributionStatus : false;
+          });
+        }
+        const search = options?.search?.trim().toLowerCase();
+        if (search) {
+          items = items.filter((order) => {
+            const attributionId = attributionsByTbkOrderId.get(order.id);
+            const attribution = attributionId ? attributions.get(attributionId) : undefined;
+            const nickname = attribution?.userId ? users.get(attribution.userId)?.nickname ?? "" : "";
+            return (
+              order.tbkOrderId.toLowerCase().includes(search) ||
+              order.itemTitle.toLowerCase().includes(search) ||
+              nickname.toLowerCase().includes(search)
+            );
+          });
+        }
         const total = items.length;
         return {
           total,

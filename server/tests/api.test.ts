@@ -944,6 +944,20 @@ describe("server API", () => {
     expect(all.json().conversions.length).toBeGreaterThanOrEqual(1);
     expect(all.json().conversions[0]).toMatchObject({ userId: "user-1" });
 
+    const taobaoOnly = await app.inject({
+      method: "GET",
+      url: "/api/admin/conversions?platform=taobao",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(taobaoOnly.json().conversions.length).toBeGreaterThanOrEqual(1);
+
+    const jdOnly = await app.inject({
+      method: "GET",
+      url: "/api/admin/conversions?platform=jd",
+      headers: { "x-admin-token": "dev-admin-token" }
+    });
+    expect(jdOnly.json().conversions).toHaveLength(0);
+
     // 搜不到的关键词 → 空
     const none = await app.inject({
       method: "GET",

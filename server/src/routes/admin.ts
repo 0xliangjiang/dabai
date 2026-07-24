@@ -153,11 +153,12 @@ export async function registerAdminRoutes(
   });
 
   // 查询历史：按 商品标题/itemId/用户昵称 搜索转化记录，用于人工归因兜底
-  app.get<{ Querystring: { search?: string; page?: string; pageSize?: string } }>(
+  app.get<{ Querystring: { search?: string; platform?: string; page?: string; pageSize?: string } }>(
     "/api/admin/conversions",
     async (request) => {
       const { total, items } = await repositories.conversions.listForAdmin({
         search: request.query.search,
+        platform: request.query.platform,
         page: request.query.page ? Number(request.query.page) : 1,
         pageSize: request.query.pageSize ? Number(request.query.pageSize) : 50
       });
@@ -323,12 +324,19 @@ export async function registerAdminRoutes(
     }
   );
 
-  app.get<{ Querystring: { page?: string; pageSize?: string; orderStatus?: string; attributionStatus?: string } }>(
+  app.get<{ Querystring: {
+    page?: string;
+    pageSize?: string;
+    search?: string;
+    orderStatus?: string;
+    attributionStatus?: string;
+  } }>(
     "/api/admin/orders",
     async (request) => {
       return repositories.orders.listAllOrders({
         page: request.query.page ? Number(request.query.page) : 1,
         pageSize: request.query.pageSize ? Number(request.query.pageSize) : 50,
+        search: request.query.search,
         orderStatus: request.query.orderStatus,
         attributionStatus: request.query.attributionStatus
       });

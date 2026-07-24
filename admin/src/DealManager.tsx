@@ -1,7 +1,8 @@
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Check, CircleDot, Pencil, Pin, Plus, Power, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
+import { ClearFiltersButton, DataToolbar, FilterSelect, SearchInput } from "./components/ui/data-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import { fetchAdminApi, mediaUrl, uploadAdminFile, type AdminDeal, type AdminDealStep } from "./lib/api";
 import { toast } from "./lib/toast";
@@ -47,6 +48,20 @@ export function DealManager({ adminToken }: { adminToken: string }) {
   const [error, setError] = useState("");
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [pinFilter, setPinFilter] = useState("");
+
+  const filteredDeals = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+    return deals.filter((deal) => {
+      if (statusFilter && deal.status !== statusFilter) return false;
+      if (pinFilter === "pinned" && !deal.pinned) return false;
+      if (pinFilter === "normal" && deal.pinned) return false;
+      if (!keyword) return true;
+      return [deal.title, deal.summary ?? ""].some((value) => value.toLowerCase().includes(keyword));
+    });
+  }, [deals, pinFilter, search, statusFilter]);
 
   const loadDeals = useCallback(async () => {
     if (!adminToken) return;
@@ -234,10 +249,10 @@ export function DealManager({ adminToken }: { adminToken: string }) {
 
   return (
     <section id="deals" className="mt-5 scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <div>
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
           <h2 className="font-semibold">线报管理</h2>
-          <p className="mt-0.5 text-sm text-slate-400">发布带步骤指引的线报，用户端按步骤展示并支持一键复制</p>
+          <p className="mt-0.5 text-sm text-slate-400">共 {deals.length} 条，发布带步骤指引的线报</p>
         </div>
         <Button size="sm" onClick={startCreate}>
           <Plus className="h-4 w-4" />
@@ -248,7 +263,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
       {error ? <div className="mx-4 mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div> : null}
 
       {draft ? (
-        <div className="m-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-4">
+        <div className="m-3 rounded-lg border border-emerald-200/60 bg-emerald-50/30 p-3 sm:m-5 sm:p-4">
           <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50/50 p-3">
             <div className="mb-2 text-xs font-medium text-violet-700">✨ AI 识别（粘贴促销文案，自动生成线报）</div>
             <textarea
@@ -265,7 +280,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <label className="text-sm">
               标题
               <input
@@ -381,12 +396,12 @@ export function DealManager({ adminToken }: { adminToken: string }) {
             ))}
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button size="sm" variant="outline" onClick={() => setDraft({ ...draft, steps: [...draft.steps, { ...emptyStep }] })}>
               <Plus className="h-4 w-4" />
               添加步骤
             </Button>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm">
                 <input
                   checked={draft.pinned}
@@ -413,7 +428,32 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         </div>
       ) : null}
 
-      <Table>
+      <DataToolbar>
+        <SearchInput
+          placeholder="搜索线报标题或摘要"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <FilterSelect aria-label="发布状态" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="">全部发布状态</option>
+          <option value="published">已发布</option>
+          <option value="draft">草稿</option>
+        </FilterSelect>
+        <FilterSelect aria-label="置顶状态" value={pinFilter} onChange={(event) => setPinFilter(event.target.value)}>
+          <option value="">全部位置</option>
+          <option value="pinned">已置顶</option>
+          <option value="normal">未置顶</option>
+        </FilterSelect>
+        <ClearFiltersButton
+          visible={Boolean(search || statusFilter || pinFilter)}
+          onClick={() => {
+            setSearch("");
+            setStatusFilter("");
+            setPinFilter("");
+          }}
+        />
+      </DataToolbar>
+      <Table className="min-w-[880px]">
         <TableHeader>
           <TableRow>
             <TableHead>标题</TableHead>
@@ -426,7 +466,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {deals.map((deal) => (
+          {filteredDeals.map((deal) => (
             <TableRow key={deal.id}>
               <TableCell className="font-medium">
                 <span className="flex items-center gap-2">
@@ -445,27 +485,28 @@ export function DealManager({ adminToken }: { adminToken: string }) {
               <TableCell className="text-slate-500">
                 {deal.publishedAt ? new Date(deal.publishedAt).toLocaleString("zh-CN") : "未发布"}
               </TableCell>
-              <TableCell className="flex justify-end gap-2">
-                <Button size="sm" variant="outline" onClick={() => startEdit(deal)}>
+              <TableCell>
+                <div className="flex min-w-40 justify-end gap-1">
+                <Button size="sm" variant="ghost" onClick={() => startEdit(deal)} title="编辑线报">
                   <Pencil className="h-4 w-4" />
-                  编辑
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void togglePin(deal)}>
-                  {deal.pinned ? "取消置顶" : "置顶"}
+                <Button size="sm" variant="ghost" onClick={() => void togglePin(deal)} title={deal.pinned ? "取消置顶" : "置顶"}>
+                  <Pin className={`h-4 w-4 ${deal.pinned ? "fill-current text-rose-500" : ""}`} />
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void togglePublish(deal)}>
-                  {deal.status === "published" ? "下线" : "发布"}
+                <Button size="sm" variant="ghost" onClick={() => void togglePublish(deal)} title={deal.status === "published" ? "下线" : "发布"}>
+                  {deal.status === "published" ? <Power className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void removeDeal(deal.id)}>
-                  <Trash2 className="h-4 w-4" />
+                <Button size="sm" variant="ghost" onClick={() => void removeDeal(deal.id)} title="删除线报">
+                  <Trash2 className="h-4 w-4 text-rose-500" />
                 </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
-          {deals.length === 0 ? (
+          {filteredDeals.length === 0 ? (
             <TableRow>
               <TableCell className="py-8 text-center text-sm text-slate-500" colSpan={7}>
-                暂无线报，点击右上角「新建线报」开始
+                {deals.length === 0 ? "暂无线报，点击右上角「新建线报」开始" : "没有符合条件的线报"}
               </TableCell>
             </TableRow>
           ) : null}

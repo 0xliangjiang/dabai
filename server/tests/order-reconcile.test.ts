@@ -359,6 +359,17 @@ describe("标题同款归因兜底（itemId 为空的加密商品）", () => {
     expect(attr?.status).toBe("auto_matched");
     expect(attr?.userId).toBe(user.id);
     expect(await repos.withdrawals.getAvailableBalance(user.id)).toBe(400); // 800 * 0.5 已结算到账
+
+    const filtered = await repos.orders.listAllOrders({
+      search: "彩虹转转乐",
+      orderStatus: "settled",
+      attributionStatus: "auto_matched"
+    });
+    expect(filtered.total).toBe(1);
+    expect(filtered.items[0]?.tbkOrderId).toBe("TT1");
+
+    const noMatch = await repos.orders.listAllOrders({ search: "不存在的商品" });
+    expect(noMatch.total).toBe(0);
   });
 });
 

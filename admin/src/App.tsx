@@ -29,6 +29,13 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
+import {
+  ClearFiltersButton,
+  DataToolbar,
+  FilterSelect,
+  SearchInput,
+  TableFooter
+} from "./components/ui/data-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import { Toaster } from "./components/ui/toaster";
 import { DealManager } from "./DealManager";
@@ -134,6 +141,7 @@ export function App() {
   const [orders, setOrders] = useState<{ total: number; items: AdminOrder[] }>({ total: 0, items: [] });
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersSearch, setOrdersSearch] = useState("");
   const [ordersStatus, setOrdersStatus] = useState("");
   const [ordersAttr, setOrdersAttr] = useState("");
   const [exportingOrders, setExportingOrders] = useState(false);
@@ -148,7 +156,17 @@ export function App() {
   const [conversionsTotal, setConversionsTotal] = useState(0);
   const [conversionsPage, setConversionsPage] = useState(1);
   const [conversionsSearch, setConversionsSearch] = useState("");
+  const [conversionsPlatform, setConversionsPlatform] = useState("");
   const [conversionsLoading, setConversionsLoading] = useState(false);
+  const [attributionSearch, setAttributionSearch] = useState("");
+  const [attributionStatus, setAttributionStatus] = useState("");
+  const [attributionPage, setAttributionPage] = useState(1);
+  const [claimSearch, setClaimSearch] = useState("");
+  const [claimStatus, setClaimStatus] = useState("");
+  const [claimPage, setClaimPage] = useState(1);
+  const [withdrawalSearch, setWithdrawalSearch] = useState("");
+  const [withdrawalStatus, setWithdrawalStatus] = useState("");
+  const [withdrawalPage, setWithdrawalPage] = useState(1);
   const [markingOrderId, setMarkingOrderId] = useState("");
   const [pointsModal, setPointsModal] = useState<{ userId: string; nickname: string } | null>(null);
   const [pointsDelta, setPointsDelta] = useState("");
@@ -178,6 +196,50 @@ export function App() {
     ],
     [data]
   );
+
+  const filteredAttributions = useMemo(() => {
+    const search = attributionSearch.trim().toLowerCase();
+    return data.pendingAttributions.filter((row) => {
+      if (attributionStatus && row.status !== attributionStatus) return false;
+      if (!search) return true;
+      return [row.order.itemTitle, row.userId ?? "", row.reason]
+        .some((value) => value.toLowerCase().includes(search));
+    });
+  }, [attributionSearch, attributionStatus, data.pendingAttributions]);
+
+  const filteredClaims = useMemo(() => {
+    const search = claimSearch.trim().toLowerCase();
+    return data.claims.filter((claim) => {
+      if (claimStatus && claim.status !== claimStatus) return false;
+      if (!search) return true;
+      return [claim.userOpenid, claim.orderSuffix, claim.notes ?? ""]
+        .some((value) => value.toLowerCase().includes(search));
+    });
+  }, [claimSearch, claimStatus, data.claims]);
+
+  const filteredWithdrawals = useMemo(() => {
+    const search = withdrawalSearch.trim().toLowerCase();
+    return data.withdrawals.filter((withdrawal) => {
+      if (withdrawalStatus && withdrawal.status !== withdrawalStatus) return false;
+      if (!search) return true;
+      return [
+        withdrawal.userNickname ?? "",
+        withdrawal.userOpenid,
+        withdrawal.payAccount,
+        withdrawal.notes ?? ""
+      ].some((value) => value.toLowerCase().includes(search));
+    });
+  }, [data.withdrawals, withdrawalSearch, withdrawalStatus]);
+
+  const pagedAttributions = filteredAttributions.slice((attributionPage - 1) * 25, attributionPage * 25);
+  const pagedClaims = filteredClaims.slice((claimPage - 1) * 25, claimPage * 25);
+  const pagedWithdrawals = filteredWithdrawals.slice((withdrawalPage - 1) * 25, withdrawalPage * 25);
+
+  useEffect(() => {
+    setAttributionPage((page) => Math.min(page, Math.max(1, Math.ceil(filteredAttributions.length / 25))));
+    setClaimPage((page) => Math.min(page, Math.max(1, Math.ceil(filteredClaims.length / 25))));
+    setWithdrawalPage((page) => Math.min(page, Math.max(1, Math.ceil(filteredWithdrawals.length / 25))));
+  }, [filteredAttributions.length, filteredClaims.length, filteredWithdrawals.length]);
 
   useEffect(() => {
     setGlobalRatioInput(String(Math.round(data.config.commissionSharingRatio * 100)));
@@ -267,12 +329,18 @@ export function App() {
     }
   }
 
-  async function loadOrders(page = ordersPage, status = ordersStatus, attr = ordersAttr) {
+  async function loadOrders(
+    page = ordersPage,
+    status = ordersStatus,
+    attr = ordersAttr,
+    search = ordersSearch
+  ) {
     setOrdersLoading(true);
     try {
       const q = new URLSearchParams({ page: String(page), pageSize: "50" });
       if (status) q.set("orderStatus", status);
       if (attr) q.set("attributionStatus", attr);
+      if (search.trim()) q.set("search", search.trim());
       const result = await fetchAdminApi<{ total: number; items: AdminOrder[] }>(
         `/api/admin/orders?${q.toString()}`,
         adminToken
@@ -286,11 +354,12 @@ export function App() {
     }
   }
 
-  async function loadConversions(page = 1, search = conversionsSearch) {
+  async function loadConversions(page = 1, search = conversionsSearch, platform = conversionsPlatform) {
     setConversionsLoading(true);
     try {
       const q = new URLSearchParams({ page: String(page), pageSize: "50" });
       if (search.trim()) q.set("search", search.trim());
+      if (platform) q.set("platform", platform);
       const r = await fetchAdminApi<{ conversions: AdminConversion[]; total: number }>(
         `/api/admin/conversions?${q.toString()}`,
         adminToken
@@ -353,6 +422,7 @@ export function App() {
         const q = new URLSearchParams({ page: String(page), pageSize: "100" });
         if (ordersStatus) q.set("orderStatus", ordersStatus);
         if (ordersAttr) q.set("attributionStatus", ordersAttr);
+        if (ordersSearch.trim()) q.set("search", ordersSearch.trim());
         const r = await fetchAdminApi<{ total: number; items: AdminOrder[] }>(`/api/admin/orders?${q.toString()}`, adminToken);
         total = r.total;
         all.push(...r.items);
@@ -813,8 +883,8 @@ export function App() {
           </button>
         </aside>
 
-        <section className="px-4 py-5 sm:px-8 sm:py-7">
-          <header className="flex items-center justify-between gap-4">
+        <section className="min-w-0 px-3 py-4 sm:px-6 sm:py-6 xl:px-8 xl:py-7">
+          <header className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -829,7 +899,7 @@ export function App() {
                 <p className="mt-1 text-sm text-slate-500">良匠省钱助手 · 运营后台</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button disabled={syncing} variant="outline" onClick={() => void syncOrders()}>
                 <RotateCcw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
                 {syncing ? "同步中…" : "同步订单"}
@@ -898,38 +968,26 @@ export function App() {
             id="users"
             title="用户管理"
             subtitle={`当前条件共 ${usersTotal} 人`}
-            headerRight={
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" disabled={usersPage <= 1 || usersLoading} onClick={() => void loadUsers(usersPage - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-slate-500">第 {usersPage} / {Math.max(1, Math.ceil(usersTotal / 50))} 页</span>
-                <Button size="sm" variant="ghost" disabled={usersPage >= Math.ceil(usersTotal / 50) || usersLoading} onClick={() => void loadUsers(usersPage + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+          >
+            <DataToolbar
+              actions={
                 <Button size="sm" variant="outline" disabled={usersLoading} onClick={() => void loadUsers(usersPage)}>
                   <RefreshCw className={`h-4 w-4 ${usersLoading ? "animate-spin" : ""}`} />
+                  刷新
                 </Button>
-              </div>
-            }
-          >
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3">
-              <div className="relative min-w-56 flex-1 sm:max-w-80">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition-colors focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-                  placeholder="搜索昵称、OpenID 或用户 ID"
-                  value={usersSearch}
-                  onChange={(e) => setUsersSearch(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void loadUsers(1); }}
-                />
-              </div>
-              <select
+              }
+            >
+              <SearchInput
+                placeholder="搜索昵称、OpenID 或用户 ID"
+                value={usersSearch}
+                onChange={(event) => setUsersSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void loadUsers(1); }}
+              />
+              <FilterSelect
                 aria-label="用户状态"
-                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-emerald-400"
                 value={usersStatus}
-                onChange={(e) => {
-                  const value = e.target.value;
+                onChange={(event) => {
+                  const value = event.target.value;
                   setUsersStatus(value);
                   void loadUsers(1, usersSearch, value, usersRelation, usersSort);
                 }}
@@ -937,13 +995,12 @@ export function App() {
                 <option value="">全部状态</option>
                 <option value="active">正常用户</option>
                 <option value="banned">已封禁</option>
-              </select>
-              <select
+              </FilterSelect>
+              <FilterSelect
                 aria-label="邀请关系"
-                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-emerald-400"
                 value={usersRelation}
-                onChange={(e) => {
-                  const value = e.target.value;
+                onChange={(event) => {
+                  const value = event.target.value;
                   setUsersRelation(value);
                   void loadUsers(1, usersSearch, usersStatus, value, usersSort);
                 }}
@@ -952,13 +1009,12 @@ export function App() {
                 <option value="has_downline">有直接下线</option>
                 <option value="has_inviter">有上级</option>
                 <option value="no_inviter">无上级</option>
-              </select>
-              <select
+              </FilterSelect>
+              <FilterSelect
                 aria-label="排序方式"
-                className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-emerald-400"
                 value={usersSort}
-                onChange={(e) => {
-                  const value = e.target.value;
+                onChange={(event) => {
+                  const value = event.target.value;
                   setUsersSort(value);
                   void loadUsers(1, usersSearch, usersStatus, usersRelation, value);
                 }}
@@ -966,17 +1022,16 @@ export function App() {
                 <option value="newest">最新注册</option>
                 <option value="oldest">最早注册</option>
                 <option value="downline_desc">下线最多</option>
-              </select>
-              <Button size="sm" disabled={usersLoading} onClick={() => void loadUsers(1)}>
+              </FilterSelect>
+              <Button size="sm" variant="outline" disabled={usersLoading} onClick={() => void loadUsers(1)}>
                 查询
               </Button>
-              {(usersSearch || usersStatus || usersRelation || usersSort !== "newest") ? (
-                <Button size="sm" variant="ghost" disabled={usersLoading} onClick={resetUserFilters}>
-                  <X className="h-4 w-4" />
-                  重置
-                </Button>
-              ) : null}
-            </div>
+              <ClearFiltersButton
+                visible={Boolean(usersSearch || usersStatus || usersRelation || usersSort !== "newest")}
+                disabled={usersLoading}
+                onClick={resetUserFilters}
+              />
+            </DataToolbar>
 
             <Table className="min-w-[980px]">
               <TableHeader>
@@ -1073,6 +1128,13 @@ export function App() {
                 {data.users.length === 0 ? <EmptyRow colSpan={8} loading={usersLoading} text={usersLoading ? "加载中…" : "没有符合条件的用户"} /> : null}
               </TableBody>
             </Table>
+            <TableFooter
+              page={usersPage}
+              pageSize={50}
+              total={usersTotal}
+              loading={usersLoading}
+              onPageChange={(page) => void loadUsers(page)}
+            />
           </SectionCard>
           )}
 
@@ -1082,52 +1144,81 @@ export function App() {
             title="全部订单"
             subtitle={`共 ${orders.total} 条，每页 50 条`}
             headerRight={
-              <div className="flex items-center gap-2">
-                <select
-                  className="h-8 rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-emerald-400"
-                  value={ordersStatus}
-                  onChange={(e) => { setOrdersStatus(e.target.value); void loadOrders(1, e.target.value, ordersAttr); }}
-                >
-                  <option value="">全部状态</option>
-                  <option value="paid">已付款</option>
-                  <option value="received">已收货</option>
-                  <option value="settled">已结算</option>
-                  <option value="refunded">已退款</option>
-                </select>
-                <select
-                  className="h-8 rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-emerald-400"
-                  value={ordersAttr}
-                  onChange={(e) => { setOrdersAttr(e.target.value); void loadOrders(1, ordersStatus, e.target.value); }}
-                >
-                  <option value="">全部归因</option>
-                  <option value="auto_matched">已自动归因</option>
-                  <option value="manual_matched">已人工归因</option>
-                  <option value="pending_review">待复核</option>
-                  <option value="unmatched">未归因</option>
-                </select>
-                <Button size="sm" variant="ghost" disabled={ordersPage <= 1 || ordersLoading} onClick={() => void loadOrders(ordersPage - 1)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-slate-500">第 {ordersPage} / {Math.max(1, Math.ceil(orders.total / 50))} 页</span>
-                <Button size="sm" variant="ghost" disabled={ordersPage >= Math.ceil(orders.total / 50) || ordersLoading} onClick={() => void loadOrders(ordersPage + 1)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="outline" disabled={ordersLoading} onClick={() => void loadOrders(ordersPage)}>
-                  <RefreshCw className={`h-4 w-4 ${ordersLoading ? "animate-spin" : ""}`} />
-                </Button>
-                <Button size="sm" variant="outline" disabled={exportingOrders || orders.total === 0} onClick={() => void exportAllOrders()}>
-                  <Download className={`h-4 w-4 ${exportingOrders ? "animate-pulse" : ""}`} /> {exportingOrders ? "导出中…" : "导出全部"}
-                </Button>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="outline" disabled={reattributing} onClick={() => void reattributeOrders()}>
-                  <RefreshCw className={`h-4 w-4 ${reattributing ? "animate-spin" : ""}`} /> {reattributing ? "重跑中…" : "重跑归因"}
+                  <RefreshCw className={`h-4 w-4 ${reattributing ? "animate-spin" : ""}`} />
+                  {reattributing ? "重跑中…" : "重跑归因"}
                 </Button>
                 <Button size="sm" disabled={reconciling} onClick={() => void reconcileSettled()}>
-                  <RefreshCw className={`h-4 w-4 ${reconciling ? "animate-spin" : ""}`} /> {reconciling ? "核对中…" : "核对已结算"}
+                  <RefreshCw className={`h-4 w-4 ${reconciling ? "animate-spin" : ""}`} />
+                  {reconciling ? "核对中…" : "核对已结算"}
                 </Button>
               </div>
             }
           >
-            <Table>
+            <DataToolbar
+              actions={
+                <>
+                  <Button size="sm" variant="outline" disabled={ordersLoading} onClick={() => void loadOrders(ordersPage)}>
+                    <RefreshCw className={`h-4 w-4 ${ordersLoading ? "animate-spin" : ""}`} />
+                    刷新
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={exportingOrders || orders.total === 0} onClick={() => void exportAllOrders()}>
+                    <Download className={`h-4 w-4 ${exportingOrders ? "animate-pulse" : ""}`} />
+                    {exportingOrders ? "导出中…" : "导出"}
+                  </Button>
+                </>
+              }
+            >
+              <SearchInput
+                placeholder="搜索订单号、商品、归因用户"
+                value={ordersSearch}
+                onChange={(event) => setOrdersSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void loadOrders(1); }}
+              />
+              <FilterSelect
+                aria-label="订单状态"
+                value={ordersStatus}
+                onChange={(event) => {
+                  setOrdersStatus(event.target.value);
+                  void loadOrders(1, event.target.value, ordersAttr);
+                }}
+              >
+                <option value="">全部订单状态</option>
+                <option value="paid">已付款</option>
+                <option value="received">已收货</option>
+                <option value="settled">已结算</option>
+                <option value="refunded">已退款</option>
+              </FilterSelect>
+              <FilterSelect
+                aria-label="归因状态"
+                value={ordersAttr}
+                onChange={(event) => {
+                  setOrdersAttr(event.target.value);
+                  void loadOrders(1, ordersStatus, event.target.value);
+                }}
+              >
+                <option value="">全部归因状态</option>
+                <option value="auto_matched">自动归因</option>
+                <option value="manual_matched">人工归因</option>
+                <option value="pending_review">待复核</option>
+                <option value="unmatched">未归因</option>
+              </FilterSelect>
+              <Button size="sm" variant="outline" disabled={ordersLoading} onClick={() => void loadOrders(1)}>
+                查询
+              </Button>
+              <ClearFiltersButton
+                visible={Boolean(ordersSearch || ordersStatus || ordersAttr)}
+                disabled={ordersLoading}
+                onClick={() => {
+                  setOrdersSearch("");
+                  setOrdersStatus("");
+                  setOrdersAttr("");
+                  void loadOrders(1, "", "", "");
+                }}
+              />
+            </DataToolbar>
+            <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>订单号</TableHead>
@@ -1179,6 +1270,13 @@ export function App() {
                 {orders.items.length === 0 ? <EmptyRow colSpan={10} loading={ordersLoading} text={ordersLoading ? "加载中…" : "暂无订单数据"} /> : null}
               </TableBody>
             </Table>
+            <TableFooter
+              page={ordersPage}
+              pageSize={50}
+              total={orders.total}
+              loading={ordersLoading}
+              onPageChange={(page) => void loadOrders(page)}
+            />
           </SectionCard>
           )}
 
@@ -1186,30 +1284,41 @@ export function App() {
           <SectionCard
             id="conversions"
             title="查询历史"
-            subtitle="按商品标题/itemId/用户搜索；找到是谁查的，再去「全部订单」手动归因"
-            headerRight={
-              <div className="flex items-center gap-2">
-                <input
-                  className="h-8 w-56 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400"
-                  placeholder="搜商品标题 / itemId / 昵称"
-                  value={conversionsSearch}
-                  onChange={(e) => setConversionsSearch(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void loadConversions(1, conversionsSearch); }}
-                />
-                <Button size="sm" variant="outline" disabled={conversionsLoading} onClick={() => void loadConversions(1, conversionsSearch)}>
-                  搜索
-                </Button>
-                <Button size="sm" variant="ghost" disabled={conversionsPage <= 1 || conversionsLoading} onClick={() => void loadConversions(conversionsPage - 1, conversionsSearch)}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-slate-500">第 {conversionsPage} / {Math.max(1, Math.ceil(conversionsTotal / 50))} 页</span>
-                <Button size="sm" variant="ghost" disabled={conversionsPage >= Math.ceil(conversionsTotal / 50) || conversionsLoading} onClick={() => void loadConversions(conversionsPage + 1, conversionsSearch)}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            }
+            subtitle={`共 ${conversionsTotal} 条，可按商品、用户和平台定位查询记录`}
           >
-            <Table>
+            <DataToolbar>
+              <SearchInput
+                placeholder="搜索商品标题、itemId、昵称、OpenID"
+                value={conversionsSearch}
+                onChange={(event) => setConversionsSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void loadConversions(1); }}
+              />
+              <FilterSelect
+                aria-label="平台"
+                value={conversionsPlatform}
+                onChange={(event) => {
+                  setConversionsPlatform(event.target.value);
+                  void loadConversions(1, conversionsSearch, event.target.value);
+                }}
+              >
+                <option value="">全部平台</option>
+                <option value="taobao">淘宝</option>
+                <option value="jd">京东</option>
+              </FilterSelect>
+              <Button size="sm" variant="outline" disabled={conversionsLoading} onClick={() => void loadConversions(1)}>
+                查询
+              </Button>
+              <ClearFiltersButton
+                visible={Boolean(conversionsSearch || conversionsPlatform)}
+                disabled={conversionsLoading}
+                onClick={() => {
+                  setConversionsSearch("");
+                  setConversionsPlatform("");
+                  void loadConversions(1, "", "");
+                }}
+              />
+            </DataToolbar>
+            <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>用户</TableHead>
@@ -1239,12 +1348,53 @@ export function App() {
                 {conversions.length === 0 ? <EmptyRow colSpan={6} loading={conversionsLoading} text={conversionsLoading ? "加载中…" : "暂无查询记录"} /> : null}
               </TableBody>
             </Table>
+            <TableFooter
+              page={conversionsPage}
+              pageSize={50}
+              total={conversionsTotal}
+              loading={conversionsLoading}
+              onPageChange={(page) => void loadConversions(page)}
+            />
           </SectionCard>
           )}
 
           {activeNav === "attribution" && (
-          <SectionCard id="attribution" title="订单归因复核" subtitle="处理自动匹配不确定和未匹配的订单">
-            <Table>
+          <SectionCard
+            id="attribution"
+            title="订单归因复核"
+            subtitle={`${filteredAttributions.length} 条结果，处理自动匹配不确定和未匹配的订单`}
+          >
+            <DataToolbar>
+              <SearchInput
+                placeholder="搜索商品、用户 ID、匹配原因"
+                value={attributionSearch}
+                onChange={(event) => {
+                  setAttributionSearch(event.target.value);
+                  setAttributionPage(1);
+                }}
+              />
+              <FilterSelect
+                aria-label="归因状态"
+                value={attributionStatus}
+                onChange={(event) => {
+                  setAttributionStatus(event.target.value);
+                  setAttributionPage(1);
+                }}
+              >
+                <option value="">全部状态</option>
+                <option value="pending_review">待复核</option>
+                <option value="unmatched">未匹配</option>
+              </FilterSelect>
+              <ClearFiltersButton
+                visible={Boolean(attributionSearch || attributionStatus)}
+                onClick={() => {
+                  setAttributionSearch("");
+                  setAttributionStatus("");
+                  setAttributionPage(1);
+                }}
+              />
+            </DataToolbar>
+            <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>商品</TableHead>
@@ -1256,7 +1406,7 @@ export function App() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.pendingAttributions.map((row) => (
+                {pagedAttributions.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="max-w-64 truncate font-medium">{row.order.itemTitle}</TableCell>
                     <TableCell className="font-mono text-xs text-slate-500">{row.userId ?? "未匹配"}</TableCell>
@@ -1275,15 +1425,56 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.pendingAttributions.length === 0 ? <EmptyRow colSpan={6} text="暂无待复核订单 🎉" /> : null}
+                {filteredAttributions.length === 0 ? <EmptyRow colSpan={6} text="没有符合条件的待复核订单" /> : null}
               </TableBody>
             </Table>
+            <TableFooter
+              page={attributionPage}
+              pageSize={25}
+              total={filteredAttributions.length}
+              onPageChange={setAttributionPage}
+            />
           </SectionCard>
           )}
 
           {activeNav === "claims" && (
-          <SectionCard id="claims" title="订单申诉审核" subtitle="用户提交的漏单补充，核对后通过或驳回">
-            <Table>
+          <SectionCard
+            id="claims"
+            title="订单申诉审核"
+            subtitle={`${filteredClaims.length} 条结果，核对用户提交的漏单补充`}
+          >
+            <DataToolbar>
+              <SearchInput
+                placeholder="搜索 OpenID、订单后缀、备注"
+                value={claimSearch}
+                onChange={(event) => {
+                  setClaimSearch(event.target.value);
+                  setClaimPage(1);
+                }}
+              />
+              <FilterSelect
+                aria-label="申诉状态"
+                value={claimStatus}
+                onChange={(event) => {
+                  setClaimStatus(event.target.value);
+                  setClaimPage(1);
+                }}
+              >
+                <option value="">全部状态</option>
+                <option value="pending_review">待审核</option>
+                <option value="approved">已通过</option>
+                <option value="rejected">已驳回</option>
+              </FilterSelect>
+              <ClearFiltersButton
+                visible={Boolean(claimSearch || claimStatus)}
+                onClick={() => {
+                  setClaimSearch("");
+                  setClaimStatus("");
+                  setClaimPage(1);
+                }}
+              />
+            </DataToolbar>
+            <Table className="min-w-[820px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>用户 OpenID</TableHead>
@@ -1295,7 +1486,7 @@ export function App() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.claims.map((claim) => (
+                {pagedClaims.map((claim) => (
                   <TableRow key={claim.id}>
                     <TableCell className="max-w-40 truncate font-mono text-xs text-slate-500">{claim.userOpenid}</TableCell>
                     <TableCell className="font-medium">{claim.orderSuffix}</TableCell>
@@ -1338,9 +1529,10 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.claims.length === 0 ? <EmptyRow colSpan={6} text="暂无申诉记录" /> : null}
+                {filteredClaims.length === 0 ? <EmptyRow colSpan={6} text="没有符合条件的申诉记录" /> : null}
               </TableBody>
             </Table>
+            <TableFooter page={claimPage} pageSize={25} total={filteredClaims.length} onPageChange={setClaimPage} />
           </SectionCard>
           )}
 
@@ -1348,17 +1540,17 @@ export function App() {
           <SectionCard
             id="withdrawals"
             title="提现审核"
-            subtitle="用户提现申请，核对后打款或驳回"
+            subtitle={`${filteredWithdrawals.length} 条结果，核对后打款或驳回`}
             headerRight={
               <Button
                 size="sm"
                 variant="outline"
-                disabled={data.withdrawals.length === 0}
+                disabled={filteredWithdrawals.length === 0}
                 onClick={() =>
                   downloadCsv(
                     "提现申请.csv",
                     ["用户", "OpenID", "金额(元)", "状态", "申请时间"],
-                    data.withdrawals.map((w) => [
+                    filteredWithdrawals.map((w) => [
                       w.userNickname ?? w.userId,
                       w.userOpenid,
                       yuan(w.amountCents),
@@ -1372,7 +1564,38 @@ export function App() {
               </Button>
             }
           >
-            <Table>
+            <DataToolbar>
+              <SearchInput
+                placeholder="搜索用户、OpenID、收款账号、备注"
+                value={withdrawalSearch}
+                onChange={(event) => {
+                  setWithdrawalSearch(event.target.value);
+                  setWithdrawalPage(1);
+                }}
+              />
+              <FilterSelect
+                aria-label="提现状态"
+                value={withdrawalStatus}
+                onChange={(event) => {
+                  setWithdrawalStatus(event.target.value);
+                  setWithdrawalPage(1);
+                }}
+              >
+                <option value="">全部状态</option>
+                <option value="pending">待处理</option>
+                <option value="paid">已打款</option>
+                <option value="rejected">已驳回</option>
+              </FilterSelect>
+              <ClearFiltersButton
+                visible={Boolean(withdrawalSearch || withdrawalStatus)}
+                onClick={() => {
+                  setWithdrawalSearch("");
+                  setWithdrawalStatus("");
+                  setWithdrawalPage(1);
+                }}
+              />
+            </DataToolbar>
+            <Table className="min-w-[1040px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>用户</TableHead>
@@ -1386,7 +1609,7 @@ export function App() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.withdrawals.map((w) => (
+                {pagedWithdrawals.map((w) => (
                   <TableRow key={w.id}>
                     <TableCell className="font-medium">{w.userNickname || w.userOpenid.slice(0, 8) + "…"}</TableCell>
                     <TableCell className="font-semibold tabular-nums">{formatMoney(w.amountCents)}</TableCell>
@@ -1416,9 +1639,15 @@ export function App() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.withdrawals.length === 0 ? <EmptyRow colSpan={8} text="暂无提现申请" /> : null}
+                {filteredWithdrawals.length === 0 ? <EmptyRow colSpan={8} text="没有符合条件的提现申请" /> : null}
               </TableBody>
             </Table>
+            <TableFooter
+              page={withdrawalPage}
+              pageSize={25}
+              total={filteredWithdrawals.length}
+              onPageChange={setWithdrawalPage}
+            />
           </SectionCard>
           )}
 
@@ -1433,7 +1662,7 @@ export function App() {
               </Button>
             }
           >
-            <div className="grid grid-cols-2 gap-3 p-5">
+            <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 md:p-5">
               {settings.map((s) => (
                 <div key={s.key} className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
                   <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -1500,8 +1729,8 @@ export function App() {
                   <span className="ml-1 text-xs text-slate-400">平台额外出，下线返利不减</span>
                 </div>
               </div>
-              <div className="mb-3 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-3.5">
-                <div>
+              <div className="mb-3 flex flex-col gap-3 rounded-lg border border-indigo-100 bg-indigo-50/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <div className="text-xs font-medium text-slate-500">二级分销开关（配好比例后再开启）</div>
                   <div className="mt-1 text-sm font-medium text-slate-700">
                     当前：{data.config.referralEnabled ? "已开启 · 绑新下线并计提成、显示邀请入口" : "已关闭 · 不绑新下线、不计提成、隐藏入口"}
@@ -1514,8 +1743,8 @@ export function App() {
                   {data.config.referralEnabled ? "关闭分销" : "开启分销"}
                 </Button>
               </div>
-              <div className="mb-3 flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3.5">
-                <div>
+              <div className="mb-3 flex flex-col gap-3 rounded-lg border border-amber-100 bg-amber-50/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <div className="text-xs font-medium text-slate-500">兑换功能开关（审核期间关闭，过审后开启）</div>
                   <div className="mt-1 text-sm font-medium text-slate-700">
                     当前：{data.config.exchangeEnabled ? "已开启 · 小程序显示兑换入口" : "已关闭 · 小程序隐藏兑换入口"}
@@ -1528,8 +1757,8 @@ export function App() {
                   {data.config.exchangeEnabled ? "关闭兑换" : "开启兑换"}
                 </Button>
               </div>
-              <div className="mb-3 flex items-center justify-between rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3.5">
-                <div>
+              <div className="mb-3 flex flex-col gap-3 rounded-lg border border-amber-100 bg-amber-50/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <div className="text-xs font-medium text-slate-500">订单 tab 开关（审核期间关闭，过审后开启）</div>
                   <div className="mt-1 text-sm font-medium text-slate-700">
                     当前：{data.config.ordersTabEnabled ? "已开启 · 小程序显示订单 tab" : "已关闭 · 小程序隐藏订单 tab"}
@@ -1542,7 +1771,7 @@ export function App() {
                   {data.config.ordersTabEnabled ? "隐藏订单" : "显示订单"}
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {configItems.map(([label, value]) => (
                   <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3.5">
                     <div className="text-xs font-medium text-slate-400">{label}</div>
@@ -1627,8 +1856,8 @@ export function App() {
       ) : null}
 
       {pointsModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPointsModal(null)}>
-          <div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPointsModal(null)}>
+          <div className="w-full max-w-80 rounded-xl bg-white p-5 shadow-2xl sm:p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold">调整奖励值</h3>
             <p className="mt-1 text-sm text-slate-500">用户：{pointsModal.nickname}</p>
             <input
@@ -1649,8 +1878,8 @@ export function App() {
       ) : null}
 
       {ratioModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setRatioModal(null)}>
-          <div className="w-80 rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setRatioModal(null)}>
+          <div className="w-full max-w-80 rounded-xl bg-white p-5 shadow-2xl sm:p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold">设置返利比例</h3>
             <p className="mt-1 text-sm text-slate-500">用户：{ratioModal.nickname}</p>
             <div className="mt-4 flex items-center gap-2">
@@ -1677,8 +1906,8 @@ export function App() {
       ) : null}
 
       {downlineModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDownlineModal(null)}>
-          <div className="max-h-[80vh] w-[34rem] overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-6" onClick={() => setDownlineModal(null)}>
+          <div className="max-h-[80vh] w-full max-w-[34rem] overflow-hidden rounded-xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div>
                 <h3 className="font-semibold">下线明细</h3>
@@ -1995,12 +2224,12 @@ function SectionCard({
 }) {
   return (
     <section id={id} className="mt-5 scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <div>
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
           <h2 className="font-semibold">{title}</h2>
           <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>
         </div>
-        {headerRight ? <div>{headerRight}</div> : null}
+        {headerRight ? <div className="flex shrink-0 flex-wrap items-center gap-2">{headerRight}</div> : null}
       </div>
       {children}
     </section>
