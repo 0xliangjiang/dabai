@@ -3,6 +3,7 @@ import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
+  ArticlePostRecord,
   AttributionRecord,
   DealPostRecord,
   CommissionLedgerRecord,
@@ -913,6 +914,75 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         ]);
       }
     },
+    articles: {
+      async list(publishedOnly: boolean, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(publishedOnly ? 50 : 500, Math.max(1, options?.pageSize ?? 20));
+        const where = publishedOnly ? { status: "published" } : undefined;
+        const [total, records] = await Promise.all([
+          prisma.articlePost.count({ where }),
+          prisma.articlePost.findMany({
+            where,
+            orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }, { createdAt: "desc" }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+            include: { _count: { select: { visits: true } } }
+          })
+        ]);
+        return { total, items: records.map(mapArticle) };
+      },
+      async findById(id: string) {
+        const record = await prisma.articlePost.findUnique({
+          where: { id },
+          include: { _count: { select: { visits: true } } }
+        });
+        return record ? mapArticle(record) : undefined;
+      },
+      async create(input) {
+        const record = await prisma.articlePost.create({
+          data: {
+            title: input.title,
+            summary: input.summary ?? null,
+            coverUrl: input.coverUrl ?? null,
+            status: input.status,
+            pinned: input.pinned ?? false,
+            blocks: toJsonValue(input.blocks),
+            publishedAt: input.status === "published" ? new Date() : null
+          }
+        });
+        return mapArticle(record);
+      },
+      async update(id, input) {
+        const existing = await prisma.articlePost.findUniqueOrThrow({ where: { id } });
+        const record = await prisma.articlePost.update({
+          where: { id },
+          data: {
+            title: input.title,
+            summary: input.summary ?? null,
+            coverUrl: input.coverUrl ?? null,
+            status: input.status,
+            pinned: input.pinned ?? existing.pinned,
+            blocks: toJsonValue(input.blocks),
+            publishedAt:
+              input.status === "published" && !existing.publishedAt ? new Date() : existing.publishedAt
+          }
+        });
+        return mapArticle(record);
+      },
+      async remove(id) {
+        await prisma.articlePost.delete({ where: { id } });
+      },
+      async recordView(id: string, visitorKey: string) {
+        await prisma.$transaction([
+          prisma.articlePost.update({ where: { id }, data: { viewCount: { increment: 1 } } }),
+          prisma.articleVisit.upsert({
+            where: { articleId_visitorKey: { articleId: id, visitorKey } },
+            create: { articleId: id, visitorKey },
+            update: {}
+          })
+        ]);
+      }
+    },
     checkIns: {
       async findByUserAndDate(userId: string, checkInDate: string) {
         const record = await prisma.checkIn.findUnique({
@@ -1325,6 +1395,36 @@ function mapDeal(record: {
     status: record.status,
     pinned: record.pinned,
     steps: Array.isArray(record.steps) ? (record.steps as DealPostRecord["steps"]) : [],
+    viewCount: record.viewCount ?? 0,
+    visitorCount: record._count?.visits ?? 0,
+    publishedAt: record.publishedAt,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt
+  };
+}
+
+function mapArticle(record: {
+  id: string;
+  title: string;
+  summary: string | null;
+  coverUrl: string | null;
+  status: string;
+  pinned: boolean;
+  blocks: unknown;
+  viewCount?: number;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  _count?: { visits: number };
+}): ArticlePostRecord {
+  return {
+    id: record.id,
+    title: record.title,
+    summary: record.summary,
+    coverUrl: record.coverUrl,
+    status: record.status,
+    pinned: record.pinned,
+    blocks: Array.isArray(record.blocks) ? (record.blocks as ArticlePostRecord["blocks"]) : [],
     viewCount: record.viewCount ?? 0,
     visitorCount: record._count?.visits ?? 0,
     publishedAt: record.publishedAt,

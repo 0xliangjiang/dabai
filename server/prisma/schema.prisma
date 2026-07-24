@@ -279,6 +279,36 @@ model DealVisit {
   @@index([dealId])
 }
 
+model ArticlePost {
+  id          String    @id @default(cuid())
+  title       String
+  summary     String?   @db.VarChar(512)
+  coverUrl    String?   @db.VarChar(1024)
+  status      String    @default("draft")
+  pinned      Boolean   @default(false)
+  blocks      Json
+  viewCount   Int       @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  visits ArticleVisit[]
+
+  @@index([status, pinned, publishedAt])
+}
+
+model ArticleVisit {
+  id         String   @id @default(cuid())
+  articleId  String
+  visitorKey String   @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  article ArticlePost @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, visitorKey])
+  @@index([articleId])
+}
+
 model SubscribeGrant {
   id         String    @id @default(cuid())
   userId     String

@@ -20,6 +20,7 @@ import { registerCheckInRoutes } from "./routes/checkins.js";
 import { registerWithdrawalRoutes } from "./routes/withdrawals.js";
 import { registerConversionRoutes } from "./routes/conversions.js";
 import { registerDealRoutes } from "./routes/deals.js";
+import { registerArticleRoutes } from "./routes/articles.js";
 import { createDealPublishedNotifier } from "./domain/deal-notify.js";
 import { registerSubscriptionRoutes } from "./routes/subscriptions.js";
 import { registerJobRoutes } from "./routes/jobs.js";
@@ -138,10 +139,12 @@ export async function createApp(options: CreateAppOptions = {}) {
       return;
     }
 
-    // 线报查看（列表/详情）公开，便于分享到朋友圈/好友后未登录也能打开；访问上报也公开
+    // 线报与文章公开查看，便于分享后未登录也能打开；访问上报也公开
     if (
       (request.method === "GET" && request.url.startsWith("/api/deals")) ||
-      (request.method === "POST" && /^\/api\/deals\/[^/]+\/view\b/.test(request.url))
+      (request.method === "POST" && /^\/api\/deals\/[^/]+\/view\b/.test(request.url)) ||
+      (request.method === "GET" && request.url.startsWith("/api/articles")) ||
+      (request.method === "POST" && /^\/api\/articles\/[^/]+\/view\b/.test(request.url))
     ) {
       return;
     }
@@ -188,6 +191,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerCheckInRoutes(app, repositories);
   await registerWithdrawalRoutes(app, repositories);
   await registerDealRoutes(app, repositories);
+  await registerArticleRoutes(app, repositories);
   await registerSubscriptionRoutes(app, config, repositories);
   await registerJobRoutes(app, config, repositories);
   const dealNotifier = createDealPublishedNotifier(config, repositories, app.log);

@@ -12,8 +12,14 @@ Page({
     const me = getCurrentUser();
     // 卡片上的「分享」按钮触发：分享对应的那条线报
     if (res && res.from === "button" && res.target) {
-      const { id, title } = res.target.dataset;
+      const { id, title, kind } = res.target.dataset;
       if (id) {
+        if (kind === "article") {
+          return {
+            title: title || "实用教程",
+            path: `/pages/article-detail/index?id=${id}${inviterSuffix(me, true)}`
+          };
+        }
         return {
           title: title || "优惠线报",
           path: `/pages/deal-detail/index?id=${id}${inviterSuffix(me, true)}`
@@ -28,7 +34,7 @@ Page({
 
   onShareTimeline() {
     return {
-      title: "最新优惠线报，按步骤照着做就行",
+      title: this.data.activeContent === "articles" ? "实用教程，一看就会" : "最新优惠线报，按步骤照着做就行",
       query: inviterQuery(getCurrentUser())
     };
   },
@@ -36,6 +42,7 @@ Page({
   noop() {},
 
   data: {
+    activeContent: "deals",
     deals: [],
     loading: true,
     loadingMore: false,
@@ -46,7 +53,16 @@ Page({
     page: 1,
     hasMore: false,
     subscribeTemplateId: "",
-    subscribeRemaining: 0
+    subscribeRemaining: 0,
+    articles: [],
+    articleLoading: false,
+    articleLoadingMore: false,
+    articleShowEmpty: false,
+    articleErrorMsg: "",
+    articleLoadMoreError: "",
+    articlePage: 1,
+    articleHasMore: false,
+    articlesLoaded: false
   },
 
   async onShow() {
@@ -71,11 +87,21 @@ Page({
   },
 
   async onPullDownRefresh() {
-    await this.fetchDeals(true);
+    if (this.data.activeContent === "articles") {
+      await this.fetchArticles(true);
+    } else {
+      await this.fetchDeals(true);
+    }
     wx.stopPullDownRefresh();
   },
 
   async onReachBottom() {
+    if (this.data.activeContent === "articles") {
+      if (this.data.articleHasMore && !this.data.articleLoadingMore && !this.data.articleLoadMoreError) {
+        await this.fetchArticles(false);
+      }
+      return;
+    }
     if (this.data.hasMore && !this.data.loadingMore && !this.data.loadMoreError) {
       await this.fetchDeals(false);
     }
@@ -87,6 +113,67 @@ Page({
 
   retryLoadMore() {
     this.fetchDeals(false);
+  },
+
+  switchContent(event) {
+    const activeContent = event.currentTarget.dataset.mode;
+    if (activeContent === this.data.activeContent) return;
+    this.setData({ activeContent });
+    if (activeContent === "articles" && !this.data.articlesLoaded) {
+      this.fetchArticles(true);
+    }
+  },
+
+  retryArticles() {
+    this.fetchArticles(true);
+  },
+
+  retryArticleLoadMore() {
+    this.fetchArticles(false);
+  },
+
+  async fetchArticles(reset = true) {
+    if (!reset && (this.data.articleLoadingMore || !this.data.articleHasMore)) return;
+    const requestId = (this.articleRequestId || 0) + 1;
+    this.articleRequestId = requestId;
+    const page = reset ? 1 : this.data.articlePage + 1;
+    this.setData(reset
+      ? { articleLoading: true, articleErrorMsg: "", articleLoadMoreError: "" }
+      : { articleLoadingMore: true, articleLoadMoreError: "" });
+    try {
+      const data = await request(`/api/articles?page=${page}&pageSize=20`);
+      if (requestId !== this.articleRequestId) return;
+      const incoming = data.articles.map((article) => ({
+        ...article,
+        coverUrl: toDisplayUrl(article.coverUrl),
+        dateText: formatDate(article.publishedAt)
+      }));
+      const articles = reset ? incoming : this.data.articles.concat(incoming);
+      this.setData({
+        articles,
+        articleLoading: false,
+        articleLoadingMore: false,
+        articleShowEmpty: articles.length === 0,
+        articleErrorMsg: "",
+        articleLoadMoreError: "",
+        articlePage: page,
+        articleHasMore: Boolean(data.hasMore),
+        articlesLoaded: true
+      });
+    } catch (_error) {
+      if (requestId !== this.articleRequestId) return;
+      this.setData(reset
+        ? {
+            articles: [],
+            articleLoading: false,
+            articleLoadingMore: false,
+            articleShowEmpty: false,
+            articleErrorMsg: "教程加载失败，请检查网络后重试",
+            articleLoadMoreError: "",
+            articlesLoaded: false
+          }
+        : { articleLoadingMore: false, articleLoadMoreError: "加载更多失败" });
+    }
   },
 
   async fetchDeals(reset = true) {
@@ -162,8 +249,17 @@ Page({
 
   openDeal(event) {
     wx.navigateTo({ url: `/pages/deal-detail/index?id=${event.currentTarget.dataset.id}` });
+  },
+
+  openArticle(event) {
+    wx.navigateTo({ url: `/pages/article-detail/index?id=${event.currentTarget.dataset.id}` });
   }
 });
+
+function toDisplayUrl(url) {
+  if (!url) return "";
+  return url.startsWith("/") ? `${getApp().globalData.apiBaseUrl}${url}` : url;
+}
 
 function formatDate(value) {
   const date = new Date(value);

@@ -1,0 +1,66 @@
+<view class="cu-page article-page">
+  <block wx:if="{{loading}}">
+    <view class="article-shell skeleton-article">
+      <view class="skeleton-block cover"></view>
+      <view class="skeleton-block skeleton-line"></view>
+      <view class="skeleton-block skeleton-line half"></view>
+      <view class="skeleton-block skeleton-line tall"></view>
+    </view>
+  </block>
+
+  <view wx:elif="{{notFound}}" class="article-state">
+    <view class="empty-icon">!</view>
+    <view class="text-bold">教程不存在或已下线</view>
+    <button class="cu-btn secondary margin-top" bindtap="backToList">返回教程列表</button>
+  </view>
+
+  <view wx:elif="{{errorMsg}}" class="article-state">
+    <view class="empty-icon">!</view>
+    <view class="text-bold">{{errorMsg}}</view>
+    <button class="cu-btn secondary margin-top" bindtap="retryLoad">重新加载</button>
+  </view>
+
+  <view wx:else class="article-shell">
+    <image wx:if="{{article.coverUrl}}" class="article-cover" src="{{article.coverUrl}}" mode="widthFix" show-menu-by-longpress />
+    <view class="article-content">
+      <view class="article-title">{{article.title}}</view>
+      <view wx:if="{{article.summary}}" class="article-summary">{{article.summary}}</view>
+      <view class="article-meta">{{article.visitorCount > 0 ? article.visitorCount + ' 人读过' : '实用教程'}}</view>
+
+      <view class="article-blocks">
+        <block wx:for="{{article.blocks}}" wx:key="index">
+          <view
+            wx:if="{{item.type === 'paragraph'}}"
+            class="article-paragraph {{item.bold ? 'is-bold' : ''}} {{item.italic ? 'is-italic' : ''}} align-{{item.align || 'left'}}"
+          >{{item.text}}</view>
+
+          <view
+            wx:elif="{{item.type === 'heading'}}"
+            class="article-heading level-{{item.level}} align-{{item.align || 'left'}}"
+          >{{item.text}}</view>
+
+          <view wx:elif="{{item.type === 'image'}}" class="article-image-block">
+            <image class="article-image" src="{{item.url}}" mode="widthFix" lazy-load show-menu-by-longpress bindtap="previewImage" data-url="{{item.url}}" />
+            <view wx:if="{{item.caption}}" class="article-caption">{{item.caption}}</view>
+          </view>
+
+          <view wx:elif="{{item.type === 'quote'}}" class="article-quote">{{item.text}}</view>
+
+          <view wx:elif="{{item.type === 'list'}}" class="article-list">
+            <view wx:for="{{item.displayItems}}" wx:for-item="listItem" wx:key="index" class="article-list-item">
+              <text class="article-list-marker">{{listItem.marker}}</text>
+              <text class="article-list-text">{{listItem.text}}</text>
+            </view>
+          </view>
+
+          <view wx:elif="{{item.type === 'callout'}}" class="article-callout tone-{{item.tone}}">
+            <view class="article-callout-label">{{item.tone === 'warning' ? '注意' : item.tone === 'success' ? '技巧' : '说明'}}</view>
+            <view>{{item.text}}</view>
+          </view>
+
+          <view wx:elif="{{item.type === 'divider'}}" class="article-divider"></view>
+        </block>
+      </view>
+    </view>
+  </view>
+</view>

@@ -10,6 +10,7 @@
     "pages/profile/index",
     "pages/withdrawals/index",
     "pages/deal-detail/index",
+    "pages/article-detail/index",
     "pages/invite/index"
   ],
   "window": {

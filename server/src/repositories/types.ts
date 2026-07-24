@@ -147,6 +147,47 @@ export type DealPostInput = {
   steps: DealStep[];
 };
 
+export type ArticleTextBlock = {
+  type: "paragraph";
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  align?: "left" | "center" | "right";
+};
+
+export type ArticleBlock =
+  | ArticleTextBlock
+  | { type: "heading"; text: string; level: 2 | 3; align?: "left" | "center" | "right" }
+  | { type: "image"; url: string; caption?: string | null }
+  | { type: "quote"; text: string }
+  | { type: "list"; style: "ordered" | "unordered"; items: string[] }
+  | { type: "callout"; tone: "info" | "success" | "warning"; text: string }
+  | { type: "divider" };
+
+export type ArticlePostRecord = {
+  id: string;
+  title: string;
+  summary: string | null;
+  coverUrl: string | null;
+  status: string;
+  pinned: boolean;
+  blocks: ArticleBlock[];
+  viewCount: number;
+  visitorCount: number;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ArticlePostInput = {
+  title: string;
+  summary?: string | null;
+  coverUrl?: string | null;
+  status: "draft" | "published";
+  pinned?: boolean;
+  blocks: ArticleBlock[];
+};
+
 export type OrderClaimRecord = {
   id: string;
   userId: string;
@@ -389,6 +430,17 @@ export type Repositories = {
     findById(id: string): Promise<DealPostRecord | undefined>;
     create(input: DealPostInput): Promise<DealPostRecord>;
     update(id: string, input: DealPostInput): Promise<DealPostRecord>;
+    remove(id: string): Promise<void>;
+    recordView(id: string, visitorKey: string): Promise<void>;
+  };
+  articles: {
+    list(
+      publishedOnly: boolean,
+      options?: { page?: number; pageSize?: number }
+    ): Promise<{ total: number; items: ArticlePostRecord[] }>;
+    findById(id: string): Promise<ArticlePostRecord | undefined>;
+    create(input: ArticlePostInput): Promise<ArticlePostRecord>;
+    update(id: string, input: ArticlePostInput): Promise<ArticlePostRecord>;
     remove(id: string): Promise<void>;
     recordView(id: string, visitorKey: string): Promise<void>;
   };

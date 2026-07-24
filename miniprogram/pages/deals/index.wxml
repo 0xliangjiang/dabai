@@ -2,6 +2,12 @@
   <view class="hero hero-slim anim-up"></view>
 
   <view class="content-stack floating-stack">
+    <view class="content-switch anim-up" role="tablist">
+      <button class="content-switch-item {{activeContent === 'deals' ? 'active' : ''}}" data-mode="deals" bindtap="switchContent">优惠线报</button>
+      <button class="content-switch-item {{activeContent === 'articles' ? 'active' : ''}}" data-mode="articles" bindtap="switchContent">实用教程</button>
+    </view>
+
+    <block wx:if="{{activeContent === 'deals'}}">
     <view wx:if="{{cacheNotice}}" class="hint-bar">{{cacheNotice}}，下拉可重新加载。</view>
     <view wx:if="{{subscribeTemplateId}}" class="cu-card subscribe-card flex align-center justify-between gap anim-up">
       <view class="flex-sub">
@@ -67,6 +73,60 @@
         <button class="footer-retry pressable" hover-class="pressed" bindtap="retryLoadMore">重试</button>
       </view>
       <view wx:elif="{{deals.length > 0 && !hasMore}}" class="list-footer muted">已经到底了</view>
+    </block>
+    </block>
+
+    <block wx:else>
+      <block wx:if="{{articleLoading}}">
+        <view wx:for="{{[1, 2, 3]}}" wx:key="*this" class="cu-card flex-direction gap-sm">
+          <view class="skeleton-block article-cover-skeleton"></view>
+          <view class="skeleton-block skeleton-line"></view>
+          <view class="skeleton-block skeleton-line half"></view>
+        </view>
+      </block>
+
+      <view wx:elif="{{articleErrorMsg}}" class="cu-card cu-empty flex-direction align-center justify-center">
+        <view class="empty-icon">!</view>
+        <view class="text-bold">{{articleErrorMsg}}</view>
+        <button class="cu-btn secondary margin-top" bindtap="retryArticles">重新加载</button>
+      </view>
+
+      <view wx:elif="{{articleShowEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center">
+        <view class="empty-icon">文</view>
+        <view class="text-bold">暂时还没有教程</view>
+        <view class="section-desc">实用的省钱技巧会更新在这里</view>
+      </view>
+
+      <block wx:else>
+        <view
+          wx:for="{{articles}}"
+          wx:key="id"
+          class="cu-card article-list-card pressable anim-up delay-{{index < 4 ? index + 1 : 4}}"
+          hover-class="pressed"
+          bindtap="openArticle"
+          data-id="{{item.id}}"
+        >
+          <image wx:if="{{item.coverUrl}}" class="article-list-cover" src="{{item.coverUrl}}" mode="aspectFill" lazy-load />
+          <view class="article-list-body">
+            <view class="flex align-start justify-between gap-sm">
+              <view class="flex align-center gap-xs flex-sub">
+                <view wx:if="{{item.pinned}}" class="pin-tag">置顶</view>
+                <view class="section-title flex-sub text-cut-2">{{item.title}}</view>
+              </view>
+              <view class="cu-arrow">›</view>
+            </view>
+            <view wx:if="{{item.summary}}" class="section-desc text-cut-2">{{item.summary}}</view>
+            <view class="deal-meta flex align-center gap-sm">
+              <view wx:if="{{item.visitorCount > 0}}" class="muted text-sm">{{item.visitorCount}} 人读过</view>
+              <view class="muted text-sm">{{item.dateText}}</view>
+              <button class="deal-share-btn pressable" hover-class="pressed" open-type="share" catchtap="noop" data-kind="article" data-id="{{item.id}}" data-title="{{item.title}}">分享</button>
+            </view>
+          </view>
+        </view>
+        <view wx:if="{{articleLoadingMore}}" class="muted text-sm text-center padding">正在加载更多...</view>
+        <view wx:elif="{{articleLoadMoreError}}" class="list-footer"><text>{{articleLoadMoreError}}</text><button class="footer-retry pressable" bindtap="retryArticleLoadMore">重试</button></view>
+        <view wx:elif="{{articles.length > 0 && !articleHasMore}}" class="list-footer muted">已经到底了</view>
+      </block>
     </block>
   </view>
 </view>

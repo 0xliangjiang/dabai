@@ -3,6 +3,8 @@ import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
   AdminUserRecord,
   AdminWithdrawalRecord,
+  ArticlePostInput,
+  ArticlePostRecord,
   AttributionRecord,
   DownlineRecord,
   CheckInRecord,
@@ -43,6 +45,8 @@ export function createRepositories(): Repositories {
   const checkIns = new Map<string, CheckInRecord>();
   const deals = new Map<string, DealPostRecord>();
   const dealVisits = new Set<string>();
+  const articles = new Map<string, ArticlePostRecord>();
+  const articleVisits = new Set<string>();
   const withdrawalMap = new Map<string, WithdrawalRecord>();
   const deletedUserIds = new Set<string>();
   const pointAdjustments = new Map<string, { id: string; userId: string; amountCents: number }>();
@@ -749,6 +753,81 @@ export function createRepositories(): Repositories {
         if (!dealVisits.has(visitKey)) {
           dealVisits.add(visitKey);
           deal.visitorCount += 1;
+        }
+      }
+    },
+    articles: {
+      async list(publishedOnly: boolean, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const pageSize = Math.min(publishedOnly ? 50 : 500, Math.max(1, options?.pageSize ?? 20));
+        const matching = [...articles.values()]
+          .map((article, index) => ({ article, index }))
+          .filter(({ article }) => !publishedOnly || article.status === "published")
+          .sort((a, b) => {
+            if (a.article.pinned !== b.article.pinned) return a.article.pinned ? -1 : 1;
+            const aTime = (a.article.publishedAt ?? a.article.createdAt).getTime();
+            const bTime = (b.article.publishedAt ?? b.article.createdAt).getTime();
+            if (bTime !== aTime) return bTime - aTime;
+            return b.index - a.index;
+          });
+        return {
+          total: matching.length,
+          items: matching
+            .slice((page - 1) * pageSize, page * pageSize)
+            .map(({ article }) => article)
+        };
+      },
+      async findById(id: string) {
+        return articles.get(id);
+      },
+      async create(input: ArticlePostInput) {
+        const now = new Date();
+        const record: ArticlePostRecord = {
+          id: randomUUID(),
+          title: input.title,
+          summary: input.summary ?? null,
+          coverUrl: input.coverUrl ?? null,
+          status: input.status,
+          pinned: input.pinned ?? false,
+          blocks: input.blocks,
+          viewCount: 0,
+          visitorCount: 0,
+          publishedAt: input.status === "published" ? now : null,
+          createdAt: now,
+          updatedAt: now
+        };
+        articles.set(record.id, record);
+        return record;
+      },
+      async update(id: string, input: ArticlePostInput) {
+        const existing = articles.get(id);
+        if (!existing) throw new Error(`article not found: ${id}`);
+        const updated: ArticlePostRecord = {
+          ...existing,
+          title: input.title,
+          summary: input.summary ?? null,
+          coverUrl: input.coverUrl ?? null,
+          status: input.status,
+          pinned: input.pinned ?? existing.pinned,
+          blocks: input.blocks,
+          publishedAt:
+            input.status === "published" && !existing.publishedAt ? new Date() : existing.publishedAt,
+          updatedAt: new Date()
+        };
+        articles.set(id, updated);
+        return updated;
+      },
+      async remove(id: string) {
+        articles.delete(id);
+      },
+      async recordView(id: string, visitorKey: string) {
+        const article = articles.get(id);
+        if (!article) return;
+        article.viewCount += 1;
+        const visitKey = `${id}:${visitorKey}`;
+        if (!articleVisits.has(visitKey)) {
+          articleVisits.add(visitKey);
+          article.visitorCount += 1;
         }
       }
     },

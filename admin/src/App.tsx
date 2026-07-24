@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowDownToLine,
+  BookOpenText,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -39,6 +40,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
 import { Toaster } from "./components/ui/toaster";
 import { DealManager } from "./DealManager";
+import { ArticleManager } from "./ArticleManager";
 import {
   apiBaseUrl,
   fetchAdminApi,
@@ -99,6 +101,7 @@ const NAV_GROUPS = [
     items: [
       { id: "overview", label: "概览", icon: LayoutDashboard },
       { id: "deals", label: "线报管理", icon: Megaphone },
+      { id: "articles", label: "文章管理", icon: BookOpenText },
       { id: "users", label: "用户", icon: Users }
     ]
   },
@@ -962,6 +965,7 @@ export function App() {
           )}
 
           {activeNav === "deals" && <DealManager adminToken={adminToken} />}
+          {activeNav === "articles" && <ArticleManager adminToken={adminToken} />}
 
           {activeNav === "users" && (
           <SectionCard

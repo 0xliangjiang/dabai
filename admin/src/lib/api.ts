@@ -156,6 +156,30 @@ export type AdminDeal = {
   updatedAt: string;
 };
 
+export type AdminArticleBlock =
+  | { type: "paragraph"; text: string; bold?: boolean; italic?: boolean; align?: "left" | "center" | "right" }
+  | { type: "heading"; text: string; level: 2 | 3; align?: "left" | "center" | "right" }
+  | { type: "image"; url: string; caption?: string | null }
+  | { type: "quote"; text: string }
+  | { type: "list"; style: "ordered" | "unordered"; items: string[] }
+  | { type: "callout"; tone: "info" | "success" | "warning"; text: string }
+  | { type: "divider" };
+
+export type AdminArticle = {
+  id: string;
+  title: string;
+  summary: string | null;
+  coverUrl: string | null;
+  status: string;
+  pinned: boolean;
+  blocks: AdminArticleBlock[];
+  viewCount: number;
+  visitorCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminClaim = {
   id: string;
   userId: string;

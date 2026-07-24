@@ -8,6 +8,7 @@ import { buildCommissionLedgerEntry, buildReferralLedgerEntry, resolveSharingRat
 import { reattributePendingOrders, reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
+import { registerAdminArticleRoutes } from "./articles.js";
 import { handleMediaUpload } from "./uploads.js";
 import { centsToPoints } from "../domain/points.js";
 
@@ -27,6 +28,8 @@ export async function registerAdminRoutes(
       return reply.code(401).send({ error: "unauthorized" });
     }
   });
+
+  await registerAdminArticleRoutes(app, repositories);
 
   app.get("/api/admin/overview", async () => ({
     metrics: await repositories.admin.overview()
