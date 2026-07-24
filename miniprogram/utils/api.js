@@ -26,7 +26,11 @@ function rawRequest(path, options = {}) {
           resolve(res.data);
           return;
         }
-        reject({ statusCode: res.statusCode, ...(res.data || { error: "request failed" }) });
+        reject({
+          statusCode: res.statusCode,
+          ...(res.data || { error: "request failed" }),
+          _authToken: token
+        });
       },
       fail: reject
     });
@@ -40,6 +44,11 @@ async function request(path, options = {}) {
     // 登录态过期：清除本地凭证，静默重新登录后重试一次
     const isLoginCall = path === "/api/auth/wechat-login";
     if (error && error.statusCode === 401 && !isLoginCall && !options._retried) {
+      // 并发请求中，较晚返回的旧 token 401 不应清掉刚登录得到的新 token。
+      const currentToken = getToken();
+      if (currentToken && error._authToken && currentToken !== error._authToken) {
+        return request(path, { ...options, _retried: true });
+      }
       logout();
       await loginWithWechat();
       return request(path, { ...options, _retried: true });
@@ -65,15 +74,51 @@ function wxLogin() {
 
 let inflightLogin = null;
 
-async function doLogin() {
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetryLogin(error) {
+  // wx.login / wx.request 网络失败没有 statusCode；微信 code 偶发失效返回 401；
+  // 服务端临时不可用返回 5xx。参数错误等确定性问题不重试。
+  return (
+    !error ||
+    !error.statusCode ||
+    error.statusCode === 401 ||
+    error.statusCode >= 500
+  );
+}
+
+async function loginOnce() {
   const code = await wxLogin();
   // 二级分销：把暂存的邀请人带上（仅新用户首次注册会被后端绑定）
   const inviterId = wx.getStorageSync("pending_inviter") || "";
-  const data = await request("/api/auth/wechat-login", {
+  return request("/api/auth/wechat-login", {
     method: "POST",
     data: inviterId ? { code, inviterId } : { code },
     header: { authorization: "" }
   });
+}
+
+async function doLogin() {
+  const retryDelays = [0, 400, 1000];
+  let lastError = null;
+  let data = null;
+
+  for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+    if (retryDelays[attempt] > 0) await wait(retryDelays[attempt]);
+    try {
+      // 微信 code 只能使用一次，每次重试都必须重新调用 wx.login。
+      data = await loginOnce();
+      break;
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetryLogin(error) || attempt === retryDelays.length - 1) throw error;
+      console.warn(`微信登录第 ${attempt + 1} 次失败，准备重试`, error && error.errMsg ? error.errMsg : error && error.statusCode);
+    }
+  }
+
+  if (!data) throw lastError || new Error("微信登录失败");
   wx.setStorageSync("token", data.token);
   wx.setStorageSync("user", data.user);
   // 用过即清，避免后续登录重复携带
