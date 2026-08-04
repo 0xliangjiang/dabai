@@ -20,7 +20,7 @@
         <view class="step-pill">
           <view class="step-index">3</view>
           <view class="cu-label">复制</view>
-          <view class="muted text-sm margin-top-xs">去下单</view>
+          <view class="muted text-sm margin-top-xs">口令 + 链接</view>
         </view>
       </view>
     </view>
@@ -31,20 +31,12 @@
           <view class="section-title">商品内容</view>
         </view>
         <view class="flex align-center gap-sm">
-          <view class="clear-chip pressable" hover-class="pressed" bindtap="clearContent">清空</view>
+          <view wx:if="{{rawContent}}" class="clear-chip pressable" hover-class="pressed" bindtap="clearContent">清空</view>
           <view class="paste-chip pressable" hover-class="pressed" bindtap="pasteFromClipboard">粘贴</view>
         </view>
       </view>
       <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
       <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{loading}}" disabled="{{loading}}" bindtap="convert">{{loading ? '正在查询…' : '查看预估优惠'}}</button>
-    </view>
-
-    <view class="cu-card anim-up delay-2 flex align-center justify-between gap" bindtap="onSubscribe">
-      <view class="flex-sub">
-        <view class="section-title">🔔 新券提醒</view>
-        <view class="muted text-sm margin-top-xs">订阅后，有好券第一时间通知你</view>
-      </view>
-      <view class="paste-chip pressable" hover-class="pressed">订阅</view>
     </view>
 
     <view wx:if="{{loading}}" class="cu-card flex-direction gap anim-up">
@@ -87,26 +79,22 @@
       </view>
 
       <view class="hint-bar">1 奖励值对应 1 元奖励价值；预估结果最终以订单结算为准。</view>
-      <view class="flex-direction gap">
-        <view wx:if="{{result.hasPassword}}">
-          <view class="flex align-center justify-between">
-            <view class="cu-label">分享文案</view>
-            <view class="select-hint">长按可选中复制</view>
-          </view>
-          <view class="code-box margin-top-xs"><text user-select>{{result.shareText}}</text></view>
+      <view>
+        <view class="flex align-center justify-between">
+          <view class="cu-label">{{result.orderInfoLabel}}</view>
+          <view class="select-hint">长按可选中复制</view>
         </view>
-        <view>
-          <view class="flex align-center justify-between">
-            <view class="cu-label">打开链接</view>
-            <view class="select-hint">长按可选中复制</view>
-          </view>
-          <view class="code-box margin-top-xs"><text user-select>{{result.displayLink}}</text></view>
-        </view>
+        <view class="code-box margin-top-xs"><text user-select>{{result.shareText}}</text></view>
       </view>
-      <view class="flex gap-sm responsive-actions">
-        <button wx:if="{{result.hasPassword}}" class="cu-btn primary flex-sub pressable {{copied === 'password' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyPassword">{{copied === 'password' ? '已复制，去下单' : result.passwordActionLabel}}</button>
-        <button class="cu-btn {{result.hasPassword ? 'secondary' : 'primary'}} flex-sub pressable {{copied === 'link' ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyLink">{{copied === 'link' ? '已复制，去下单' : result.linkActionLabel}}</button>
+      <button class="cu-btn primary block pressable {{copied ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyOrderInfo">{{copied ? '已复制，去下单' : result.orderActionLabel}}</button>
+    </view>
+
+    <view class="cu-card anim-up delay-2 flex align-center justify-between gap" bindtap="onSubscribe">
+      <view class="flex-sub">
+        <view class="section-title">🔔 新券提醒</view>
+        <view class="muted text-sm margin-top-xs">订阅后，有好券第一时间通知你</view>
       </view>
+      <view class="paste-chip pressable" hover-class="pressed">订阅</view>
     </view>
   </view>
 

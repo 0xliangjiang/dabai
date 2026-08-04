@@ -60,7 +60,14 @@ Page({
   },
 
   onInput(event) {
-    this.setData({ rawContent: event.detail.value });
+    const rawContent = event.detail.value;
+    if (rawContent === this.data.rawContent) return;
+    this.setData({
+      rawContent,
+      result: null,
+      errorMsg: "",
+      copied: ""
+    });
   },
 
   async onSubscribe() {
@@ -142,14 +149,11 @@ Page({
     }
   },
 
-  copyPassword() {
-    this.copyResult("password", this.data.result.shareText).catch(() => {
-      this.showManualCopyTip();
-    });
-  },
-
-  copyLink() {
-    this.copyResult("link", this.data.result.generatedShortUrl || this.data.result.generatedClickUrl).catch(() => {
+  copyOrderInfo() {
+    const result = this.data.result;
+    if (!result) return;
+    const copyType = result.hasPassword ? "password" : "link";
+    this.copyResult(copyType, result.shareText).catch(() => {
       this.showManualCopyTip();
     });
   },
@@ -158,7 +162,7 @@ Page({
   showManualCopyTip() {
     wx.showModal({
       title: "一键复制不可用",
-      content: "请长按上方口令或链接文字，选中后手动复制。",
+      content: "请长按上方下单信息，选中后手动复制。",
       showCancel: false,
       confirmText: "知道了"
     });
@@ -174,8 +178,8 @@ Page({
       displayLink,
       platformLabel: this.platformLabel(result.platform),
       hasPassword: Boolean(result.generatedPassword),
-      passwordActionLabel: result.platform === "taobao" ? "复制淘口令" : "复制文案",
-      linkActionLabel: result.generatedPassword ? "复制链接" : "复制链接，去下单",
+      orderInfoLabel: result.generatedPassword ? "口令 + 链接" : "下单链接",
+      orderActionLabel: result.generatedPassword ? "复制口令 + 链接" : "复制链接，去下单",
       shareText: buildShareText(result, displayLink)
     };
   },
