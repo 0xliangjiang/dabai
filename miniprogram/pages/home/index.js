@@ -24,7 +24,9 @@ Page({
   data: {
     rawContent: "",
     loading: false,
+    loadingStage: 0,
     result: null,
+    showResult: false,
     errorMsg: "",
     copied: "",
     showPrivacy: false
@@ -65,6 +67,7 @@ Page({
     this.setData({
       rawContent,
       result: null,
+      showResult: false,
       errorMsg: "",
       copied: ""
     });
@@ -126,7 +129,12 @@ Page({
       wx.showToast({ title: "请先粘贴内容", icon: "none" });
       return;
     }
+    if (this.data.result) {
+      this.setData({ showResult: true });
+      return;
+    }
 
+    this.startLoadingStages();
     this.setData({ loading: true, errorMsg: "", copied: "" });
     try {
       await ensureLogin();
@@ -134,19 +142,35 @@ Page({
         method: "POST",
         data: { rawContent: this.data.rawContent }
       });
-      this.setData({ result: this.formatResult(result) });
+      this.setData({ result: this.formatResult(result), showResult: true });
       trackEvent("conversion_success", { platform: result.platform || "unknown" });
     } catch (error) {
       this.setData({
         result: null,
+        showResult: false,
         errorMsg: error.error || "未识别到商品"
       });
       trackEvent("conversion_failed", {
         reason: (error && error.error) || "unknown"
       });
     } finally {
+      this.stopLoadingStages();
       this.setData({ loading: false });
     }
+  },
+
+  startLoadingStages() {
+    this.stopLoadingStages();
+    this.setData({ loadingStage: 0 });
+    this.loadingStageTimers = [
+      setTimeout(() => this.setData({ loadingStage: 1 }), 700),
+      setTimeout(() => this.setData({ loadingStage: 2 }), 1500)
+    ];
+  },
+
+  stopLoadingStages() {
+    (this.loadingStageTimers || []).forEach(clearTimeout);
+    this.loadingStageTimers = [];
   },
 
   copyOrderInfo() {
@@ -157,6 +181,12 @@ Page({
       this.showManualCopyTip();
     });
   },
+
+  closeResult() {
+    this.setData({ showResult: false });
+  },
+
+  preventResultClose() {},
 
   // 一键复制失败（如剪贴板权限受限）时，引导用户长按文本手动复制
   showManualCopyTip() {
@@ -178,8 +208,8 @@ Page({
       displayLink,
       platformLabel: this.platformLabel(result.platform),
       hasPassword: Boolean(result.generatedPassword),
-      orderInfoLabel: result.generatedPassword ? "口令 + 链接" : "下单链接",
-      orderActionLabel: result.generatedPassword ? "复制口令 + 链接" : "复制链接，去下单",
+      orderInfoLabel: result.generatedPassword ? "分享文案（淘口令 + 链接）" : "下单链接",
+      orderActionLabel: result.generatedPassword ? "复制分享文案" : "复制链接，去下单",
       shareText: buildShareText(result, displayLink)
     };
   },
@@ -237,6 +267,7 @@ Page({
 
   onUnload() {
     clearTimeout(this.copiedTimer);
+    this.stopLoadingStages();
   },
 
   async loginQuietly() {
@@ -263,7 +294,7 @@ Page({
 
   clearContent() {
     if (!this.data.rawContent) return;
-    this.setData({ rawContent: "", result: null, errorMsg: "", copied: "" });
+    this.setData({ rawContent: "", result: null, showResult: false, errorMsg: "", copied: "" });
   },
 
   onProductImageError() {
@@ -274,6 +305,7 @@ Page({
     this.setData({
       rawContent: content,
       result: null,
+      showResult: false,
       errorMsg: "",
       copied: ""
     });

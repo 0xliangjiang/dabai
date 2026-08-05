@@ -7,6 +7,13 @@
 
   <view class="poster-preview">
     <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
+    <image
+      wx:if="{{posterReady && posterImagePath}}"
+      class="poster-image"
+      src="{{posterImagePath}}"
+      mode="aspectFill"
+      show-menu="{{true}}"
+    ></image>
     <view wx:if="{{rendering}}" class="poster-loading">
       <view class="poster-loading-mark"></view>
       <view>{{posterReady ? "正在切换模板" : "正在生成专属海报"}}</view>
@@ -40,8 +47,9 @@
   </view>
 
   <view class="poster-actions">
-    <button class="poster-save-btn pressable" hover-class="pressed" loading="{{saving}}" disabled="{{!posterReady || rendering || saving}}" bindtap="savePoster">保存到相册</button>
+    <button class="poster-save-btn pressable" hover-class="pressed" loading="{{saving}}" disabled="{{!posterReady || rendering || saving}}" bindtap="savePoster">{{saving ? "正在保存" : "保存到相册"}}</button>
     <button class="poster-share-btn pressable" hover-class="pressed" open-type="share">直接发给好友</button>
   </view>
+  <view class="poster-save-tip">也可以长按海报，使用微信菜单保存图片</view>
   <view class="poster-note">好友扫码首次进入并登录后，会自动记录邀请关系</view>
 </view>

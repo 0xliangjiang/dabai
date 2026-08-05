@@ -20,7 +20,7 @@
         <view class="step-pill">
           <view class="step-index">3</view>
           <view class="cu-label">复制</view>
-          <view class="muted text-sm margin-top-xs">口令 + 链接</view>
+          <view class="muted text-sm margin-top-xs">分享文案</view>
         </view>
       </view>
     </view>
@@ -36,57 +36,14 @@
         </view>
       </view>
       <textarea class="cu-textarea" value="{{rawContent}}" placeholder="粘贴商品口令、链接或分享文案" auto-height bindinput="onInput" />
-      <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{loading}}" disabled="{{loading}}" bindtap="convert">{{loading ? '正在查询…' : '查看预估优惠'}}</button>
+      <button class="cu-btn primary block pressable" hover-class="pressed" loading="{{loading}}" disabled="{{loading}}" bindtap="convert">{{loading ? '正在查询…' : (result ? '查看查询结果' : '查看预估优惠')}}</button>
     </view>
 
-    <view wx:if="{{loading}}" class="cu-card flex-direction gap anim-up">
-      <view class="flex align-start gap">
-        <view class="skeleton-block skeleton-thumb"></view>
-        <view class="flex-sub flex-direction gap-sm">
-          <view class="skeleton-block skeleton-line short"></view>
-          <view class="skeleton-block skeleton-line"></view>
-          <view class="skeleton-block skeleton-line half"></view>
-        </view>
-      </view>
-      <view class="skeleton-block skeleton-line tall"></view>
-    </view>
-
-    <view wx:elif="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
+    <view wx:if="{{errorMsg}}" class="cu-card error-card flex-direction align-center anim-pop">
       <view class="error-icon">!</view>
       <view class="text-bold">{{errorMsg}}</view>
       <view class="section-desc">请检查粘贴的内容是否完整，或换一个商品试试。</view>
       <button class="cu-btn secondary block margin-top pressable" hover-class="pressed" bindtap="convert">重新查询</button>
-    </view>
-
-    <view wx:elif="{{result}}" class="cu-card product-card flex-direction gap anim-pop">
-      <view class="flex align-start gap">
-        <image wx:if="{{result.itemImageUrl}}" class="product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" lazy-load binderror="onProductImageError" />
-        <view wx:else class="product-thumb placeholder flex align-center justify-center">商品</view>
-        <view class="flex-sub">
-          <view class="flex align-center justify-between gap-sm">
-            <view class="cu-tag green">已识别</view>
-            <view class="cu-tag dark">{{result.platformLabel}}</view>
-          </view>
-          <view class="section-title margin-top-sm text-cut-2">{{result.itemTitle}}</view>
-          <view class="flex align-center gap-sm margin-top-sm">
-            <view class="price">¥{{result.itemPrice}}</view>
-          </view>
-          <view class="rebate-panel margin-top-sm">
-            <view class="rebate-label">预估奖励值</view>
-            <view class="rebate-value">{{result.estimatedPoints}}<text class="rebate-unit"> 奖励值</text></view>
-          </view>
-        </view>
-      </view>
-
-      <view class="hint-bar">1 奖励值对应 1 元奖励价值；预估结果最终以订单结算为准。</view>
-      <view>
-        <view class="flex align-center justify-between">
-          <view class="cu-label">{{result.orderInfoLabel}}</view>
-          <view class="select-hint">长按可选中复制</view>
-        </view>
-        <view class="code-box margin-top-xs"><text user-select>{{result.shareText}}</text></view>
-      </view>
-      <button class="cu-btn primary block pressable {{copied ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyOrderInfo">{{copied ? '已复制，去下单' : result.orderActionLabel}}</button>
     </view>
 
     <view class="cu-card anim-up delay-2 flex align-center justify-between gap" bindtap="onSubscribe">
@@ -95,6 +52,79 @@
         <view class="muted text-sm margin-top-xs">订阅后，有好券第一时间通知你</view>
       </view>
       <view class="paste-chip pressable" hover-class="pressed">订阅</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="query-loading-mask anim-fade">
+    <view class="query-loading-card anim-pop">
+      <view class="query-loading-visual">
+        <view class="query-loading-ring"></view>
+        <view class="query-loading-mark">券</view>
+      </view>
+      <view class="query-loading-title">正在查询优惠</view>
+      <view class="query-loading-desc">识别商品并生成专属下单文案</view>
+      <view class="query-loading-progress">
+        <view class="query-loading-progress-bar"></view>
+      </view>
+      <view class="query-loading-steps">
+        <view class="query-loading-step {{loadingStage >= 0 ? 'active' : ''}}"><text class="query-loading-dot"></text>识别商品</view>
+        <view class="query-loading-step {{loadingStage >= 1 ? 'active' : ''}}"><text class="query-loading-dot"></text>查询优惠</view>
+        <view class="query-loading-step {{loadingStage >= 2 ? 'active' : ''}}"><text class="query-loading-dot"></text>生成文案</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{result && showResult}}" class="result-modal-mask anim-fade" bindtap="closeResult">
+    <view class="result-sheet anim-sheet-up" catchtap="preventResultClose">
+      <view class="result-sheet-handle"></view>
+      <view class="result-sheet-header">
+        <view>
+          <view class="result-sheet-kicker">查询完成</view>
+          <view class="result-sheet-title">发现可用优惠</view>
+        </view>
+        <view class="result-sheet-close pressable" hover-class="pressed" role="button" aria-label="关闭查询结果" bindtap="closeResult">
+          <view class="result-sheet-close-icon"></view>
+        </view>
+      </view>
+
+      <scroll-view class="result-sheet-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="result-sheet-content">
+          <view class="result-product-row">
+            <image wx:if="{{result.itemImageUrl}}" class="result-product-thumb" src="{{result.itemImageUrl}}" mode="aspectFill" lazy-load binderror="onProductImageError" />
+            <view wx:else class="result-product-thumb placeholder flex align-center justify-center">商品</view>
+            <view class="flex-sub">
+              <view class="flex align-center gap-sm">
+                <view class="cu-tag green">已识别</view>
+                <view class="cu-tag dark">{{result.platformLabel}}</view>
+              </view>
+              <view class="result-product-title text-cut-2">{{result.itemTitle}}</view>
+              <view class="price margin-top-sm">¥{{result.itemPrice}}</view>
+            </view>
+          </view>
+
+          <view class="rebate-panel result-rebate-panel">
+            <view>
+              <view class="rebate-label">预估奖励值</view>
+              <view class="result-rebate-desc">下单后可在订单页查看进度</view>
+            </view>
+            <view class="rebate-value">{{result.estimatedPoints}}<text class="rebate-unit"> 奖励值</text></view>
+          </view>
+
+          <view class="hint-bar">1 奖励值对应 1 元奖励价值；预估结果最终以订单结算为准。</view>
+
+          <view class="result-copy-section">
+            <view class="flex align-center justify-between gap-sm">
+              <view class="cu-label">{{result.orderInfoLabel}}</view>
+              <view class="select-hint">长按可选中复制</view>
+            </view>
+            <view class="code-box margin-top-xs"><text user-select>{{result.shareText}}</text></view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="result-sheet-footer">
+        <button class="cu-btn primary block pressable {{copied ? 'is-copied' : ''}}" hover-class="pressed" bindtap="copyOrderInfo">{{copied ? '已复制，去下单' : result.orderActionLabel}}</button>
+      </view>
     </view>
   </view>
 

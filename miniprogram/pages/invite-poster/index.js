@@ -14,6 +14,7 @@ Page({
     selectedTemplateId: POSTER_TEMPLATES[0].id,
     rendering: true,
     posterReady: false,
+    posterImagePath: "",
     saving: false,
     errorMsg: ""
   },
@@ -59,7 +60,13 @@ Page({
         qrImage
       });
       await wait(80);
-      this.setData({ rendering: false, posterReady: true, errorMsg: "" });
+      const posterImagePath = await exportCanvas(canvas);
+      this.setData({
+        rendering: false,
+        posterReady: true,
+        posterImagePath,
+        errorMsg: ""
+      });
       trackEvent("invite_poster_generated", { template: this.data.selectedTemplateId });
     } catch (error) {
       console.warn("邀请海报生成失败", error);
@@ -87,29 +94,41 @@ Page({
   },
 
   async savePoster() {
-    if (!this.data.posterReady || this.data.saving || !this.canvas) return;
+    if (!this.data.posterReady || !this.data.posterImagePath || this.data.saving) return;
     this.setData({ saving: true });
     try {
-      const tempFilePath = await exportCanvas(this.canvas);
-      await saveToAlbum(tempFilePath);
+      await ensureAlbumPermission();
+      await saveToAlbum(this.data.posterImagePath);
       trackEvent("invite_poster_saved", { template: this.data.selectedTemplateId });
       wx.showToast({ title: "已保存到相册", icon: "success" });
     } catch (error) {
       if (isAlbumDenied(error)) {
-        wx.showModal({
-          title: "需要相册权限",
-          content: "请在设置中允许保存图片，之后即可保存邀请海报。",
-          confirmText: "去设置",
-          success: (result) => {
-            if (result.confirm) wx.openSetting();
-          }
-        });
+        this.showAlbumPermissionGuide();
       } else if (!error || !String(error.errMsg || "").includes("cancel")) {
+        console.warn("邀请海报保存失败", error);
         wx.showToast({ title: "保存失败，请稍后重试", icon: "none" });
       }
     } finally {
       this.setData({ saving: false });
     }
+  },
+
+  showAlbumPermissionGuide() {
+    wx.showModal({
+      title: "需要相册权限",
+      content: "请在设置中允许保存到相册，开启后将自动继续保存海报。",
+      confirmText: "去设置",
+      success: (result) => {
+        if (!result.confirm) return;
+        wx.openSetting({
+          success: (setting) => {
+            if (setting.authSetting && setting.authSetting["scope.writePhotosAlbum"]) {
+              this.savePoster();
+            }
+          }
+        });
+      }
+    });
   }
 });
 
@@ -150,6 +169,30 @@ function exportCanvas(canvas) {
   });
 }
 
+function ensureAlbumPermission() {
+  return new Promise((resolve, reject) => {
+    wx.getSetting({
+      success(result) {
+        const authorized = result.authSetting && result.authSetting["scope.writePhotosAlbum"];
+        if (authorized === true) {
+          resolve();
+          return;
+        }
+        if (authorized === false) {
+          reject({ errMsg: "authorize:fail auth denied" });
+          return;
+        }
+        wx.authorize({
+          scope: "scope.writePhotosAlbum",
+          success: resolve,
+          fail: reject
+        });
+      },
+      fail: reject
+    });
+  });
+}
+
 function saveToAlbum(filePath) {
   return new Promise((resolve, reject) => {
     wx.saveImageToPhotosAlbum({ filePath, success: resolve, fail: reject });
@@ -157,8 +200,11 @@ function saveToAlbum(filePath) {
 }
 
 function isAlbumDenied(error) {
-  const message = String((error && error.errMsg) || "");
-  return message.includes("auth deny") || message.includes("auth denied") || message.includes("authorize:fail");
+  const message = String((error && error.errMsg) || "").toLowerCase();
+  return message.includes("auth deny") ||
+    message.includes("auth denied") ||
+    message.includes("authorize:fail") ||
+    message.includes("permission denied");
 }
 
 function wait(ms) {
