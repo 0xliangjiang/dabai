@@ -21,10 +21,13 @@
     "dotenv": "^16.6.1",
     "fastify": "^5.2.1",
     "prisma": "^6.19.3",
+    "qrcode": "^1.5.4",
+    "undici": "^7.29.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@types/qrcode": "^1.5.6",
     "tsx": "^4.23.1",
     "typescript": "^5.7.2",
     "vitest": "^3.2.7"

@@ -18,21 +18,29 @@ COPY server/src server/src
 RUN npm run build --workspace=server
 
 # 运行阶段：仅生产依赖
-FROM node:22-alpine AS runtime
+FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
 COPY server/package.json server/
+COPY server/requirements-zepp.txt server/
 COPY admin/package.json admin/
-COPY server/prisma server/prisma
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates wget \
+  && python3 -m venv /opt/zepp-venv \
+  && /opt/zepp-venv/bin/pip install --no-cache-dir -r server/requirements-zepp.txt \
+  && rm -rf /var/lib/apt/lists/*
+ENV PATH="/opt/zepp-venv/bin:$PATH"
 RUN npm ci --workspace=server --omit=dev
 
+COPY server/prisma server/prisma
 RUN find server/prisma/migrations -mindepth 1 -maxdepth 1 -type d \
   -exec sh -c '[ -f "$1/migration.sql" ] || rm -rf "$1"' _ {} \; \
   && npx prisma generate --schema server/prisma/schema.prisma
 
 COPY --from=build /app/server/dist server/dist
+COPY server/src/integrations/zepp/ocr.py server/dist/integrations/zepp/ocr.py
 COPY server/docker-entrypoint.sh server/docker-entrypoint.sh
 COPY server/scripts server/scripts
 RUN chmod +x server/docker-entrypoint.sh && mkdir -p server/data server/uploads

@@ -1,0 +1,139 @@
+<view class="sports-page">
+  <view class="account-panel anim-up" aria-label="运动账号信息">
+    <button
+      class="bind-action pressable {{binding ? 'is-loading' : ''}}"
+      hover-class="pressed"
+      aria-label="绑定运动账号"
+      bindtap="handleBindTap"
+      loading="{{binding}}"
+      disabled="{{binding}}"
+    >
+      <view class="bind-icon" aria-hidden="true">
+        <view class="link-ring link-ring-left"></view>
+        <view class="link-ring link-ring-right"></view>
+      </view>
+      <text class="bind-title">{{isBound ? '已绑定' : (binding ? '处理中' : '绑定账号')}}</text>
+    </button>
+
+    <view class="account-summary">
+      <view class="account-heading">
+        <view class="account-label">运动账号</view>
+        <view class="status-pill {{isBound ? 'is-bound' : 'is-unbound'}}">
+          <view class="status-dot"></view>
+          {{isBound ? '已绑定' : '未绑定'}}
+        </view>
+      </view>
+      <view wx:if="{{isBound}}" class="account-detail">
+        <view class="account-name text-cut">{{account.email}}</view>
+        <view class="account-meta text-cut">会员有效期至 {{membershipExpiresAt || '未开通'}}</view>
+      </view>
+      <view wx:else class="account-detail">
+        <view class="account-name">{{account ? account.email : '暂无绑定账号'}}</view>
+        <view class="account-meta">会员有效期至 {{membershipExpiresAt || '未开通'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="chat-panel anim-up delay-1" aria-label="运动 AI 助手对话">
+    <view class="chat-header">
+      <view class="assistant-identity">
+        <view class="assistant-avatar" aria-hidden="true">
+          <view class="activity-line"></view>
+        </view>
+        <view class="assistant-copy">
+          <view class="assistant-name">运动助手</view>
+          <view class="assistant-state">解读运动记录，给出训练建议</view>
+        </view>
+      </view>
+    </view>
+
+    <scroll-view class="chat-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="chat-content">
+        <view class="message-row">
+          <view class="message-avatar">动</view>
+          <view class="message-group">
+            <view class="message-author">运动助手</view>
+            <view class="message-bubble">
+              绑定运动账号后，我可以帮你总结训练、发现节奏变化，也能一起安排恢复计划。
+            </view>
+          </view>
+        </view>
+
+        <view class="suggestion-block">
+          <view class="suggestion-title">试着问我</view>
+          <view class="suggestion-list">
+            <view wx:for="{{suggestions}}" wx:key="*this" class="suggestion-item">
+              <view class="suggestion-mark">{{index + 1}}</view>
+              <text class="suggestion-text">{{item}}</text>
+              <view class="suggestion-arrow" aria-hidden="true">›</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="composer-wrap">
+      <view class="composer-notice">
+        <view class="notice-dot"></view>
+        {{isBound ? '对话功能即将开放' : '绑定账号后可开始对话'}}
+      </view>
+      <view class="composer is-disabled">
+        <textarea
+          class="composer-input"
+          placeholder="问问你的运动助手"
+          placeholder-class="composer-placeholder"
+          auto-height
+          maxlength="500"
+          disabled
+          aria-label="对话输入框，当前不可用"
+        />
+        <button class="send-button is-disabled" disabled aria-label="发送消息，当前不可用">
+          <view class="send-arrow"></view>
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{dialogVisible}}" class="binding-overlay" catchtouchmove="noop">
+    <view class="binding-dialog" role="dialog" aria-label="绑定 Zepp Life 账号">
+      <button class="dialog-close" bindtap="closeBindingDialog" disabled="{{binding}}" aria-label="关闭">×</button>
+
+      <block wx:if="{{dialogStage === 'captcha'}}">
+        <view class="dialog-title">创建 Zepp Life 账号</view>
+        <view class="dialog-description">输入验证码后，系统会为当前账号自动完成注册。</view>
+        <image class="captcha-image" src="{{captchaImage}}" mode="aspectFit" aria-label="Zepp 注册验证码" />
+        <input
+          class="captcha-input"
+          value="{{captchaCode}}"
+          placeholder="输入图片验证码"
+          maxlength="12"
+          bindinput="handleCaptchaInput"
+          confirm-type="done"
+          bindconfirm="submitCaptcha"
+          focus
+        />
+        <button class="dialog-primary {{binding ? 'is-disabled' : ''}}" bindtap="submitCaptcha" loading="{{binding}}" disabled="{{binding}}">
+          创建账号并获取二维码
+        </button>
+      </block>
+
+      <block wx:elif="{{dialogStage === 'scan'}}">
+        <view class="dialog-title">绑定微信</view>
+        <view class="dialog-description">请使用微信扫码，或长按二维码识别。</view>
+        <image
+          class="bind-qrcode"
+          src="{{qrcodeImage}}"
+          mode="aspectFit"
+          show-menu-by-longpress
+          aria-label="Zepp Life 微信绑定二维码"
+        />
+        <button class="dialog-primary {{binding ? 'is-disabled' : ''}}" bindtap="refreshBinding" loading="{{binding}}" disabled="{{binding}}">
+          我已扫码，检查绑定结果
+        </button>
+      </block>
+
+      <view wx:if="{{bindingMessage}}" class="binding-message">{{bindingMessage}}</view>
+      <view wx:if="{{bindingError}}" class="binding-error">{{bindingError}}</view>
+    </view>
+  </view>
+</view>

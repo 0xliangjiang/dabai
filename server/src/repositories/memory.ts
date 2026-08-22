@@ -18,6 +18,7 @@ import type {
   OrderSyncRunRecord,
   ProductSnapshotRecord,
   Repositories,
+  SportsAccountRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
   UserRecord,
@@ -33,6 +34,7 @@ const REFERRAL_ENABLED_KEY = "referral_enabled";
 export function createRepositories(): Repositories {
   const users = new Map<string, UserRecord>();
   const usersByOpenid = new Map<string, string>();
+  const sportsAccounts = new Map<string, SportsAccountRecord>();
   const conversions = new Map<string, ConversionRecord>();
   const copyEvents = new Map<string, CopyEventRecord>();
   const productSnapshots = new Map<string, ProductSnapshotRecord>();
@@ -238,6 +240,56 @@ export function createRepositories(): Repositories {
         const sum = (status: string) =>
           entries.filter((e) => e.status === status).reduce((t, e) => t + e.amountCents, 0);
         return { downlineCount, earnedCents: sum("available"), pendingCents: sum("pending") };
+      }
+    },
+    sportsAccounts: {
+      async findByUser(userId: string) {
+        return sportsAccounts.get(userId);
+      },
+      async create(input) {
+        if (sportsAccounts.has(input.userId)) {
+          throw new Error(`sports account already exists: ${input.userId}`);
+        }
+        const now = new Date();
+        const record: SportsAccountRecord = {
+          id: randomUUID(),
+          userId: input.userId,
+          email: input.email,
+          passwordCipher: input.passwordCipher,
+          loginTokenCipher: null,
+          appTokenCipher: null,
+          zeppUserId: null,
+          status: "awaiting_captcha",
+          bindStatus: "unbound",
+          captchaKey: input.captchaKey,
+          captchaExpiresAt: input.captchaExpiresAt,
+          membershipExpiresAt: input.membershipExpiresAt,
+          createdAt: now,
+          updatedAt: now
+        };
+        sportsAccounts.set(input.userId, record);
+        return record;
+      },
+      async update(userId, input) {
+        const current = sportsAccounts.get(userId);
+        if (!current) throw new Error(`sports account not found: ${userId}`);
+        const updated = { ...current, ...input, updatedAt: new Date() };
+        sportsAccounts.set(userId, updated);
+        return updated;
+      },
+      async claimCaptcha(userId, now) {
+        const current = sportsAccounts.get(userId);
+        if (
+          !current ||
+          current.status !== "awaiting_captcha" ||
+          !current.captchaKey ||
+          !current.captchaExpiresAt ||
+          current.captchaExpiresAt.getTime() <= now.getTime()
+        ) {
+          return false;
+        }
+        sportsAccounts.set(userId, { ...current, status: "registering", updatedAt: new Date() });
+        return true;
       }
     },
     settings: {

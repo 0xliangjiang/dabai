@@ -1,10 +1,3 @@
-const tabBarMap = {
-  "/pages/home/index": 0,
-  "/pages/deals/index": 1,
-  "/pages/orders/index": 2,
-  "/pages/profile/index": 3
-};
-
 function syncTabBar(page) {
   if (!page || typeof page.getTabBar !== "function") return;
 
@@ -12,8 +5,8 @@ function syncTabBar(page) {
   if (!tabBar) return;
 
   const route = `/${page.route}`;
-  const selected = tabBarMap[route];
-  if (selected === undefined) return;
+  const selected = tabBar.data.list.findIndex((item) => item.pagePath === route);
+  if (selected < 0) return;
 
   tabBar.setData({
     selected,

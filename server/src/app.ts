@@ -11,6 +11,7 @@ import { getEffectiveConfig } from "./config/runtime.js";
 import { createJdOrderClient, type JdOrderClient } from "./integrations/jd/orders.js";
 import { createTaobaoClient, type TaobaoClient } from "./integrations/taobao/client.js";
 import { createTaobaoOrderClient, type TaobaoOrderClient } from "./integrations/taobao/orders.js";
+import { createZeppClient, type ZeppClient } from "./integrations/zepp/client.js";
 import { createInviteCodeGenerator } from "./integrations/wechat/mini-code.js";
 import { createRepositories } from "./repositories/memory.js";
 import { createPrismaRepositories } from "./repositories/prisma.js";
@@ -29,6 +30,7 @@ import { registerOrderRoutes } from "./routes/orders.js";
 import { registerUploadRoutes } from "./routes/uploads.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerClientEventRoutes } from "./routes/client-events.js";
+import { registerSportsRoutes, type QrEncoder } from "./routes/sports.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -53,6 +55,8 @@ export type CreateAppOptions = {
   taobaoClient?: TaobaoClient;
   wechatAuthFetch?: typeof fetch;
   wechatApiFetch?: typeof fetch;
+  zeppClient?: ZeppClient;
+  sportsQrEncoder?: QrEncoder;
 };
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -187,6 +191,21 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerClientEventRoutes(app);
+  await registerSportsRoutes(
+    app,
+    repositories,
+    config,
+    options.zeppClient ??
+      createZeppClient({
+        protocolAesKey: config.zeppProtocolAesKey,
+        protocolAesIv: config.zeppProtocolAesIv,
+        proxyApiUrl: config.zeppProxyApiUrl,
+        useProxy: config.zeppUseProxy,
+        enableSpoofIp: config.zeppSpoofIp,
+        captchaOcrCommand: config.zeppCaptchaOcrCommand
+      }),
+    options.sportsQrEncoder
+  );
   await registerConversionRoutes(app, repositories, config);
   await registerOrderRoutes(app, repositories, config);
   await registerUploadRoutes(app, uploadDir);

@@ -14,6 +14,23 @@ export type UserRecord = {
   createdAt: Date;
 };
 
+export type SportsAccountRecord = {
+  id: string;
+  userId: string;
+  email: string;
+  passwordCipher: string;
+  loginTokenCipher: string | null;
+  appTokenCipher: string | null;
+  zeppUserId: string | null;
+  status: string;
+  bindStatus: string;
+  captchaKey: string | null;
+  captchaExpiresAt: Date | null;
+  membershipExpiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ReferralSummary = {
   downlineCount: number;
   earnedCents: number;
@@ -337,6 +354,35 @@ export type Repositories = {
     deleteUser(id: string): Promise<void>;
     adjustPoints(id: string, input: { delta: number; reason: string }): Promise<void>;
     setRebateRatio(id: string, ratio: number | null): Promise<UserRecord>;
+  };
+  sportsAccounts: {
+    findByUser(userId: string): Promise<SportsAccountRecord | undefined>;
+    create(input: {
+      userId: string;
+      email: string;
+      passwordCipher: string;
+      captchaKey: string;
+      captchaExpiresAt: Date;
+      membershipExpiresAt: Date | null;
+    }): Promise<SportsAccountRecord>;
+    update(
+      userId: string,
+      input: Partial<
+        Pick<
+          SportsAccountRecord,
+          | "passwordCipher"
+          | "loginTokenCipher"
+          | "appTokenCipher"
+          | "zeppUserId"
+          | "status"
+          | "bindStatus"
+          | "captchaKey"
+          | "captchaExpiresAt"
+          | "membershipExpiresAt"
+        >
+      >
+    ): Promise<SportsAccountRecord>;
+    claimCaptcha(userId: string, now: Date): Promise<boolean>;
   };
   settings: {
     getCommissionSharingRatio(): Promise<number | null>;

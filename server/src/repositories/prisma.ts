@@ -15,6 +15,7 @@ import type {
   ProductSnapshotRecord,
   ReferralSummary,
   Repositories,
+  SportsAccountRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
   UserRecord,
@@ -266,6 +267,44 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async setRebateRatio(id: string, ratio: number | null) {
         const user = await prisma.user.update({ where: { id }, data: { rebateRatio: ratio } });
         return mapUser(user);
+      }
+    },
+    sportsAccounts: {
+      async findByUser(userId: string) {
+        const record = await prisma.sportsAccount.findUnique({ where: { userId } });
+        return record ? mapSportsAccount(record) : undefined;
+      },
+      async create(input) {
+        const record = await prisma.sportsAccount.create({
+          data: {
+            userId: input.userId,
+            email: input.email,
+            passwordCipher: input.passwordCipher,
+            captchaKey: input.captchaKey,
+            captchaExpiresAt: input.captchaExpiresAt,
+            membershipExpiresAt: input.membershipExpiresAt
+          }
+        });
+        return mapSportsAccount(record);
+      },
+      async update(userId, input) {
+        const record = await prisma.sportsAccount.update({
+          where: { userId },
+          data: input
+        });
+        return mapSportsAccount(record);
+      },
+      async claimCaptcha(userId, now) {
+        const result = await prisma.sportsAccount.updateMany({
+          where: {
+            userId,
+            status: "awaiting_captcha",
+            captchaKey: { not: null },
+            captchaExpiresAt: { gt: now }
+          },
+          data: { status: "registering" }
+        });
+        return result.count === 1;
       }
     },
     settings: {
@@ -1230,6 +1269,10 @@ function mapUser(user: {
     inviterId: user.inviterId,
     createdAt: user.createdAt
   };
+}
+
+function mapSportsAccount(record: SportsAccountRecord): SportsAccountRecord {
+  return record;
 }
 
 function mapConversion(record: {

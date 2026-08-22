@@ -5,6 +5,7 @@ const FULL_LIST = [
   { pagePath: "/pages/home/index", label: "优惠", icon: "/assets/tab/badge-percent.svg", activeClass: "active" },
   { pagePath: "/pages/deals/index", label: "线报", icon: "/assets/tab/newspaper.svg", activeClass: "" },
   { pagePath: "/pages/orders/index", label: "订单", icon: "/assets/tab/receipt-text.svg", activeClass: "" },
+  { pagePath: "/pages/sports/index", label: "运动", icon: "/assets/tab/activity.svg", activeClass: "" },
   { pagePath: "/pages/profile/index", label: "我的", icon: "/assets/tab/user-round.svg", activeClass: "" }
 ];
 

@@ -3,6 +3,7 @@
     "pages/home/index",
     "pages/deals/index",
     "pages/orders/index",
+    "pages/sports/index",
     "pages/claim/index",
     "pages/rebate-rules/index",
     "pages/privacy/index",
@@ -43,6 +44,10 @@
       {
         "pagePath": "pages/orders/index",
         "text": "订单"
+      },
+      {
+        "pagePath": "pages/sports/index",
+        "text": "运动"
       },
       {
         "pagePath": "pages/profile/index",

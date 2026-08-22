@@ -34,6 +34,15 @@ export type AppConfig = {
   orderSyncLookbackMinutes: number;
   autoSettleThresholdYuan: number; // 已收货自动结算阈值：佣金≤此值立即结算，超过则延迟
   autoSettleDelayDays: number; // 大额佣金：已收货满此天数后自动结算
+  zeppCredentialKey?: string;
+  zeppProtocolAesKey?: string;
+  zeppProtocolAesIv?: string;
+  zeppProxyApiUrl?: string;
+  zeppUseProxy?: boolean;
+  zeppSpoofIp?: boolean;
+  zeppCaptchaRetryTimes?: number;
+  zeppCaptchaOcrCommand?: string;
+  sportsTrialDays?: number;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -79,7 +88,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     orderSyncLookbackMinutes: Number(env.ORDER_SYNC_LOOKBACK_MINUTES ?? 170),
     autoSettleThresholdYuan: Number(env.AUTO_SETTLE_THRESHOLD_YUAN ?? 20),
     autoSettleDelayDays: Number(env.AUTO_SETTLE_DELAY_DAYS ?? 7),
+    zeppCredentialKey: env.ZEPP_CREDENTIAL_KEY ?? "",
+    zeppProtocolAesKey: env.ZEPP_PROTOCOL_AES_KEY ?? "xeNtBVqzDc6tuNTh",
+    zeppProtocolAesIv: env.ZEPP_PROTOCOL_AES_IV ?? "MAAAYAAAAAAAAABg",
+    zeppProxyApiUrl: env.PROXY_API_URL ?? "",
+    zeppUseProxy: booleanEnv(env.USE_PROXY, true),
+    zeppSpoofIp: booleanEnv(env.ZEPP_SPOOF_IP, true),
+    zeppCaptchaRetryTimes: Number(env.CAPTCHA_RETRY_TIMES ?? 5),
+    zeppCaptchaOcrCommand: env.ZEPP_CAPTCHA_OCR_COMMAND ?? "python3",
+    sportsTrialDays: Number(env.SPORTS_TRIAL_DAYS ?? 3),
   };
+}
+
+function booleanEnv(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) return fallback;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
 }
 
 // 支持两种配置方式：完整 DATABASE_URL，或分离的 DB_* 字段（密码可含特殊字符，自动 URL 编码）
