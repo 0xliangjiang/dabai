@@ -1012,9 +1012,27 @@ describe("server API", () => {
         exchangeEnabled: false,
         referralCommissionRatio: 0.2,
         referralEnabled: false,
-        ordersTabEnabled: true
+        ordersTabEnabled: true,
+        sportsEnabled: true
       }
     });
+  });
+
+  test("POST /api/admin/config/sports-enabled updates the public feature switch", async () => {
+    const app = await buildTestApp();
+
+    const update = await app.inject({
+      method: "POST",
+      url: "/api/admin/config/sports-enabled",
+      headers: { "x-admin-token": "dev-admin-token" },
+      payload: { enabled: false }
+    });
+    expect(update.statusCode).toBe(200);
+    expect(update.json()).toEqual({ ok: true, sportsEnabled: false });
+
+    const publicConfig = await app.inject({ method: "GET", url: "/api/app-config" });
+    expect(publicConfig.statusCode).toBe(200);
+    expect(publicConfig.json().sportsEnabled).toBe(false);
   });
 
   test("GET /api/admin/overview returns dashboard metrics", async () => {

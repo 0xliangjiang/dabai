@@ -42,7 +42,7 @@
         </view>
         <view class="assistant-copy">
           <view class="assistant-name">运动助手</view>
-          <view class="assistant-state">识别刷步指令，安全调用运动接口</view>
+          <view class="assistant-state">今日运动目标 · 账号状态校验</view>
         </view>
       </view>
     </view>
@@ -55,7 +55,9 @@
           id="{{item.id}}"
           class="message-row {{item.role === 'user' ? 'is-user' : ''}}"
         >
-          <view class="message-avatar">{{item.role === 'user' ? '你' : '动'}}</view>
+          <view class="message-avatar" aria-hidden="true">
+            <view class="message-avatar-mark {{item.role === 'user' ? 'is-user' : ''}}"></view>
+          </view>
           <view class="message-group">
             <view class="message-author">{{item.role === 'user' ? '你' : '运动助手'}}</view>
             <view class="message-bubble {{item.success ? 'is-success' : ''}}">{{item.content}}</view>
@@ -63,50 +65,65 @@
         </view>
 
         <view wx:if="{{messages.length === 1}}" class="suggestion-block">
-          <view class="suggestion-title">试着问我</view>
+          <view class="suggestion-title">常用目标</view>
           <view class="suggestion-list">
-            <view
+            <button
               wx:for="{{suggestions}}"
-              wx:key="*this"
-              class="suggestion-item pressable"
-              data-text="{{item}}"
+              wx:key="text"
+              class="suggestion-item pressable {{item.custom ? 'is-custom' : ''}}"
+              data-text="{{item.text}}"
               bindtap="handleSuggestionTap"
+              hover-class="is-pressed"
+              hover-stay-time="80"
+              aria-label="{{item.text}}"
             >
-              <view class="suggestion-mark">{{index + 1}}</view>
-              <text class="suggestion-text">{{item}}</text>
-              <view class="suggestion-arrow" aria-hidden="true">›</view>
-            </view>
+              <view class="suggestion-copy">
+                <view class="suggestion-main">
+                  <text class="suggestion-text">{{item.label}}</text>
+                  <text wx:if="{{item.unit}}" class="suggestion-unit">{{item.unit}}</text>
+                </view>
+                <text class="suggestion-caption">{{item.caption}}</text>
+              </view>
+              <view wx:if="{{item.custom}}" class="suggestion-action" aria-hidden="true">设置</view>
+            </button>
           </view>
         </view>
 
         <view wx:if="{{chatLoading}}" class="message-row">
-          <view class="message-avatar">动</view>
+          <view class="message-avatar" aria-hidden="true">
+            <view class="message-avatar-mark"></view>
+          </view>
           <view class="message-group">
             <view class="message-author">运动助手</view>
-            <view class="message-bubble typing-bubble"><view></view><view></view><view></view></view>
+            <view class="message-bubble typing-bubble">
+              <view class="typing-dot"></view>
+              <view class="typing-dot"></view>
+              <view class="typing-dot"></view>
+            </view>
           </view>
         </view>
       </view>
     </scroll-view>
 
     <view class="composer-wrap">
-      <view class="composer-notice">
+      <view wx:if="{{!isBound}}" class="composer-notice">
         <view class="notice-dot"></view>
-        {{isBound ? '运动账号已就绪' : '未绑定时会自动引导绑定'}}
+        未绑定时会自动引导绑定
       </view>
-      <view class="composer {{chatLoading ? 'is-disabled' : ''}}">
-        <textarea
+      <view class="composer {{inputFocused ? 'is-focused' : ''}} {{chatLoading ? 'is-disabled' : ''}}">
+        <input
           class="composer-input"
           value="{{inputText}}"
-          placeholder="例如：帮我刷到 20000 步"
+          placeholder="例如：今天运动目标 20000 步"
           placeholder-class="composer-placeholder"
-          auto-height
           maxlength="500"
           confirm-type="send"
           bindinput="handleChatInput"
+          bindfocus="handleComposerFocus"
+          bindblur="handleComposerBlur"
           bindconfirm="sendChatMessage"
           disabled="{{chatLoading}}"
-          aria-label="输入刷步指令"
+          aria-label="输入今天运动目标"
         />
         <button
           class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}"
@@ -114,7 +131,7 @@
           disabled="{{!inputText || chatLoading}}"
           aria-label="发送消息"
         >
-          <view class="send-arrow"></view>
+          <text class="send-label">发送</text>
         </button>
       </view>
     </view>

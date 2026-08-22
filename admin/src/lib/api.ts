@@ -209,6 +209,7 @@ export type AdminConfig = {
     referralCommissionRatio: number;
     referralEnabled: boolean;
     ordersTabEnabled: boolean;
+    sportsEnabled: boolean;
   };
 };
 

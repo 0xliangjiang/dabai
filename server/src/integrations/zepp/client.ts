@@ -221,7 +221,7 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
         throw new ZeppClientError("步数范围应为 1-98800", "ZEPP_INVALID_STEPS");
       }
       if (!nanrunApiKey) {
-        throw new ZeppClientError("第三方刷步接口尚未配置 NANRUN_API_KEY", "NANRUN_NOT_CONFIGURED");
+        throw new ZeppClientError("运动目标服务尚未配置 NANRUN_API_KEY", "NANRUN_NOT_CONFIGURED");
       }
 
       let lastMessage = "第三方接口请求失败";

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import QRCode from "qrcode";
 import { z } from "zod";
 import type { AppConfig } from "../config/env.js";
@@ -34,13 +34,21 @@ export async function registerSportsRoutes(
   zeppClient: ZeppClient,
   qrEncoder: QrEncoder = defaultQrEncoder
 ) {
-  app.get("/api/sports/account", async (request) => {
+  const requireSportsEnabled = async (reply: FastifyReply) => {
+    if (await repositories.settings.getSportsEnabled()) return true;
+    await reply.code(404).send({ error: "运动功能暂未开放" });
+    return false;
+  };
+
+  app.get("/api/sports/account", async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
     return accountView(await repositories.sportsAccounts.findByUser(request.userId));
   });
 
   app.post("/api/sports/chat", {
     config: { rateLimit: { max: 12, timeWindow: "1 minute" } }
   }, async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
     const parsed = sportsChatSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
@@ -51,7 +59,7 @@ export async function registerSportsRoutes(
       return {
         success: true,
         action: "ask_steps",
-        reply: `想设置多少步？请输入 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 之间的目标步数。`
+        reply: `今天的运动目标是多少？请输入 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 之间的目标值。`
       };
     }
     if (intent.type === "chat") {
@@ -61,7 +69,7 @@ export async function registerSportsRoutes(
       return {
         success: false,
         action: "invalid_steps",
-        reply: `目标步数需要在 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 之间，请重新输入。`
+        reply: `今天的运动目标需要在 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 步之间，请重新输入。`
       };
     }
 
@@ -76,12 +84,12 @@ export async function registerSportsRoutes(
       if (account.bindStatus !== "bound") {
         const isBound = await zeppClient.checkBindStatus(account.zeppUserId);
         if (!isBound) {
-          return { success: false, action: "bind_required", reply: "账号还没有绑定微信，请先完成扫码绑定，再告诉我目标步数。" };
+          return { success: false, action: "bind_required", reply: "账号还没有绑定微信，请先完成扫码绑定，再设置今天的运动目标。" };
         }
         account = await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" });
       }
       if (!account.membershipExpiresAt || account.membershipExpiresAt.getTime() <= Date.now()) {
-        return { success: false, action: "membership_expired", reply: "运动会员已到期，续费后即可继续设置步数。" };
+        return { success: false, action: "membership_expired", reply: "运动会员已到期，续费后即可继续设置今天的运动目标。" };
       }
 
       // 与 AI-Step 的 bindband 保持一致：第三方接口直接接收托管账号和目标步数。
@@ -96,17 +104,18 @@ export async function registerSportsRoutes(
         action: "steps_updated",
         steps: result.steps,
         date: result.date,
-        reply: `设置成功，今天的步数已更新为 ${result.steps.toLocaleString("zh-CN")} 步。`
+        reply: `设置成功，今天的运动目标为 ${result.steps.toLocaleString("zh-CN")} 步。`
       };
     } catch (error) {
       request.log.warn({ err: error, userId: request.userId, steps: intent.steps }, "Zepp step update failed");
-      return reply.code(502).send({ error: publicError(error, "步数设置失败，请稍后重试") });
+      return reply.code(502).send({ error: "运动目标设置失败，请稍后重试" });
     }
   });
 
   app.post("/api/sports/bind/start", {
     config: { rateLimit: { max: 5, timeWindow: "10 minutes" } }
   }, async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
     const readinessError = validateFeatureConfig(config);
     if (readinessError) return reply.code(503).send({ error: readinessError });
 
@@ -190,6 +199,7 @@ export async function registerSportsRoutes(
   app.post("/api/sports/bind/captcha", {
     config: { rateLimit: { max: 8, timeWindow: "10 minutes" } }
   }, async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
     const readinessError = validateFeatureConfig(config);
     if (readinessError) return reply.code(503).send({ error: readinessError });
     const parsed = captchaSchema.safeParse(request.body);
@@ -237,6 +247,7 @@ export async function registerSportsRoutes(
   app.post("/api/sports/bind/refresh", {
     config: { rateLimit: { max: 12, timeWindow: "1 minute" } }
   }, async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
     const account = await repositories.sportsAccounts.findByUser(request.userId);
     if (!account?.zeppUserId) return reply.code(409).send({ error: "请先创建 Zepp Life 账号并扫码" });
     try {
@@ -305,7 +316,7 @@ function validateStepApiConfig(config: AppConfig): string | null {
   const featureError = validateFeatureConfig(config);
   if (featureError) return featureError;
   if (!config.nanrunApiKey?.trim()) {
-    return "刷步功能尚未配置 NANRUN_API_KEY";
+    return "运动目标服务尚未配置 NANRUN_API_KEY";
   }
   return null;
 }

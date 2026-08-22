@@ -120,19 +120,28 @@
         <view class="cu-label logout-label">退出登录</view>
         <view class="cu-arrow">›</view>
       </view>
-      <button
-        class="menu-contact-btn"
-        open-type="contact"
-        show-message-card="true"
-        send-message-title="捷径一生工具箱客服"
-        send-message-path="/pages/home/index"
-        hover-class="none"
-      >
-        <view class="cu-item flex align-center justify-between" hover-class="item-pressed">
-          <view class="cu-label">联系客服</view>
-          <view class="cu-arrow">›</view>
+      <view class="contact-item">
+        <view class="contact-main flex align-center">
+          <view class="contact-icon" aria-hidden="true">
+            <view class="contact-bubble-icon"></view>
+          </view>
+          <view class="contact-copy">
+            <view class="cu-label contact-title">联系客服</view>
+            <view class="contact-desc">订单与兑换问题，在线为你解答</view>
+          </view>
         </view>
-      </button>
+        <view class="contact-action">去咨询</view>
+        <button
+          class="menu-contact-btn"
+          open-type="contact"
+          show-message-card="true"
+          send-message-title="捷径一生工具箱客服"
+          send-message-path="/pages/home/index"
+          hover-class="contact-pressed"
+          hover-stay-time="80"
+          aria-label="联系客服，咨询订单和兑换问题"
+        ></button>
+      </view>
     </view>
 
   </view>

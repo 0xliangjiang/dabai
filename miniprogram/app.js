@@ -11,7 +11,9 @@ App({
     apiBaseUrl: API_BASE_URLS.develop,
     launchScene: 0,
     singlePageMode: false,
-    pendingInviter: ""
+    pendingInviter: "",
+    ordersTabEnabled: undefined,
+    sportsEnabled: undefined
   },
 
   onLaunch(options) {

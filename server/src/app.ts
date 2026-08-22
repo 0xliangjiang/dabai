@@ -186,7 +186,8 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.get("/api/app-config", async () => ({
     exchangeEnabled: await repositories.settings.getExchangeEnabled(),
     referralEnabled: await repositories.settings.getReferralEnabled(),
-    ordersTabEnabled: await repositories.settings.getOrdersTabEnabled()
+    ordersTabEnabled: await repositories.settings.getOrdersTabEnabled(),
+    sportsEnabled: await repositories.settings.getSportsEnabled()
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);

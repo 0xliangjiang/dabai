@@ -234,12 +234,13 @@ export async function registerAdminRoutes(
   );
 
   app.get("/api/admin/config", async () => {
-    const [dbRatio, exchangeEnabled, referralRatio, referralEnabled, ordersTabEnabled] = await Promise.all([
+    const [dbRatio, exchangeEnabled, referralRatio, referralEnabled, ordersTabEnabled, sportsEnabled] = await Promise.all([
       repositories.settings.getCommissionSharingRatio(),
       repositories.settings.getExchangeEnabled(),
       repositories.settings.getReferralRatio(),
       repositories.settings.getReferralEnabled(),
-      repositories.settings.getOrdersTabEnabled()
+      repositories.settings.getOrdersTabEnabled(),
+      repositories.settings.getSportsEnabled()
     ]);
     return {
       config: {
@@ -250,7 +251,8 @@ export async function registerAdminRoutes(
         exchangeEnabled,
         referralCommissionRatio: referralRatio ?? config.referralCommissionRatio,
         referralEnabled,
-        ordersTabEnabled
+        ordersTabEnabled,
+        sportsEnabled
       }
     };
   });
@@ -276,6 +278,18 @@ export async function registerAdminRoutes(
       }
       await repositories.settings.setOrdersTabEnabled(enabled);
       return { ok: true, ordersTabEnabled: enabled };
+    }
+  );
+
+  app.post<{ Body: { enabled?: boolean } }>(
+    "/api/admin/config/sports-enabled",
+    async (request, reply) => {
+      const enabled = request.body?.enabled;
+      if (typeof enabled !== "boolean") {
+        return reply.code(400).send({ error: "enabled 必须为 true/false" });
+      }
+      await repositories.settings.setSportsEnabled(enabled);
+      return { ok: true, sportsEnabled: enabled };
     }
   );
 

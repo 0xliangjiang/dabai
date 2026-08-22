@@ -1,6 +1,6 @@
 const { request } = require("../utils/api");
 
-// 完整 tab 列表；订单 tab 可在审核期间由后台开关隐藏
+// 完整 tab 列表；订单和运动入口可由后台全局开关控制
 const FULL_LIST = [
   { pagePath: "/pages/home/index", label: "优惠", icon: "/assets/tab/badge-percent.svg", activeClass: "active" },
   { pagePath: "/pages/deals/index", label: "线报", icon: "/assets/tab/newspaper.svg", activeClass: "" },
@@ -18,34 +18,36 @@ Component({
 
   lifetimes: {
     attached() {
-      this.applyConfig();
       this.syncSelected();
     }
   },
 
   pageLifetimes: {
     show() {
-      this.syncSelected();
+      this.applyConfig();
     }
   },
 
   methods: {
-    // 拉取功能开关（每次启动缓存一份），订单 tab 关闭时从列表中剔除（审核期间隐藏）
+    // 每次页面展示都刷新开关，使后台调整能在下次切页时生效。
     async applyConfig() {
       const app = getApp();
-      let enabled = app.globalData.ordersTabEnabled;
-      if (enabled === undefined) {
-        try {
-          const cfg = await request("/api/app-config");
-          enabled = cfg.ordersTabEnabled !== false; // 默认展示
-        } catch (_e) {
-          enabled = true;
-        }
-        app.globalData.ordersTabEnabled = enabled;
+      let ordersEnabled = app.globalData.ordersTabEnabled !== false;
+      let sportsEnabled = app.globalData.sportsEnabled !== false;
+      try {
+        const cfg = await request("/api/app-config");
+        ordersEnabled = cfg.ordersTabEnabled !== false;
+        sportsEnabled = cfg.sportsEnabled !== false;
+      } catch (_e) {
+        // 网络失败时沿用最近一次配置；首次启动默认展示。
       }
-      const list = enabled
-        ? FULL_LIST
-        : FULL_LIST.filter((item) => item.pagePath !== "/pages/orders/index");
+      app.globalData.ordersTabEnabled = ordersEnabled;
+      app.globalData.sportsEnabled = sportsEnabled;
+      const list = FULL_LIST.filter((item) => {
+        if (!ordersEnabled && item.pagePath === "/pages/orders/index") return false;
+        if (!sportsEnabled && item.pagePath === "/pages/sports/index") return false;
+        return true;
+      });
       this.setData({ list }, () => this.syncSelected());
     },
 

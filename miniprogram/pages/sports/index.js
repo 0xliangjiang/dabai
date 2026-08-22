@@ -17,21 +17,36 @@ Page({
     messages: [{
       id: "welcome",
       role: "assistant",
-      content: "告诉我目标步数，我会先确认账号、绑定和会员状态，再为你完成设置。"
+      content: "告诉我今天的运动目标，我会先确认账号、绑定和会员状态，再为你完成设置。"
     }],
     inputText: "",
+    inputFocused: false,
     chatLoading: false,
     scrollToMessage: "",
     suggestions: [
-      "帮我刷到 10000 步",
-      "把步数改成 20000",
-      "我要刷步"
+      { label: "10,000", unit: "步", caption: "今日常用", text: "今天运动目标 10000 步" },
+      { label: "20,000", unit: "步", caption: "进阶目标", text: "目标设为 20000 步" },
+      { label: "设置其他目标", caption: "输入任意步数", text: "设置今天运动目标", custom: true }
     ]
   },
 
   async onShow() {
     syncTabBar(this);
+    if (!(await this.ensureSportsEnabled())) return;
     await this.loadAccount();
+  },
+
+  async ensureSportsEnabled() {
+    try {
+      const config = await api.request("/api/app-config");
+      const enabled = config.sportsEnabled !== false;
+      getApp().globalData.sportsEnabled = enabled;
+      if (enabled) return true;
+      wx.switchTab({ url: "/pages/home/index" });
+      return false;
+    } catch (_error) {
+      return getApp().globalData.sportsEnabled !== false;
+    }
   },
 
   async loadAccount() {
@@ -118,6 +133,14 @@ Page({
     this.setData({ inputText: event.detail.value });
   },
 
+  handleComposerFocus() {
+    this.setData({ inputFocused: true });
+  },
+
+  handleComposerBlur() {
+    this.setData({ inputFocused: false });
+  },
+
   handleSuggestionTap(event) {
     const text = String(event.currentTarget.dataset.text || "").trim();
     if (text) this.sendChatMessage(text);
@@ -161,7 +184,7 @@ Page({
         scrollToMessage: assistantMessage.id
       });
       if (result.action === "steps_updated") {
-        wx.showToast({ title: "步数设置成功", icon: "success" });
+        wx.showToast({ title: "今日目标设置成功", icon: "success" });
       } else if (result.action === "bind_required" && !this.data.binding) {
         await this.handleBindTap();
       }

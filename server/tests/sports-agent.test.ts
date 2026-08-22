@@ -9,7 +9,10 @@ describe("sports agent intent recognition", () => {
     ["刷步三万五千步", 35_000],
     ["设置为５０k步", 50_000],
     ["刷 18888", 18_888],
-    ["给我弄到28000步", 28_000]
+    ["给我弄到28000步", 28_000],
+    ["今天运动目标 10000 步", 10_000],
+    ["目标设为 20000 步", 20_000],
+    ["设置今天运动目标为 30000 步", 30_000]
   ])("recognizes explicit step mutation: %s", (message, steps) => {
     expect(recognizeSportsIntent(message)).toEqual({ type: "set_steps", steps });
   });
@@ -34,5 +37,18 @@ describe("sports agent intent recognition", () => {
     "不要帮我刷20000步"
   ])("does not mutate for reports, questions or negation: %s", (message) => {
     expect(recognizeSportsIntent(message).type).toBe("chat");
+  });
+
+  test.each([
+    "",
+    "不要帮我刷20000步",
+    "刷步上限是多少",
+    "没听懂"
+  ])("uses goal-oriented wording in public replies: %s", (message) => {
+    const intent = recognizeSportsIntent(message);
+    expect(intent.type).toBe("chat");
+    if (intent.type !== "chat") return;
+    expect(intent.reply).toContain("运动目标");
+    expect(intent.reply).not.toMatch(/把步数改成|修改步数|更新步数|刷步/);
   });
 });

@@ -12,21 +12,21 @@ export type SportsIntent =
   | { type: "chat"; reply: string };
 
 const MUTATION_PATTERN =
-  /(?:刷步|刷到|刷成|刷\s*(?:一|两|二|三|四|五|六|七|八|九|十|百|千|万|\d)|步数.{0,8}(?:改|调|设|设置|同步|上传)|(?:改|调|设|设置|调整|同步|上传|弄到).{0,8}(?:步数|步)|帮我.{0,8}(?:刷|改|调|设)|(?:来|搞)(?:个|到)?\s*(?:[零〇一二两三四五六七八九十百千万]|\d))/i;
+  /(?:刷步|刷到|刷成|刷\s*(?:一|两|二|三|四|五|六|七|八|九|十|百|千|万|\d)|步数.{0,8}(?:改|调|设|设置|同步|上传)|(?:今天(?:的)?(?:运动)?目标|今日(?:运动)?目标|运动目标).{0,8}(?:设|设置|定|调整|为|到|[零〇一二两三四五六七八九十百千万\d])|目标.{0,4}(?:设|设置|定|调整)(?:为|到)?|(?:改|调|设|设置|调整|同步|上传|弄到).{0,8}(?:步数|步)|帮我.{0,8}(?:刷|改|调|设)|(?:来|搞)(?:个|到)?\s*(?:[零〇一二两三四五六七八九十百千万]|\d))/i;
 const NEGATED_MUTATION_PATTERN = /(?:不要|别|取消|停止|不用|无需).{0,10}(?:刷|改|调|设|同步|上传).{0,8}(?:步|步数)?/i;
-const INFORMATIONAL_PATTERN = /^(?:怎么|如何|怎样|为什么|什么是|查询|查看|分析|统计)|(?:刷步|步数).{0,8}(?:上限|范围|最多|最少|有什么用)/i;
+const INFORMATIONAL_PATTERN = /^(?:怎么|如何|怎样|为什么|什么是|查询|查看|分析|统计)|(?:刷步|步数|运动目标).{0,8}(?:上限|范围|最多|最少|有什么用)/i;
 const PENDING_STEP_PATTERN = /(?:想要|需要|告诉我|请输入|请说).{0,12}(?:多少|目标).{0,5}步|(?:多少|目标)步数/i;
 const PURE_STEP_VALUE_PATTERN = /^[\s，,。.!！?？]*(?:\d[\d,]*(?:\.\d+)?\s*(?:万|w|k|千)?|[零〇一二两三四五六七八九十百千万]+)\s*(?:步)?\s*(?:吧|左右|就行|可以)?[\s，,。.!！?？]*$/i;
 
 export function recognizeSportsIntent(input: string, history: SportsChatMessage[] = []): SportsIntent {
   const text = normalizeText(input);
-  if (!text) return { type: "chat", reply: "告诉我你想设置的目标步数，例如“帮我刷到 20000 步”。" };
+  if (!text) return { type: "chat", reply: "告诉我今天的运动目标，例如“今天运动目标 20000 步”。" };
 
   if (NEGATED_MUTATION_PATTERN.test(text)) {
-    return { type: "chat", reply: "好的，本次不会修改步数。" };
+    return { type: "chat", reply: "好的，本次不会设置今天的运动目标。" };
   }
   if (INFORMATIONAL_PATTERN.test(text)) {
-    return { type: "chat", reply: "我可以帮你把当天步数设置为 1-98800 之间的目标值；需要修改时，请明确说“刷到 20000 步”。" };
+    return { type: "chat", reply: "今天的运动目标范围为 1-98800 步；需要设置时，请明确说“今天运动目标 20000 步”。" };
   }
 
   const explicitMutation = MUTATION_PATTERN.test(text);
@@ -42,7 +42,7 @@ export function recognizeSportsIntent(input: string, history: SportsChatMessage[
 
   return {
     type: "chat",
-    reply: "我可以帮你设置微信运动步数。请明确告诉我目标值，例如“把步数改成 20000”。"
+    reply: "我可以帮你设置今天的运动目标。请明确告诉我目标值，例如“今天运动目标 20000 步”。"
   };
 }
 

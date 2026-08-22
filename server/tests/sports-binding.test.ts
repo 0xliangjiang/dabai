@@ -156,6 +156,22 @@ describe("sports account binding", () => {
     expect(response.json().error).toContain("ZEPP_CREDENTIAL_KEY");
   });
 
+  test("blocks sports APIs when the global sports switch is disabled", async () => {
+    const repositories = createRepositories();
+    await repositories.settings.setSportsEnabled(false);
+    const app = await createApp({ config: testConfig, repositories, zeppClient: new MockZeppClient() });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/sports/account",
+      headers: { authorization: "Bearer local_user-sports-disabled" }
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "运动功能暂未开放" });
+  });
+
   test("falls back to manual captcha after OCR retries are exhausted", async () => {
     const app = await createApp({
       config: { ...testConfig, zeppCaptchaRetryTimes: 2 },
@@ -202,6 +218,7 @@ describe("sports account binding", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ success: true, action: "steps_updated", steps: 20_000 });
+    expect(response.json().reply).toBe("设置成功，今天的运动目标为 20,000 步。");
     expect(zeppClient.stepUpdates).toEqual([20_000]);
   });
 
