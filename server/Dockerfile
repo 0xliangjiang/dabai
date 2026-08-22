@@ -32,7 +32,9 @@ RUN apt-get update \
   && /opt/zepp-venv/bin/pip install --no-cache-dir -r server/requirements-zepp.txt \
   && rm -rf /var/lib/apt/lists/*
 ENV PATH="/opt/zepp-venv/bin:$PATH"
-RUN npm ci --workspace=server --omit=dev
+# Prisma schema 在下一层复制；这里跳过 postinstall，随后显式 generate。
+# 这样 schema 变更不会让体积较大的 Node/Python 依赖层失去缓存。
+RUN npm ci --workspace=server --omit=dev --ignore-scripts
 
 COPY server/prisma server/prisma
 RUN find server/prisma/migrations -mindepth 1 -maxdepth 1 -type d \

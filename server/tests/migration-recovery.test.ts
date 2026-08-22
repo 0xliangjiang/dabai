@@ -67,4 +67,15 @@ describe("production migration recovery", () => {
     expect(url.searchParams.get("pool_timeout")).toBe("30");
     expect(url.searchParams.get("connect_timeout")).toBe("20");
   });
+
+  test("installs runtime dependencies before copying Prisma schema without running postinstall", () => {
+    const dockerfile = read("Dockerfile");
+    const install = "npm ci --workspace=server --omit=dev --ignore-scripts";
+    const copySchema = "COPY server/prisma server/prisma";
+    const generate = "npx prisma generate --schema server/prisma/schema.prisma";
+
+    expect(dockerfile).toContain(install);
+    expect(dockerfile.indexOf(install)).toBeLessThan(dockerfile.lastIndexOf(copySchema));
+    expect(dockerfile.lastIndexOf(copySchema)).toBeLessThan(dockerfile.lastIndexOf(generate));
+  });
 });
