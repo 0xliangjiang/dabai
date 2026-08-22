@@ -6,6 +6,13 @@ const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 const ORDERS_CACHE_KEY = "orders_page_1_cache_v3";
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const STATUS_TABS = [
+  { id: "all", label: "全部" },
+  { id: "paid", label: "已付款" },
+  { id: "received", label: "已收货" },
+  { id: "settled", label: "已结算" },
+  { id: "closed", label: "退款/失效" }
+];
 
 Page({
   onShareAppMessage() {
@@ -23,6 +30,9 @@ Page({
   },
 
   data: {
+    statusTabs: STATUS_TABS,
+    activeStatus: "all",
+    activeStatusLabel: "全部",
     orders: [],
     loading: true,
     loadingMore: false,
@@ -73,6 +83,17 @@ Page({
     wx.switchTab({ url: "/pages/home/index" });
   },
 
+  selectStatus(event) {
+    const status = event.currentTarget.dataset.status;
+    if (!status || status === this.data.activeStatus || this.data.loading) return;
+    const tab = STATUS_TABS.find((item) => item.id === status);
+    this.setData({
+      activeStatus: status,
+      activeStatusLabel: tab ? tab.label : "全部"
+    });
+    this.fetchOrders(true);
+  },
+
   async fetchOrders(reset = true) {
     if (!reset && (this.data.loadingMore || !this.data.hasMore)) return;
     const requestId = (this.fetchRequestId || 0) + 1;
@@ -83,7 +104,10 @@ Page({
       : { loadingMore: true, loadMoreError: "" });
     try {
       await ensureLogin();
-      const data = await request(`/api/orders/me?page=${page}&pageSize=50`);
+      const statusQuery = this.data.activeStatus === "all"
+        ? ""
+        : `&status=${encodeURIComponent(this.data.activeStatus)}`;
+      const data = await request(`/api/orders/me?page=${page}&pageSize=50${statusQuery}`);
       if (requestId !== this.fetchRequestId) return;
       const incoming = data.orders.map((order) => decorateOrder(order));
       const orders = reset ? incoming : this.data.orders.concat(incoming);
@@ -100,7 +124,7 @@ Page({
         page,
         hasMore: Boolean(data.hasMore)
       });
-      if (reset) {
+      if (reset && this.data.activeStatus === "all") {
         const user = getCurrentUser();
         writeCache(ORDERS_CACHE_KEY, {
           userId: user && user.id,
@@ -116,7 +140,14 @@ Page({
       if (reset) {
         const cached = readCache(ORDERS_CACHE_KEY, CACHE_MAX_AGE_MS);
         const user = getCurrentUser();
-        if (cached && user && cached.userId === user.id && cached.orders && cached.orders.length > 0) {
+        if (
+          this.data.activeStatus === "all" &&
+          cached &&
+          user &&
+          cached.userId === user.id &&
+          cached.orders &&
+          cached.orders.length > 0
+        ) {
           this.setData({
             orders: cached.orders,
             settledPoints: cached.settledPoints || 0,

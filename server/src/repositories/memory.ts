@@ -441,6 +441,11 @@ export function createRepositories(): Repositories {
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
         const matching = [...attributions.values()]
           .filter((attribution) => attribution.userId === userId)
+          .filter((attribution) => {
+            if (!options?.statuses?.length) return true;
+            const order = orders.get(attribution.tbkOrderId);
+            return Boolean(order && options.statuses.includes(order.orderStatus));
+          })
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         const items = matching
           .slice((page - 1) * pageSize, page * pageSize)

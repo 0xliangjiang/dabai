@@ -537,7 +537,12 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       async listByUser(userId: string, options) {
         const page = Math.max(1, options?.page ?? 1);
         const pageSize = Math.min(100, Math.max(1, options?.pageSize ?? 20));
-        const where = { userId };
+        const where = {
+          userId,
+          ...(options?.statuses?.length
+            ? { tbkOrder: { orderStatus: { in: options.statuses } } }
+            : {})
+        };
         const [total, records] = await Promise.all([
           prisma.orderAttribution.count({ where }),
           prisma.orderAttribution.findMany({

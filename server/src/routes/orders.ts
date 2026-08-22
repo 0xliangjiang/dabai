@@ -10,11 +10,12 @@ export async function registerOrderRoutes(
   repositories: Repositories,
   config: AppConfig
 ) {
-  app.get<{ Querystring: { page?: string; pageSize?: string } }>("/api/orders/me", async (request) => {
+  app.get<{ Querystring: { page?: string; pageSize?: string; status?: string } }>("/api/orders/me", async (request) => {
     const page = positiveInteger(request.query.page, 1);
     const pageSize = Math.min(50, positiveInteger(request.query.pageSize, 20));
+    const statuses = orderStatusesForTab(request.query.status);
     const [result, totals] = await Promise.all([
-      repositories.orders.listByUser(request.userId, { page, pageSize }),
+      repositories.orders.listByUser(request.userId, { page, pageSize, statuses }),
       repositories.orders.getRebateTotals(request.userId)
     ]);
     return {
@@ -116,6 +117,12 @@ export async function registerOrderRoutes(
 
     return { ...claim, status: "pending_review" };
   });
+}
+
+function orderStatusesForTab(status?: string): string[] | undefined {
+  if (status === "paid" || status === "received" || status === "settled") return [status];
+  if (status === "closed") return ["refunded", "invalid"];
+  return undefined;
 }
 
 function formatTotals(totals: { settledPoints: number; pendingPoints: number }) {

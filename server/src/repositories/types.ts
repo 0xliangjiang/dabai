@@ -425,7 +425,7 @@ export type Repositories = {
   orders: {
     listByUser(
       userId: string,
-      options?: { page?: number; pageSize?: number }
+      options?: { page?: number; pageSize?: number; statuses?: string[] }
     ): Promise<{ total: number; items: OrderSummary[] }>;
     getRebateTotals(userId: string): Promise<{ settledPoints: number; pendingPoints: number }>;
     findById(id: string): Promise<OrderRecord | null>;

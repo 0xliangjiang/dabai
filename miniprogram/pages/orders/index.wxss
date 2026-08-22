@@ -1,5 +1,48 @@
 page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
 
+.order-tabs-scroll {
+  width: 100%;
+  margin: -2rpx 0 2rpx;
+  white-space: nowrap;
+}
+
+.order-tabs {
+  display: inline-flex;
+  min-width: 100%;
+  padding: 4rpx;
+  gap: 8rpx;
+  border: 1rpx solid rgba(16, 76, 53, 0.08);
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.88);
+  box-sizing: border-box;
+}
+
+.order-tab {
+  flex: 1 0 auto;
+  min-width: 128rpx;
+  height: 68rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  border: 0;
+  border-radius: 14rpx;
+  background: transparent;
+  color: #64756d;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 68rpx;
+  box-sizing: border-box;
+}
+
+.order-tab::after {
+  border: 0;
+}
+
+.order-tab.active {
+  background: #0a7a52;
+  color: #ffffff;
+  box-shadow: 0 6rpx 16rpx rgba(10, 122, 82, 0.2);
+}
+
 .refresh-row {
   margin-top: 4rpx;
 }

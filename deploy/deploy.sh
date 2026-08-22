@@ -50,13 +50,13 @@ docker ps -aq --filter "name=${PROJECT}" | xargs -r docker rm -f
 step "启动服务"
 $DC up -d
 
-step "等待 API 就绪（最多 60 秒）"
-for i in $(seq 1 30); do
+step "等待 API 就绪（最多 180 秒，数据库繁忙时迁移会退避重试）"
+for i in $(seq 1 90); do
   if curl -sf "http://127.0.0.1:${API_PORT}/health" >/dev/null 2>&1; then
     break
   fi
-  [ "$i" = 30 ] && {
-    $DC logs --tail 30 api
+  [ "$i" = 90 ] && {
+    $DC logs --tail 80 api
     fail "API 健康检查超时，日志见上方"
   }
   sleep 2

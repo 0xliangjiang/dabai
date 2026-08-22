@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 
@@ -30,5 +31,40 @@ describe("production migration recovery", () => {
     expect(repair).toContain("finished_at AS finishedAt");
     expect(repair).toContain("rolled_back_at IS NULL");
     expect(repair).toContain("RESOLVE_MODE=");
+  });
+
+  test("limits the Prisma pool and retries connection exhaustion", () => {
+    const entrypoint = read("docker-entrypoint.sh");
+    const script = path.join(serverRoot, "scripts/normalize-database-url.mjs");
+    const normalized = execFileSync(process.execPath, [script], {
+      encoding: "utf8",
+      env: {
+        DATABASE_URL: "mysql://user:password@db:3306/dabai"
+      }
+    });
+    const url = new URL(normalized);
+
+    expect(url.searchParams.get("connection_limit")).toBe("5");
+    expect(url.searchParams.get("pool_timeout")).toBe("10");
+    expect(url.searchParams.get("connect_timeout")).toBe("10");
+    expect(entrypoint).toContain('grep -q "Too many connections"');
+    expect(entrypoint).toContain("DB_MIGRATION_MAX_ATTEMPTS");
+  });
+
+  test("preserves explicitly configured Prisma pool parameters", () => {
+    const script = path.join(serverRoot, "scripts/normalize-database-url.mjs");
+    const normalized = execFileSync(process.execPath, [script], {
+      encoding: "utf8",
+      env: {
+        DATABASE_URL:
+          "mysql://user:password@db:3306/dabai?connection_limit=2&pool_timeout=30&connect_timeout=20",
+        DB_CONNECTION_LIMIT: "8"
+      }
+    });
+    const url = new URL(normalized);
+
+    expect(url.searchParams.get("connection_limit")).toBe("2");
+    expect(url.searchParams.get("pool_timeout")).toBe("30");
+    expect(url.searchParams.get("connect_timeout")).toBe("20");
   });
 });

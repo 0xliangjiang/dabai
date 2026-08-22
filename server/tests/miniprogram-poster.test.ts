@@ -26,15 +26,16 @@ describe("mini program invite poster", () => {
     expect(POSTER_TEMPLATES.every((template) => template.colors.length === 3)).toBe(true);
   });
 
-  test("downloads a personal code and supports save, sharing and permission recovery", () => {
+  test("downloads a personal code and supports long-press saving and sharing", () => {
     const script = read("miniprogram/pages/invite-poster/index.js");
     const template = read("miniprogram/pages/invite-poster/index.wxml");
     const inviteScript = read("miniprogram/pages/invite/index.js");
 
     expect(script).toContain('downloadFile("/api/users/me/invite-code")');
     expect(script).toContain("wx.canvasToTempFilePath");
-    expect(script).toContain("wx.saveImageToPhotosAlbum");
-    expect(script).toContain("wx.openSetting");
+    expect(script).not.toContain("wx.saveImageToPhotosAlbum");
+    expect(template).toContain('show-menu="{{true}}"');
+    expect(template).toContain("长按上方海报");
     expect(template).toContain('open-type="share"');
     expect(inviteScript).toContain('"/pages/invite-poster/index"');
   });

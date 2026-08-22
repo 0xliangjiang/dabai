@@ -15,6 +15,11 @@ services:
       - UPLOAD_DIR=/app/server/uploads
       - CORS_ORIGINS=http://43.134.117.111:3666,https://dabai.discordbot.cn:3666,https://dabai.discordbot.cn
       - ORDER_SYNC_INTERVAL_MINUTES=2
+      # 单实例 API 使用保守连接池，避免低 max_connections 的 MySQL 被 Prisma 默认池打满
+      - DB_CONNECTION_LIMIT=${DB_CONNECTION_LIMIT:-5}
+      - DB_POOL_TIMEOUT_SECONDS=${DB_POOL_TIMEOUT_SECONDS:-10}
+      - DB_CONNECT_TIMEOUT_SECONDS=${DB_CONNECT_TIMEOUT_SECONDS:-10}
+      - DB_MIGRATION_MAX_ATTEMPTS=${DB_MIGRATION_MAX_ATTEMPTS:-6}
     volumes:
       - ./deploy-data/uploads:/app/server/uploads
 

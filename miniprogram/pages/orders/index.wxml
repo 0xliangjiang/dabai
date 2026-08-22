@@ -14,6 +14,18 @@
       </view>
     </view>
 
+    <scroll-view class="order-tabs-scroll anim-up delay-1" scroll-x enable-flex show-scrollbar="{{false}}">
+      <view class="order-tabs">
+        <button
+          wx:for="{{statusTabs}}"
+          wx:key="id"
+          class="order-tab {{activeStatus === item.id ? 'active' : ''}}"
+          data-status="{{item.id}}"
+          bindtap="selectStatus"
+        >{{item.label}}</button>
+      </view>
+    </scroll-view>
+
     <block wx:if="{{loading}}">
       <view wx:for="{{[1, 2, 3]}}" wx:key="*this" class="cu-card flex-direction gap-sm anim-up delay-{{index + 1}}">
         <view class="skeleton-block skeleton-line"></view>
@@ -30,9 +42,9 @@
 
     <view wx:elif="{{showEmpty}}" class="cu-card cu-empty flex-direction align-center justify-center anim-up delay-2">
       <view class="empty-icon">积</view>
-      <view class="text-bold">暂未匹配到订单</view>
-      <view class="section-desc">下单后通常会自动匹配，也可以手动补充订单</view>
-      <view class="empty-actions flex gap-sm margin-top responsive-actions">
+      <view class="text-bold">{{activeStatus === 'all' ? '暂未匹配到订单' : activeStatusLabel + '订单为空'}}</view>
+      <view class="section-desc">{{activeStatus === 'all' ? '下单后通常会自动匹配，也可以手动补充订单' : '可切换其他状态查看订单'}}</view>
+      <view wx:if="{{activeStatus === 'all'}}" class="empty-actions flex gap-sm margin-top responsive-actions">
         <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="goClaim">补充订单</button>
         <button class="cu-btn primary flex-sub pressable" hover-class="pressed" bindtap="goHome">去查优惠</button>
       </view>

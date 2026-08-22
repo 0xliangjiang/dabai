@@ -1,9 +1,11 @@
 #!/bin/sh
 set -e
 
-# 支持分离的 DB_* 配置：自动拼接并 URL 编码密码
-if [ -z "$DATABASE_URL" ] && [ -n "$DB_HOST" ]; then
-  DATABASE_URL=$(node -e "console.log(\`mysql://\${encodeURIComponent(process.env.DB_USER)}:\${encodeURIComponent(process.env.DB_PASSWORD || '')}@\${process.env.DB_HOST}:\${process.env.DB_PORT || 3306}/\${process.env.DB_NAME}\`)")
+# 支持 DATABASE_URL 或分离的 DB_* 配置，并为 Prisma 设置保守的连接池上限。
+# 已在 DATABASE_URL 显式设置的参数优先，不会被默认值覆盖。
+NORMALIZED_DATABASE_URL=$(node scripts/normalize-database-url.mjs)
+if [ -n "$NORMALIZED_DATABASE_URL" ]; then
+  DATABASE_URL=$NORMALIZED_DATABASE_URL
   export DATABASE_URL
 fi
 
@@ -14,7 +16,31 @@ fi
 MIGRATE_LOG=$(mktemp)
 trap 'rm -f "$MIGRATE_LOG"' EXIT
 
-if npx prisma migrate deploy --schema prisma/schema.prisma >"$MIGRATE_LOG" 2>&1; then
+run_migrate() {
+  attempt=1
+  max_attempts="${DB_MIGRATION_MAX_ATTEMPTS:-6}"
+  delay_seconds=5
+
+  while true; do
+    : >"$MIGRATE_LOG"
+    if npx prisma migrate deploy --schema prisma/schema.prisma >"$MIGRATE_LOG" 2>&1; then
+      return 0
+    fi
+
+    if grep -q "Too many connections" "$MIGRATE_LOG" && [ "$attempt" -lt "$max_attempts" ]; then
+      cat "$MIGRATE_LOG" >&2
+      echo "Database connection limit reached; retrying migration in ${delay_seconds}s (${attempt}/${max_attempts})..." >&2
+      sleep "$delay_seconds"
+      attempt=$((attempt + 1))
+      delay_seconds=$((delay_seconds + 5))
+      [ "$delay_seconds" -gt 20 ] && delay_seconds=20
+      continue
+    fi
+    return 1
+  done
+}
+
+if run_migrate; then
   cat "$MIGRATE_LOG"
 else
   cat "$MIGRATE_LOG" >&2
@@ -47,7 +73,8 @@ else
     exit 1
   fi
 
-  npx prisma migrate deploy --schema prisma/schema.prisma
+  run_migrate
+  cat "$MIGRATE_LOG"
 fi
 
 exec node dist/server.js
