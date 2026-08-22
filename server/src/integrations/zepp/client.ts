@@ -1,7 +1,7 @@
 import { createCipheriv, randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { ProxyAgent, fetch as undiciFetch } from "undici";
+import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
 
 export type ZeppCaptcha = { key: string; imageBase64: string };
 export type ZeppLogin = { userId: string; loginToken: string; appToken: string };
@@ -35,6 +35,7 @@ export type ZeppClientOptions = {
   nanrunApiUrl?: string;
   nanrunApiKey?: string;
   nanrunTimeoutMs?: number;
+  nanrunTlsCaBase64?: string;
 };
 
 export class ZeppClientError extends Error {
@@ -56,6 +57,10 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
   const nanrunApiUrl = options.nanrunApiUrl?.trim() || "https://api.nan.run/api/xiaomisport";
   const nanrunApiKey = options.nanrunApiKey?.trim() ?? "";
   const nanrunTimeoutMs = options.nanrunTimeoutMs ?? 120_000;
+  const nanrunTlsCa = options.nanrunTlsCaBase64?.trim()
+    ? Buffer.from(options.nanrunTlsCaBase64.trim(), "base64").toString("utf8")
+    : "";
+  const nanrunDispatcher = nanrunTlsCa ? new Agent({ connect: { ca: nanrunTlsCa } }) : undefined;
 
   async function fetchProxy(): Promise<string> {
     if (!useProxy || !proxyApiUrl || injectedFetch) return "";
@@ -227,7 +232,12 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
           url.searchParams.set("user", input.email);
           url.searchParams.set("pass", input.password);
           url.searchParams.set("step", String(input.steps));
-          const response = await directFetch(url, { signal: AbortSignal.timeout(nanrunTimeoutMs) });
+          const response = nanrunDispatcher && !injectedFetch
+            ? await undiciFetch(url, {
+                signal: AbortSignal.timeout(nanrunTimeoutMs),
+                dispatcher: nanrunDispatcher
+              }) as Response
+            : await directFetch(url, { signal: AbortSignal.timeout(nanrunTimeoutMs) });
           const raw = await response.text();
           let data: Record<string, unknown> = {};
           try {

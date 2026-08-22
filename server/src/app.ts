@@ -204,7 +204,8 @@ export async function createApp(options: CreateAppOptions = {}) {
         enableSpoofIp: config.zeppSpoofIp,
         captchaOcrCommand: config.zeppCaptchaOcrCommand,
         nanrunApiUrl: config.nanrunApiUrl,
-        nanrunApiKey: config.nanrunApiKey
+        nanrunApiKey: config.nanrunApiKey,
+        nanrunTlsCaBase64: config.nanrunTlsCaBase64
       }),
     options.sportsQrEncoder
   );

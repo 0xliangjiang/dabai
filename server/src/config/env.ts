@@ -45,6 +45,7 @@ export type AppConfig = {
   sportsTrialDays?: number;
   nanrunApiUrl?: string;
   nanrunApiKey?: string;
+  nanrunTlsCaBase64?: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -101,6 +102,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sportsTrialDays: Number(env.SPORTS_TRIAL_DAYS ?? 3),
     nanrunApiUrl: env.NANRUN_API_URL ?? "https://api.nan.run/api/xiaomisport",
     nanrunApiKey: env.NANRUN_API_KEY ?? "",
+    nanrunTlsCaBase64: env.NANRUN_TLS_CA_BASE64 ?? "",
   };
 }
 
