@@ -43,6 +43,8 @@ export type AppConfig = {
   zeppCaptchaRetryTimes?: number;
   zeppCaptchaOcrCommand?: string;
   sportsTrialDays?: number;
+  nanrunApiUrl?: string;
+  nanrunApiKey?: string;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -97,6 +99,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     zeppCaptchaRetryTimes: Number(env.CAPTCHA_RETRY_TIMES ?? 5),
     zeppCaptchaOcrCommand: env.ZEPP_CAPTCHA_OCR_COMMAND ?? "python3",
     sportsTrialDays: Number(env.SPORTS_TRIAL_DAYS ?? 3),
+    nanrunApiUrl: env.NANRUN_API_URL ?? "https://api.nan.run/api/xiaomisport",
+    nanrunApiKey: env.NANRUN_API_KEY ?? "",
   };
 }
 

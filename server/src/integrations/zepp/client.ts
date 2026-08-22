@@ -20,7 +20,7 @@ export interface ZeppClient {
   login(email: string, password: string): Promise<ZeppLogin>;
   getBindTicket(userId: string): Promise<string>;
   checkBindStatus(userId: string): Promise<boolean>;
-  updateSteps(input: { userId: string; appToken: string; steps: number }): Promise<ZeppStepUpdate>;
+  updateSteps(input: { email: string; password: string; steps: number }): Promise<ZeppStepUpdate>;
 }
 
 export type ZeppClientOptions = {
@@ -32,6 +32,9 @@ export type ZeppClientOptions = {
   captchaOcrCommand?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  nanrunApiUrl?: string;
+  nanrunApiKey?: string;
+  nanrunTimeoutMs?: number;
 };
 
 export class ZeppClientError extends Error {
@@ -50,6 +53,9 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
   const spoofIp = options.enableSpoofIp ?? true;
   const proxyApiUrl = options.proxyApiUrl?.trim() ?? "";
   const ocrCommand = options.captchaOcrCommand ?? "python3";
+  const nanrunApiUrl = options.nanrunApiUrl?.trim() || "https://api.nan.run/api/xiaomisport";
+  const nanrunApiKey = options.nanrunApiKey?.trim() ?? "";
+  const nanrunTimeoutMs = options.nanrunTimeoutMs ?? 120_000;
 
   async function fetchProxy(): Promise<string> {
     if (!useProxy || !proxyApiUrl || injectedFetch) return "";
@@ -209,67 +215,45 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
       if (!Number.isInteger(input.steps) || input.steps < 1 || input.steps > 98_800) {
         throw new ZeppClientError("步数范围应为 1-98800", "ZEPP_INVALID_STEPS");
       }
-      const today = chinaDateString();
-      const dataJson = encodeURIComponent(JSON.stringify(buildStepPayload(input.steps, today)));
-      const body = [
-        `userid=${encodeURIComponent(input.userId)}`,
-        "last_sync_data_time=1597306380",
-        "device_type=0",
-        "last_deviceid=DA932FFFFE8816E7",
-        `data_json=${dataJson}`
-      ].join("&");
-      const response = await request(`https://api-mifit-cn.huami.com/v1/data/band_data.json?&t=${Date.now()}`, {
-        method: "POST",
-        headers: {
-          apptoken: input.appToken,
-          "content-type": "application/x-www-form-urlencoded"
-        },
-        body
-      });
-      const data = parseJson(await response.text());
-      const message = stringValue(data.message).toLowerCase();
-      if (!response.ok || (data.code !== 1 && message !== "ok" && message !== "success")) {
-        throw new ZeppClientError(`步数同步失败${message ? `：${message}` : ""}`, "ZEPP_STEP_UPDATE_FAILED");
+      if (!nanrunApiKey) {
+        throw new ZeppClientError("第三方刷步接口尚未配置 NANRUN_API_KEY", "NANRUN_NOT_CONFIGURED");
       }
-      return { steps: input.steps, date: today };
+
+      let lastMessage = "第三方接口请求失败";
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const url = new URL(nanrunApiUrl);
+          url.searchParams.set("apikey", nanrunApiKey);
+          url.searchParams.set("user", input.email);
+          url.searchParams.set("pass", input.password);
+          url.searchParams.set("step", String(input.steps));
+          const response = await directFetch(url, { signal: AbortSignal.timeout(nanrunTimeoutMs) });
+          const raw = await response.text();
+          let data: Record<string, unknown> = {};
+          try {
+            data = JSON.parse(raw) as Record<string, unknown>;
+          } catch {
+            lastMessage = `第三方接口返回非 JSON（HTTP ${response.status}）`;
+          }
+          const message = stringValue(data.msg ?? data.message);
+          if (response.ok && String(data.code) === "200") {
+            const returnedSteps = Number(data.step);
+            return {
+              steps: Number.isInteger(returnedSteps) && returnedSteps > 0 ? returnedSteps : input.steps,
+              date: chinaDateString()
+            };
+          }
+          lastMessage = response.status === 400
+            ? `第三方接口参数错误${message ? `：${message}` : ""}`
+            : message || `第三方接口 HTTP ${response.status}`;
+        } catch (error) {
+          lastMessage = error instanceof Error ? error.message : "第三方接口请求异常";
+        }
+        if (attempt < 2) await delay(1_000 * 2 ** attempt);
+      }
+      throw new ZeppClientError(`步数同步失败：${lastMessage}`, "NANRUN_STEP_UPDATE_FAILED");
     }
   };
-}
-
-function buildStepPayload(steps: number, today: string): Array<Record<string, unknown>> {
-  const summary = {
-    v: 6,
-    slp: {
-      st: Math.floor(Date.now() / 1000) - 28_800,
-      ed: Math.floor(Date.now() / 1000) - 28_800,
-      dp: 0, lt: 0, wk: 0, usrSt: -1440, usrEd: -1440,
-      wc: 0, is: 0, lb: 0, to: 0, dt: 0, rhr: 0, ss: 0
-    },
-    stp: {
-      ttl: steps,
-      dis: Math.floor(steps * 0.6),
-      cal: Math.floor(steps * 0.04),
-      wk: 0,
-      rn: 0,
-      runDist: 0,
-      runCal: 0,
-      stage: []
-    },
-    goal: 8000,
-    tz: "28800"
-  };
-  return [{
-    data_hr: "/////0v///9W////S////17///9J/2n//0v/////////R/////9F/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+",
-    date: today,
-    data: [{
-      start: 0,
-      stop: 1439,
-      value: "UA8AUBQAUAwAUBoAUAEAYCcAUBkAUB4AUBgAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAAfgAA"
-    }],
-    summary: JSON.stringify(summary),
-    source: 24,
-    type: 0
-  }];
 }
 
 function chinaDateString(now = new Date()): string {

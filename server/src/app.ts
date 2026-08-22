@@ -202,7 +202,9 @@ export async function createApp(options: CreateAppOptions = {}) {
         proxyApiUrl: config.zeppProxyApiUrl,
         useProxy: config.zeppUseProxy,
         enableSpoofIp: config.zeppSpoofIp,
-        captchaOcrCommand: config.zeppCaptchaOcrCommand
+        captchaOcrCommand: config.zeppCaptchaOcrCommand,
+        nanrunApiUrl: config.nanrunApiUrl,
+        nanrunApiKey: config.nanrunApiKey
       }),
     options.sportsQrEncoder
   );

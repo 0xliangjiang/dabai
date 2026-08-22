@@ -65,7 +65,7 @@ export async function registerSportsRoutes(
       };
     }
 
-    const readinessError = validateFeatureConfig(config);
+    const readinessError = validateStepApiConfig(config);
     if (readinessError) return reply.code(503).send({ error: readinessError });
     let account = await repositories.sportsAccounts.findByUser(request.userId);
     if (!account?.zeppUserId) {
@@ -84,18 +84,12 @@ export async function registerSportsRoutes(
         return { success: false, action: "membership_expired", reply: "运动会员已到期，续费后即可继续设置步数。" };
       }
 
-      // AI-Step 每次刷步前都会重新登录。这里沿用该策略，避免长期保存的 app token 失效。
+      // 与 AI-Step 的 bindband 保持一致：第三方接口直接接收托管账号和目标步数。
       const password = decryptCredential(account.passwordCipher, config.zeppCredentialKey!);
-      const login = await zeppClient.login(account.email, password);
       const result = await zeppClient.updateSteps({
-        userId: login.userId,
-        appToken: login.appToken,
+        email: account.email,
+        password,
         steps: intent.steps
-      });
-      await repositories.sportsAccounts.update(request.userId, {
-        zeppUserId: login.userId,
-        loginTokenCipher: encryptCredential(login.loginToken, config.zeppCredentialKey!),
-        appTokenCipher: encryptCredential(login.appToken, config.zeppCredentialKey!)
       });
       return {
         success: true,
@@ -303,6 +297,15 @@ function accountView(account?: SportsAccountRecord) {
 function validateFeatureConfig(config: AppConfig): string | null {
   if (!config.zeppCredentialKey || config.zeppCredentialKey.length < 24) {
     return "运动账号功能尚未配置安全的 ZEPP_CREDENTIAL_KEY";
+  }
+  return null;
+}
+
+function validateStepApiConfig(config: AppConfig): string | null {
+  const featureError = validateFeatureConfig(config);
+  if (featureError) return featureError;
+  if (!config.nanrunApiKey?.trim()) {
+    return "刷步功能尚未配置 NANRUN_API_KEY";
   }
   return null;
 }

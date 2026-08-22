@@ -43,13 +43,17 @@ describe("Zepp client", () => {
       if (url.includes("/v1/info/users.json")) {
         return Response.json({ code: 1, data: { isbind: 1 } });
       }
-      if (url.includes("/v1/data/band_data.json")) {
-        return Response.json({ code: 1, message: "success" });
+      if (url.includes("api.nan.run/api/xiaomisport")) {
+        const requestUrl = new URL(url);
+        expect(requestUrl.searchParams.get("user")).toBe("sport@example.com");
+        expect(requestUrl.searchParams.get("pass")).toBe("password");
+        expect(requestUrl.searchParams.get("step")).toBe("20000");
+        return Response.json({ code: 200, msg: "success", step: 20_000 });
       }
       throw new Error(`unexpected URL: ${url}`);
     };
 
-    const client = createZeppClient({ fetchImpl, timeoutMs: 1000 });
+    const client = createZeppClient({ fetchImpl, timeoutMs: 1000, nanrunApiKey: "test-nanrun-key" });
     const captcha = await client.getRegistrationCaptcha();
     expect(captcha).toEqual({ key: "captcha-key", imageBase64: "AQID" });
 
@@ -63,15 +67,11 @@ describe("Zepp client", () => {
     await expect(client.login("sport@example.com", "password")).resolves.toMatchObject({ userId: "zepp-1" });
     await expect(client.getBindTicket("zepp-1")).resolves.toBe("ticket-1");
     await expect(client.checkBindStatus("zepp-1")).resolves.toBe(true);
-    await expect(client.updateSteps({ userId: "zepp-1", appToken: "app-token", steps: 20_000 }))
+    await expect(client.updateSteps({ email: "sport@example.com", password: "password", steps: 20_000 }))
       .resolves.toMatchObject({ steps: 20_000 });
 
-    const stepRequest = requests.find((item) => item.url.includes("/v1/data/band_data.json"));
-    expect(stepRequest?.init?.method).toBe("POST");
-    expect(String(stepRequest?.init?.body)).toContain("userid=zepp-1");
-    const stepForm = new URLSearchParams(String(stepRequest?.init?.body));
-    const stepPayload = JSON.parse(stepForm.get("data_json") || "[]");
-    expect(JSON.parse(stepPayload[0].summary).stp.ttl).toBe(20_000);
+    const stepRequest = requests.find((item) => item.url.includes("api.nan.run/api/xiaomisport"));
+    expect(stepRequest?.init?.method).toBeUndefined();
 
     const serializedHeaders = requests.map((item) => JSON.stringify(Object.fromEntries(new Headers(item.init?.headers).entries()))).join("\n");
     expect(serializedHeaders).toMatch(/x-forwarded-for/);

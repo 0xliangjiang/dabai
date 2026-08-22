@@ -43,7 +43,9 @@ const testConfig: AppConfig = {
   autoSettleDelayDays: 7,
   zeppCredentialKey: credentialKey,
   zeppCaptchaRetryTimes: 5,
-  sportsTrialDays: 3
+  sportsTrialDays: 3,
+  nanrunApiUrl: "https://api.nan.run/api/xiaomisport",
+  nanrunApiKey: "test-nanrun-key"
 };
 
 class MockZeppClient implements ZeppClient {
@@ -77,7 +79,9 @@ class MockZeppClient implements ZeppClient {
     return this.bound;
   }
 
-  async updateSteps(input: { steps: number }) {
+  async updateSteps(input: { email: string; password: string; steps: number }) {
+    expect(input.email).toMatch(/@gmail\.com$/);
+    expect(input.password).toMatch(/^[a-z]{12}$/);
     this.stepUpdates.push(input.steps);
     return { steps: input.steps, date: "2026-08-22" };
   }
