@@ -42,31 +42,48 @@
         </view>
         <view class="assistant-copy">
           <view class="assistant-name">运动助手</view>
-          <view class="assistant-state">解读运动记录，给出训练建议</view>
+          <view class="assistant-state">识别刷步指令，安全调用运动接口</view>
         </view>
       </view>
     </view>
 
-    <scroll-view class="chat-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <scroll-view class="chat-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{scrollToMessage}}">
       <view class="chat-content">
-        <view class="message-row">
-          <view class="message-avatar">动</view>
+        <view
+          wx:for="{{messages}}"
+          wx:key="id"
+          id="{{item.id}}"
+          class="message-row {{item.role === 'user' ? 'is-user' : ''}}"
+        >
+          <view class="message-avatar">{{item.role === 'user' ? '你' : '动'}}</view>
           <view class="message-group">
-            <view class="message-author">运动助手</view>
-            <view class="message-bubble">
-              绑定运动账号后，我可以帮你总结训练、发现节奏变化，也能一起安排恢复计划。
-            </view>
+            <view class="message-author">{{item.role === 'user' ? '你' : '运动助手'}}</view>
+            <view class="message-bubble {{item.success ? 'is-success' : ''}}">{{item.content}}</view>
           </view>
         </view>
 
-        <view class="suggestion-block">
+        <view wx:if="{{messages.length === 1}}" class="suggestion-block">
           <view class="suggestion-title">试着问我</view>
           <view class="suggestion-list">
-            <view wx:for="{{suggestions}}" wx:key="*this" class="suggestion-item">
+            <view
+              wx:for="{{suggestions}}"
+              wx:key="*this"
+              class="suggestion-item pressable"
+              data-text="{{item}}"
+              bindtap="handleSuggestionTap"
+            >
               <view class="suggestion-mark">{{index + 1}}</view>
               <text class="suggestion-text">{{item}}</text>
               <view class="suggestion-arrow" aria-hidden="true">›</view>
             </view>
+          </view>
+        </view>
+
+        <view wx:if="{{chatLoading}}" class="message-row">
+          <view class="message-avatar">动</view>
+          <view class="message-group">
+            <view class="message-author">运动助手</view>
+            <view class="message-bubble typing-bubble"><view></view><view></view><view></view></view>
           </view>
         </view>
       </view>
@@ -75,19 +92,28 @@
     <view class="composer-wrap">
       <view class="composer-notice">
         <view class="notice-dot"></view>
-        {{isBound ? '对话功能即将开放' : '绑定账号后可开始对话'}}
+        {{isBound ? '运动账号已就绪' : '未绑定时会自动引导绑定'}}
       </view>
-      <view class="composer is-disabled">
+      <view class="composer {{chatLoading ? 'is-disabled' : ''}}">
         <textarea
           class="composer-input"
-          placeholder="问问你的运动助手"
+          value="{{inputText}}"
+          placeholder="例如：帮我刷到 20000 步"
           placeholder-class="composer-placeholder"
           auto-height
           maxlength="500"
-          disabled
-          aria-label="对话输入框，当前不可用"
+          confirm-type="send"
+          bindinput="handleChatInput"
+          bindconfirm="sendChatMessage"
+          disabled="{{chatLoading}}"
+          aria-label="输入刷步指令"
         />
-        <button class="send-button is-disabled" disabled aria-label="发送消息，当前不可用">
+        <button
+          class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}"
+          bindtap="sendChatMessage"
+          disabled="{{!inputText || chatLoading}}"
+          aria-label="发送消息"
+        >
           <view class="send-arrow"></view>
         </button>
       </view>
@@ -96,10 +122,16 @@
 
   <view wx:if="{{dialogVisible}}" class="binding-overlay" catchtouchmove="noop">
     <view class="binding-dialog" role="dialog" aria-label="绑定 Zepp Life 账号">
-      <button class="dialog-close" bindtap="closeBindingDialog" disabled="{{binding}}" aria-label="关闭">×</button>
+      <view class="dialog-header">
+        <view class="dialog-title">
+          {{dialogStage === 'captcha' ? '创建 Zepp Life 账号' : (dialogStage === 'scan' ? '绑定微信' : '运动账号提示')}}
+        </view>
+        <button class="dialog-close {{binding ? 'is-disabled' : ''}}" bindtap="closeBindingDialog" disabled="{{binding}}" aria-label="关闭绑定弹窗">
+          <view class="dialog-close-icon" aria-hidden="true"></view>
+        </button>
+      </view>
 
       <block wx:if="{{dialogStage === 'captcha'}}">
-        <view class="dialog-title">创建 Zepp Life 账号</view>
         <view class="dialog-description">输入验证码后，系统会为当前账号自动完成注册。</view>
         <image class="captcha-image" src="{{captchaImage}}" mode="aspectFit" aria-label="Zepp 注册验证码" />
         <input
@@ -118,7 +150,6 @@
       </block>
 
       <block wx:elif="{{dialogStage === 'scan'}}">
-        <view class="dialog-title">绑定微信</view>
         <view class="dialog-description">请使用微信扫码，或长按二维码识别。</view>
         <image
           class="bind-qrcode"

@@ -3,6 +3,11 @@ import type { FastifyInstance } from "fastify";
 import QRCode from "qrcode";
 import { z } from "zod";
 import type { AppConfig } from "../config/env.js";
+import {
+  MAX_SPORTS_STEPS,
+  MIN_SPORTS_STEPS,
+  recognizeSportsIntent
+} from "../domain/sports-agent.js";
 import { decryptCredential, encryptCredential } from "../integrations/zepp/credentials.js";
 import type { ZeppClient } from "../integrations/zepp/client.js";
 import { ZeppClientError } from "../integrations/zepp/client.js";
@@ -14,6 +19,14 @@ const captchaSchema = z.object({
   code: z.string().trim().min(3).max(12).regex(/^[a-zA-Z0-9]+$/, "验证码格式不正确")
 });
 
+const sportsChatSchema = z.object({
+  message: z.string().trim().min(1, "请输入内容").max(500, "消息不能超过 500 字"),
+  history: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().trim().min(1).max(500)
+  })).max(12).default([])
+});
+
 export async function registerSportsRoutes(
   app: FastifyInstance,
   repositories: Repositories,
@@ -23,6 +36,78 @@ export async function registerSportsRoutes(
 ) {
   app.get("/api/sports/account", async (request) => {
     return accountView(await repositories.sportsAccounts.findByUser(request.userId));
+  });
+
+  app.post("/api/sports/chat", {
+    config: { rateLimit: { max: 12, timeWindow: "1 minute" } }
+  }, async (request, reply) => {
+    const parsed = sportsChatSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
+    }
+
+    const intent = recognizeSportsIntent(parsed.data.message, parsed.data.history);
+    if (intent.type === "ask_steps") {
+      return {
+        success: true,
+        action: "ask_steps",
+        reply: `想设置多少步？请输入 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 之间的目标步数。`
+      };
+    }
+    if (intent.type === "chat") {
+      return { success: true, action: "reply", reply: intent.reply };
+    }
+    if (intent.steps < MIN_SPORTS_STEPS || intent.steps > MAX_SPORTS_STEPS) {
+      return {
+        success: false,
+        action: "invalid_steps",
+        reply: `目标步数需要在 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 之间，请重新输入。`
+      };
+    }
+
+    const readinessError = validateFeatureConfig(config);
+    if (readinessError) return reply.code(503).send({ error: readinessError });
+    let account = await repositories.sportsAccounts.findByUser(request.userId);
+    if (!account?.zeppUserId) {
+      return { success: false, action: "bind_required", reply: "还没有运动账号，请先点击上方“绑定账号”完成注册和绑定。" };
+    }
+
+    try {
+      if (account.bindStatus !== "bound") {
+        const isBound = await zeppClient.checkBindStatus(account.zeppUserId);
+        if (!isBound) {
+          return { success: false, action: "bind_required", reply: "账号还没有绑定微信，请先完成扫码绑定，再告诉我目标步数。" };
+        }
+        account = await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" });
+      }
+      if (!account.membershipExpiresAt || account.membershipExpiresAt.getTime() <= Date.now()) {
+        return { success: false, action: "membership_expired", reply: "运动会员已到期，续费后即可继续设置步数。" };
+      }
+
+      // AI-Step 每次刷步前都会重新登录。这里沿用该策略，避免长期保存的 app token 失效。
+      const password = decryptCredential(account.passwordCipher, config.zeppCredentialKey!);
+      const login = await zeppClient.login(account.email, password);
+      const result = await zeppClient.updateSteps({
+        userId: login.userId,
+        appToken: login.appToken,
+        steps: intent.steps
+      });
+      await repositories.sportsAccounts.update(request.userId, {
+        zeppUserId: login.userId,
+        loginTokenCipher: encryptCredential(login.loginToken, config.zeppCredentialKey!),
+        appTokenCipher: encryptCredential(login.appToken, config.zeppCredentialKey!)
+      });
+      return {
+        success: true,
+        action: "steps_updated",
+        steps: result.steps,
+        date: result.date,
+        reply: `设置成功，今天的步数已更新为 ${result.steps.toLocaleString("zh-CN")} 步。`
+      };
+    } catch (error) {
+      request.log.warn({ err: error, userId: request.userId, steps: intent.steps }, "Zepp step update failed");
+      return reply.code(502).send({ error: publicError(error, "步数设置失败，请稍后重试") });
+    }
   });
 
   app.post("/api/sports/bind/start", {

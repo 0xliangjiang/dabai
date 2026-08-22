@@ -43,6 +43,9 @@ describe("Zepp client", () => {
       if (url.includes("/v1/info/users.json")) {
         return Response.json({ code: 1, data: { isbind: 1 } });
       }
+      if (url.includes("/v1/data/band_data.json")) {
+        return Response.json({ code: 1, message: "success" });
+      }
       throw new Error(`unexpected URL: ${url}`);
     };
 
@@ -60,6 +63,15 @@ describe("Zepp client", () => {
     await expect(client.login("sport@example.com", "password")).resolves.toMatchObject({ userId: "zepp-1" });
     await expect(client.getBindTicket("zepp-1")).resolves.toBe("ticket-1");
     await expect(client.checkBindStatus("zepp-1")).resolves.toBe(true);
+    await expect(client.updateSteps({ userId: "zepp-1", appToken: "app-token", steps: 20_000 }))
+      .resolves.toMatchObject({ steps: 20_000 });
+
+    const stepRequest = requests.find((item) => item.url.includes("/v1/data/band_data.json"));
+    expect(stepRequest?.init?.method).toBe("POST");
+    expect(String(stepRequest?.init?.body)).toContain("userid=zepp-1");
+    const stepForm = new URLSearchParams(String(stepRequest?.init?.body));
+    const stepPayload = JSON.parse(stepForm.get("data_json") || "[]");
+    expect(JSON.parse(stepPayload[0].summary).stp.ttl).toBe(20_000);
 
     const serializedHeaders = requests.map((item) => JSON.stringify(Object.fromEntries(new Headers(item.init?.headers).entries()))).join("\n");
     expect(serializedHeaders).toMatch(/x-forwarded-for/);

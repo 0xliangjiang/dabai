@@ -49,6 +49,7 @@ const testConfig: AppConfig = {
 class MockZeppClient implements ZeppClient {
   bound = false;
   registerCalls = 0;
+  stepUpdates: number[] = [];
 
   async getRegistrationCaptcha() {
     return { key: "captcha-key-1", imageBase64: "captcha-base64" };
@@ -74,6 +75,11 @@ class MockZeppClient implements ZeppClient {
 
   async checkBindStatus() {
     return this.bound;
+  }
+
+  async updateSteps(input: { steps: number }) {
+    this.stepUpdates.push(input.steps);
+    return { steps: input.steps, date: "2026-08-22" };
   }
 }
 
@@ -165,5 +171,49 @@ describe("sports account binding", () => {
       payload: { code: "a7b9" }
     });
     expect(complete.json()).toMatchObject({ action: "scan", isBound: false });
+  });
+
+  test("recognizes a brush intent and updates steps only for a bound active member", async () => {
+    const repositories = createRepositories();
+    const zeppClient = new MockZeppClient();
+    const app = await createApp({
+      config: testConfig,
+      repositories,
+      zeppClient,
+      sportsQrEncoder: async (ticket) => `data:image/png;base64,qr-${ticket}`
+    });
+    apps.push(app);
+    const headers = { authorization: "Bearer local_user-sports-chat" };
+
+    await app.inject({ method: "POST", url: "/api/sports/bind/start", headers });
+    zeppClient.bound = true;
+    await app.inject({ method: "POST", url: "/api/sports/bind/refresh", headers });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers,
+      payload: { message: "帮我把步数刷到2万步", history: [] }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ success: true, action: "steps_updated", steps: 20_000 });
+    expect(zeppClient.stepUpdates).toEqual([20_000]);
+  });
+
+  test("does not call Zepp for an informational step message", async () => {
+    const zeppClient = new MockZeppClient();
+    const app = await createApp({ config: testConfig, zeppClient });
+    apps.push(app);
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers: { authorization: "Bearer local_user-sports-no-mutation" },
+      payload: { message: "今天走了12000步", history: [] }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().action).toBe("reply");
+    expect(zeppClient.stepUpdates).toEqual([]);
   });
 });

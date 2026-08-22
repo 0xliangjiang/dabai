@@ -14,10 +14,18 @@ Page({
     qrcodeImage: "",
     bindingMessage: "",
     bindingError: "",
+    messages: [{
+      id: "welcome",
+      role: "assistant",
+      content: "告诉我目标步数，我会先确认账号、绑定和会员状态，再为你完成设置。"
+    }],
+    inputText: "",
+    chatLoading: false,
+    scrollToMessage: "",
     suggestions: [
-      "总结本周运动",
-      "帮我安排恢复日",
-      "分析最近的跑步节奏"
+      "帮我刷到 10000 步",
+      "把步数改成 20000",
+      "我要刷步"
     ]
   },
 
@@ -106,6 +114,72 @@ Page({
     }
   },
 
+  handleChatInput(event) {
+    this.setData({ inputText: event.detail.value });
+  },
+
+  handleSuggestionTap(event) {
+    const text = String(event.currentTarget.dataset.text || "").trim();
+    if (text) this.sendChatMessage(text);
+  },
+
+  async sendChatMessage(overrideText) {
+    if (this.data.chatLoading) return;
+    const text = typeof overrideText === "string"
+      ? overrideText.trim()
+      : String(this.data.inputText || "").trim();
+    if (!text) return;
+
+    const history = this.data.messages.slice(-10).map((message) => ({
+      role: message.role,
+      content: message.content
+    }));
+    const userMessage = { id: `user-${Date.now()}`, role: "user", content: text };
+    const messages = [...this.data.messages, userMessage];
+    this.setData({
+      messages,
+      inputText: "",
+      chatLoading: true,
+      scrollToMessage: userMessage.id
+    });
+
+    try {
+      await api.ensureLogin();
+      const result = await api.request("/api/sports/chat", {
+        method: "POST",
+        timeout: 120000,
+        data: { message: text, history }
+      });
+      const assistantMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: result.reply || "我暂时没有理解，请换一种说法。",
+        success: result.action === "steps_updated"
+      };
+      this.setData({
+        messages: [...this.data.messages, assistantMessage],
+        scrollToMessage: assistantMessage.id
+      });
+      if (result.action === "steps_updated") {
+        wx.showToast({ title: "步数设置成功", icon: "success" });
+      } else if (result.action === "bind_required" && !this.data.binding) {
+        await this.handleBindTap();
+      }
+    } catch (error) {
+      const assistantMessage = {
+        id: `assistant-error-${Date.now()}`,
+        role: "assistant",
+        content: (error && error.error) || "处理失败，请稍后重试。"
+      };
+      this.setData({
+        messages: [...this.data.messages, assistantMessage],
+        scrollToMessage: assistantMessage.id
+      });
+    } finally {
+      this.setData({ chatLoading: false });
+    }
+  },
+
   openBindingResult(result) {
     this.applyAccount(result);
     this.setData({
@@ -127,7 +201,6 @@ Page({
   },
 
   closeBindingDialog() {
-    if (this.data.binding) return;
     this.setData({
       dialogVisible: false,
       dialogStage: "",
