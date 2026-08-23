@@ -120,14 +120,27 @@ describe("daily check-in", () => {
       availablePoints: 10 + awarded
     });
 
-    const withdrawal = await app.inject({
+    const missingAccount = await app.inject({
       method: "POST",
       url: "/api/withdrawals",
       headers: auth,
       payload: { points: 10 }
     });
+    expect(missingAccount.statusCode).toBe(400);
+    expect(missingAccount.json().error).toBe("请选择收款方式");
+
+    const withdrawal = await app.inject({
+      method: "POST",
+      url: "/api/withdrawals",
+      headers: auth,
+      payload: { points: 10, payType: "alipay", payAccount: "13800138000" }
+    });
     expect(withdrawal.statusCode).toBe(200);
-    expect(withdrawal.json().withdrawal.amountCents).toBe(1000);
+    expect(withdrawal.json().withdrawal).toMatchObject({
+      amountCents: 1000,
+      payType: "alipay",
+      payAccount: "13800138000"
+    });
   });
 
   test("chinaDateString uses UTC+8", () => {

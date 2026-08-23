@@ -960,8 +960,8 @@ export function createRepositories(): Repositories {
         const withdrawal = await this.create({
           userId: input.userId,
           amountCents: input.amountCents,
-          payAccount: "",
-          payType: "redpacket",
+          payAccount: input.payAccount,
+          payType: input.payType,
           notes: null
         });
         return { ok: true as const, withdrawal };

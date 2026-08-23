@@ -82,6 +82,35 @@
         <view class="cu-label margin-top">兑换奖励值</view>
         <input class="cu-input" type="digit" placeholder="请输入奖励值，最低 10" value="{{withdrawAmount}}" bindinput="onWithdrawAmountInput" />
 
+        <view class="cu-label margin-top">收款方式</view>
+        <view class="withdraw-pay-types" role="radiogroup" aria-label="选择收款方式">
+          <view
+            class="withdraw-pay-type {{withdrawPayType === 'alipay' ? 'is-active' : ''}}"
+            data-type="alipay"
+            bindtap="selectWithdrawPayType"
+            role="radio"
+            aria-checked="{{withdrawPayType === 'alipay'}}"
+          >支付宝</view>
+          <view
+            class="withdraw-pay-type {{withdrawPayType === 'wechat' ? 'is-active' : ''}}"
+            data-type="wechat"
+            bindtap="selectWithdrawPayType"
+            role="radio"
+            aria-checked="{{withdrawPayType === 'wechat'}}"
+          >微信</view>
+        </view>
+
+        <view class="cu-label margin-top">收款账号</view>
+        <input
+          class="cu-input"
+          type="text"
+          maxlength="128"
+          placeholder="{{withdrawPayType === 'alipay' ? '请输入支付宝手机号或邮箱' : '请输入微信号'}}"
+          value="{{withdrawPayAccount}}"
+          bindinput="onWithdrawPayAccountInput"
+        />
+        <view class="withdraw-account-tip">请确认账号无误，提交后将用于本次奖励发放</view>
+
         <view class="flex gap-sm margin-top responsive-actions">
           <button class="cu-btn secondary flex-sub pressable" hover-class="pressed" bindtap="closeWithdrawForm">取消</button>
           <button class="cu-btn primary flex-sub pressable" hover-class="pressed" loading="{{submittingWithdraw}}" disabled="{{submittingWithdraw}}" bindtap="submitWithdraw">提交申请</button>

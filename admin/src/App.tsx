@@ -1567,11 +1567,13 @@ export function App() {
                 onClick={() =>
                   downloadCsv(
                     "提现申请.csv",
-                    ["用户", "OpenID", "金额(元)", "状态", "申请时间"],
+                    ["用户", "OpenID", "金额(元)", "收款方式", "收款账号", "状态", "申请时间"],
                     filteredWithdrawals.map((w) => [
                       w.userNickname ?? w.userId,
                       w.userOpenid,
                       yuan(w.amountCents),
+                      withdrawalPayTypeLabel(w.payType),
+                      withdrawalPayAccount(w),
                       w.status,
                       new Date(w.createdAt).toLocaleString("zh-CN")
                     ])
@@ -1631,8 +1633,8 @@ export function App() {
                   <TableRow key={w.id}>
                     <TableCell className="font-medium">{w.userNickname || w.userOpenid.slice(0, 8) + "…"}</TableCell>
                     <TableCell className="font-semibold tabular-nums">{formatMoney(w.amountCents)}</TableCell>
-                    <TableCell>{w.payType === "wechat" ? "微信" : "支付宝"}</TableCell>
-                    <TableCell className="font-mono text-xs">{w.payAccount}</TableCell>
+                    <TableCell>{withdrawalPayTypeLabel(w.payType)}</TableCell>
+                    <TableCell className="font-mono text-xs">{withdrawalPayAccount(w)}</TableCell>
                     <TableCell className="max-w-40 truncate text-slate-500">{w.notes || "—"}</TableCell>
                     <TableCell className="text-xs text-slate-400">{new Date(w.createdAt).toLocaleDateString("zh-CN")}</TableCell>
                     <TableCell>
@@ -2431,6 +2433,19 @@ function rebateBadgeVariant(
   if (status === "pending") return "warning";
   if (status === "reversed") return "danger";
   return "secondary";
+}
+
+function withdrawalPayTypeLabel(payType: string): string {
+  if (payType === "alipay") return "支付宝";
+  if (payType === "wechat") return "微信";
+  if (payType === "redpacket") return "微信红包";
+  return payType || "未填写";
+}
+
+function withdrawalPayAccount(withdrawal: AdminWithdrawal): string {
+  if (withdrawal.payAccount) return withdrawal.payAccount;
+  if (withdrawal.payType === "redpacket") return withdrawal.userOpenid || "未填写";
+  return "未填写";
 }
 
 function withdrawalStatusLabel(status: string): string {

@@ -17,6 +17,11 @@
       <view class="article-text">用户提交或查询的商品内容、订单补充信息仅用于优惠查询、订单匹配、客服核对和结算说明，不会用于与本服务无关的用途。</view>
     </view>
 
+    <view class="cu-card article-card">
+      <view class="section-title">奖励兑换信息</view>
+      <view class="article-text">用户申请奖励兑换时填写的收款方式和收款账号，仅用于核对申请并发放对应奖励。请在提交前确认账号准确，如需更正可通过客服联系我们。</view>
+    </view>
+
 <view class="cu-card article-card">
       <view class="section-title">数据安全</view>
       <view class="article-text">我们会尽量采取合理措施保护用户信息。如需删除或更正信息，可通过客服入口联系我们处理。</view>

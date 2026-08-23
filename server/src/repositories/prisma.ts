@@ -1122,8 +1122,8 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
               data: {
                 userId: input.userId,
                 amountCents: input.amountCents,
-                payAccount: "",
-                payType: "redpacket",
+                payAccount: input.payAccount,
+                payType: input.payType,
                 notes: null
               }
             });

@@ -45,6 +45,8 @@ Page({
     balanceText: "0.00",
     showWithdrawForm: false,
     withdrawAmount: "",
+    withdrawPayType: "alipay",
+    withdrawPayAccount: "",
     submittingWithdraw: false,
     exchangeEnabled: false,
     referralEnabled: false
@@ -259,7 +261,9 @@ Page({
     this.setTabBarHidden(true);
     this.setData({
       showWithdrawForm: true,
-      withdrawAmount: ""
+      withdrawAmount: "",
+      withdrawPayType: "alipay",
+      withdrawPayAccount: ""
     });
   },
 
@@ -280,6 +284,16 @@ Page({
     this.setData({ withdrawAmount: e.detail.value });
   },
 
+  selectWithdrawPayType(e) {
+    const payType = e.currentTarget.dataset.type;
+    if (payType !== "alipay" && payType !== "wechat") return;
+    this.setData({ withdrawPayType: payType, withdrawPayAccount: "" });
+  },
+
+  onWithdrawPayAccountInput(e) {
+    this.setData({ withdrawPayAccount: e.detail.value });
+  },
+
   async submitWithdraw() {
     if (this.data.submittingWithdraw) return;
     const points = Number(this.data.withdrawAmount);
@@ -292,13 +306,22 @@ Page({
       wx.showToast({ title: "超出可兑换奖励值", icon: "none" });
       return;
     }
+    const payAccount = String(this.data.withdrawPayAccount || "").trim();
+    if (payAccount.length < 3) {
+      wx.showToast({ title: "请填写收款账号", icon: "none" });
+      return;
+    }
 
     this.setData({ submittingWithdraw: true });
     try {
       await ensureLogin();
       await request("/api/withdrawals", {
         method: "POST",
-        data: { points }
+        data: {
+          points,
+          payType: this.data.withdrawPayType,
+          payAccount
+        }
       });
       trackEvent("withdrawal_submitted", { points });
       this.closeWithdrawForm();

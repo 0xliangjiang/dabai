@@ -23,10 +23,10 @@ export async function registerWithdrawalRoutes(app: FastifyInstance, repositorie
     };
   });
 
-  app.post<{ Body: { points?: number; amountCents?: number } }>(
+  app.post<{ Body: { points?: number; amountCents?: number; payAccount?: string; payType?: string } }>(
     "/api/withdrawals",
     async (request, reply) => {
-      const { points, amountCents: legacyAmountCents } = request.body ?? {};
+      const { points, amountCents: legacyAmountCents, payAccount: rawPayAccount, payType: rawPayType } = request.body ?? {};
       const amountCents = points === undefined ? legacyAmountCents : pointsToCents(points);
 
       if (
@@ -39,10 +39,21 @@ export async function registerWithdrawalRoutes(app: FastifyInstance, repositorie
         return reply.code(400).send({ error: "最低兑换 10 奖励值，最多保留两位小数" });
       }
 
+      const payType = String(rawPayType ?? "").trim();
+      const payAccount = String(rawPayAccount ?? "").trim();
+      if (payType !== "alipay" && payType !== "wechat") {
+        return reply.code(400).send({ error: "请选择收款方式" });
+      }
+      if (payAccount.length < 3 || payAccount.length > 128 || /[\u0000-\u001f\u007f]/.test(payAccount)) {
+        return reply.code(400).send({ error: "请填写正确的收款账号" });
+      }
+
       // 原子校验+创建，防止并发重复提交超额
       const result = await repositories.withdrawals.createIfAffordable({
         userId: request.userId,
-        amountCents
+        amountCents,
+        payAccount,
+        payType
       });
       if (!result.ok) {
         return reply.code(400).send({ error: "可兑换奖励值不足" });

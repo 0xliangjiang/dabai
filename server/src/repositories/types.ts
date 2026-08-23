@@ -515,6 +515,8 @@ export type Repositories = {
     createIfAffordable(input: {
       userId: string;
       amountCents: number;
+      payAccount: string;
+      payType: "alipay" | "wechat";
     }): Promise<{ ok: true; withdrawal: WithdrawalRecord } | { ok: false; available: number }>;
     list(status?: string): Promise<AdminWithdrawalRecord[]>;
     review(id: string, input: { status: "paid" | "rejected"; reviewedBy?: string; notes?: string | null }): Promise<WithdrawalRecord>;
