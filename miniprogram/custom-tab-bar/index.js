@@ -9,11 +9,14 @@ const FULL_LIST = [
   { pagePath: "/pages/profile/index", label: "我的", icon: "/assets/tab/user-round.svg", activeClass: "" }
 ];
 
+// 功能开关尚未拉取完成时先隐藏运动入口，避免冷启动时短暂露出已关闭的 Tab。
+const INITIAL_LIST = FULL_LIST.filter((item) => item.pagePath !== "/pages/sports/index");
+
 Component({
   data: {
     hidden: false,
     selected: 0,
-    list: FULL_LIST
+    list: INITIAL_LIST
   },
 
   lifetimes: {
