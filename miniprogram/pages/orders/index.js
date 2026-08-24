@@ -9,9 +9,8 @@ const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const STATUS_TABS = [
   { id: "all", label: "全部" },
   { id: "paid", label: "已付款" },
-  { id: "received", label: "已收货" },
   { id: "settled", label: "已结算" },
-  { id: "closed", label: "退款/失效" }
+  { id: "refunded", label: "已退款" }
 ];
 
 Page({

@@ -299,6 +299,52 @@ describe("server API", () => {
     });
   });
 
+  test("GET /api/orders/me groups orders into the four user-facing tabs", async () => {
+    const app = await buildTestApp();
+    const user = await app.deps.repositories.users.findOrCreateByOpenid("order-tab-user");
+    const statuses = ["paid", "received", "settled", "refunded", "invalid"];
+
+    for (const [index, orderStatus] of statuses.entries()) {
+      const order = await app.deps.repositories.orders.upsert({
+        tbkOrderId: `order-tab-${index}`,
+        itemId: `order-tab-item-${index}`,
+        itemTitle: `订单分类测试商品 ${index + 1}`,
+        payTime: new Date(Date.now() - index * 1000),
+        payAmountCents: 10_000,
+        estimatedCommissionCents: 500,
+        settledCommissionCents: orderStatus === "settled" ? 400 : null,
+        orderStatus,
+        rawPayload: {}
+      });
+      await app.deps.repositories.orders.upsertAttribution({
+        tbkOrderId: order.tbkOrderId,
+        status: "manual_matched",
+        confidence: 1,
+        reason: "order_tab_test",
+        userId: user.id,
+        conversionId: null,
+        copyEventId: null
+      });
+    }
+
+    const headers = { authorization: `Bearer local_${user.id}` };
+    const paid = await app.inject({ method: "GET", url: "/api/orders/me?status=paid", headers });
+    const settled = await app.inject({ method: "GET", url: "/api/orders/me?status=settled", headers });
+    const refunded = await app.inject({ method: "GET", url: "/api/orders/me?status=refunded", headers });
+
+    expect(paid.json().orders.map((order: { status: string }) => order.status).sort()).toEqual([
+      "paid",
+      "received"
+    ].sort());
+    expect(settled.json().orders.map((order: { status: string }) => order.status)).toEqual([
+      "settled"
+    ]);
+    expect(refunded.json().orders.map((order: { status: string }) => order.status).sort()).toEqual([
+      "refunded",
+      "invalid"
+    ].sort());
+  });
+
   test("POST /api/orders/bind requires an exact full order number and credits through the shared ledger path", async () => {
     const app = await buildTestApp();
     const user = await app.deps.repositories.users.findOrCreateByOpenid("bind-user");

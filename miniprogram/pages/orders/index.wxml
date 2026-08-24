@@ -14,17 +14,22 @@
       </view>
     </view>
 
-    <scroll-view class="order-tabs-scroll anim-up delay-1" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view class="order-tabs-shell anim-up delay-1" aria-label="订单状态筛选">
       <view class="order-tabs">
-        <button
+        <view
           wx:for="{{statusTabs}}"
           wx:key="id"
           class="order-tab {{activeStatus === item.id ? 'active' : ''}}"
           data-status="{{item.id}}"
           bindtap="selectStatus"
-        >{{item.label}}</button>
+          hover-class="order-tab-pressed"
+          hover-stay-time="80"
+          aria-role="button"
+          aria-label="查看{{item.label}}订单"
+          aria-pressed="{{activeStatus === item.id}}"
+        >{{item.label}}</view>
       </view>
-    </scroll-view>
+    </view>
 
     <block wx:if="{{loading}}">
       <view wx:for="{{[1, 2, 3]}}" wx:key="*this" class="cu-card flex-direction gap-sm anim-up delay-{{index + 1}}">

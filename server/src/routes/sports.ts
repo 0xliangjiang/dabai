@@ -11,6 +11,7 @@ import {
 import { decryptCredential, encryptCredential } from "../integrations/zepp/credentials.js";
 import type { ZeppClient } from "../integrations/zepp/client.js";
 import { ZeppClientError } from "../integrations/zepp/client.js";
+import { hashSportsAccessCode, normalizeSportsAccessCode } from "../domain/sports-access-code.js";
 import type { Repositories, SportsAccountRecord } from "../repositories/types.js";
 
 export type QrEncoder = (content: string) => Promise<string>;
@@ -25,6 +26,10 @@ const sportsChatSchema = z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().trim().min(1).max(500)
   })).max(12).default([])
+});
+
+const accessCodeSchema = z.object({
+  code: z.string().trim().min(12, "请输入完整卡密").max(64, "卡密格式不正确")
 });
 
 export async function registerSportsRoutes(
@@ -42,7 +47,38 @@ export async function registerSportsRoutes(
 
   app.get("/api/sports/account", async (request, reply) => {
     if (!(await requireSportsEnabled(reply))) return;
-    return accountView(await repositories.sportsAccounts.findByUser(request.userId));
+    const targetDate = sportsTargetDate();
+    const [account, dailyTarget] = await Promise.all([
+      repositories.sportsAccounts.findByUser(request.userId),
+      repositories.sportsDailyTargets.findByUserAndDate(request.userId, targetDate)
+    ]);
+    return accountView(account, dailyTarget?.steps ?? null);
+  });
+
+  app.post("/api/sports/access-code/redeem", async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
+    const parsed = accessCodeSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "卡密格式不正确" });
+    const result = await repositories.sportsAccessCodes.redeem(
+      request.userId,
+      hashSportsAccessCode(parsed.data.code),
+      new Date()
+    );
+    if (!result.ok) {
+      const response = {
+        invalid: [404, "卡密无效，请核对后重试"],
+        expired: [410, "卡密已过兑换期限"],
+        used: [409, "卡密已使用或已撤销"],
+        no_account: [409, "请先创建 Zepp Life 账号，再兑换卡密"]
+      }[result.reason] as [number, string];
+      return reply.code(response[0]).send({ error: response[1] });
+    }
+    return {
+      success: true,
+      durationDays: result.durationDays,
+      membershipExpiresAt: result.membershipExpiresAt,
+      message: `兑换成功，运动会员已增加 ${result.durationDays} 天。`
+    };
   });
 
   app.post("/api/sports/chat", {
@@ -52,6 +88,30 @@ export async function registerSportsRoutes(
     const parsed = sportsChatSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
+    }
+
+    const possibleAccessCode = normalizeSportsAccessCode(parsed.data.message);
+    if (/^STEP[A-Z0-9]{15}$/.test(possibleAccessCode)) {
+      const redeemed = await repositories.sportsAccessCodes.redeem(
+        request.userId,
+        hashSportsAccessCode(possibleAccessCode),
+        new Date()
+      );
+      if (redeemed.ok) {
+        return {
+          success: true,
+          action: "access_code_redeemed",
+          membershipExpiresAt: redeemed.membershipExpiresAt,
+          reply: `卡密兑换成功，运动会员已增加 ${redeemed.durationDays} 天。`
+        };
+      }
+      const message = {
+        invalid: "这张卡密无效，请核对后重新输入。",
+        expired: "这张卡密已过兑换期限。",
+        used: "这张卡密已使用或已撤销。",
+        no_account: "请先点击上方“绑定账号”创建 Zepp Life 账号，再输入卡密。"
+      }[redeemed.reason];
+      return { success: false, action: "access_code_invalid", reply: message };
     }
 
     const intent = recognizeSportsIntent(parsed.data.message, parsed.data.history);
@@ -99,6 +159,11 @@ export async function registerSportsRoutes(
         password,
         steps: intent.steps
       });
+      await repositories.sportsDailyTargets.upsert(
+        request.userId,
+        sportsTargetDate(),
+        result.steps
+      );
       return {
         success: true,
         action: "steps_updated",
@@ -295,14 +360,38 @@ async function finishRegistration(
   return qrView(registered, client, encoder);
 }
 
-function accountView(account?: SportsAccountRecord) {
-  if (!account) return { isBound: false, status: "unbound", account: null, membershipExpiresAt: null };
+function accountView(account?: SportsAccountRecord, todayTargetSteps: number | null = null) {
+  if (!account) {
+    return {
+      isBound: false,
+      status: "unbound",
+      account: null,
+      membershipExpiresAt: null,
+      todayTargetSteps: null,
+      lastTargetSteps: null
+    };
+  }
   return {
     isBound: account.bindStatus === "bound",
     status: account.status,
     account: { platform: "Zepp Life", email: maskEmail(account.email) },
-    membershipExpiresAt: account.membershipExpiresAt?.toISOString() ?? null
+    membershipExpiresAt: account.membershipExpiresAt?.toISOString() ?? null,
+    todayTargetSteps,
+    // 兼容尚未更新的小程序版本；该字段现在同样只表示当天目标。
+    lastTargetSteps: todayTargetSteps
   };
+}
+
+export function sportsTargetDate(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
 function validateFeatureConfig(config: AppConfig): string | null {

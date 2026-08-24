@@ -1,120 +1,112 @@
 <view class="sports-page">
   <view class="account-panel anim-up" aria-label="运动账号信息">
+    <view class="account-emblem" aria-hidden="true"><view class="emblem-line"></view></view>
+    <view class="account-summary">
+      <view class="account-heading"><view class="account-label">运动账号</view><view class="account-platform">ZEPP LIFE</view></view>
+      <view class="account-name text-cut">{{account ? account.email : '暂无绑定账号'}}</view>
+      <view class="account-meta-row">
+        <view class="account-meta text-cut">会员至 {{membershipExpiresAt || '未开通'}}</view>
+        <view wx:if="{{todayTargetSteps}}" class="account-target">已设 {{todayTargetSteps}} 步</view>
+      </view>
+    </view>
     <button
-      class="bind-action pressable {{binding ? 'is-loading' : ''}}"
-      hover-class="pressed"
-      aria-label="绑定运动账号"
+      class="bind-action {{isBound ? 'is-bound' : 'is-unbound'}} {{binding ? 'is-loading' : ''}}"
+      hover-class="is-pressed"
+      hover-stay-time="80"
+      aria-label="{{isBound ? '运动账号已绑定' : '绑定运动账号'}}"
       bindtap="handleBindTap"
       loading="{{binding}}"
       disabled="{{binding}}"
     >
-      <view class="bind-icon" aria-hidden="true">
-        <view class="link-ring link-ring-left"></view>
-        <view class="link-ring link-ring-right"></view>
-      </view>
-      <text class="bind-title">{{isBound ? '已绑定' : (binding ? '处理中' : '绑定账号')}}</text>
+      <view wx:if="{{!binding}}" class="bind-status-dot" aria-hidden="true"></view>
+      <text class="bind-title">{{isBound ? '已绑定' : (binding ? '处理中' : '去绑定')}}</text>
     </button>
-
-    <view class="account-summary">
-      <view class="account-heading">
-        <view class="account-label">运动账号</view>
-        <view class="status-pill {{isBound ? 'is-bound' : 'is-unbound'}}">
-          <view class="status-dot"></view>
-          {{isBound ? '已绑定' : '未绑定'}}
-        </view>
-      </view>
-      <view wx:if="{{isBound}}" class="account-detail">
-        <view class="account-name text-cut">{{account.email}}</view>
-        <view class="account-meta text-cut">会员有效期至 {{membershipExpiresAt || '未开通'}}</view>
-      </view>
-      <view wx:else class="account-detail">
-        <view class="account-name">{{account ? account.email : '暂无绑定账号'}}</view>
-        <view class="account-meta">会员有效期至 {{membershipExpiresAt || '未开通'}}</view>
-      </view>
-    </view>
   </view>
 
   <view class="chat-panel anim-up delay-1" aria-label="运动 AI 助手对话">
     <view class="chat-header">
       <view class="assistant-identity">
-        <view class="assistant-avatar" aria-hidden="true">
-          <view class="activity-line"></view>
-        </view>
+        <view class="assistant-avatar" aria-hidden="true"><view class="activity-line"></view></view>
         <view class="assistant-copy">
           <view class="assistant-name">运动助手</view>
-          <view class="assistant-state">今日运动目标 · 账号状态校验</view>
+          <view class="assistant-state">目标设置 · 账号校验 · 即时反馈</view>
         </view>
+      </view>
+      <view class="system-state"><view class="system-state-dot"></view>READY</view>
+    </view>
+
+    <view class="goal-dashboard" aria-label="今日运动目标">
+      <view class="goal-ring-wrap">
+        <view class="goal-ring {{todayTargetSteps ? 'has-target' : ''}}">
+          <view class="goal-ring-core">
+            <view class="goal-kicker">今日目标</view>
+            <view class="goal-number">{{todayTargetSteps || '—'}}</view>
+            <view class="goal-unit">{{todayTargetSteps ? '步 · 已设定' : '等待设置'}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="goal-data">
+        <view class="goal-data-head">
+          <view class="goal-data-title">目标状态</view>
+          <view class="goal-data-badge {{todayTargetSteps ? 'is-ready' : ''}}">{{todayTargetSteps ? '设置成功' : '待设置'}}</view>
+        </view>
+        <view class="goal-stat"><view class="goal-stat-label">账号连接</view><view class="goal-stat-value {{isBound ? 'is-positive' : ''}}">{{isBound ? '正常' : '未绑定'}}</view></view>
+        <view class="goal-stat"><view class="goal-stat-label">会员有效期</view><view class="goal-stat-value text-cut">{{membershipExpiresAt || '未开通'}}</view></view>
+        <view class="goal-hint">{{todayTargetSteps ? '可继续输入新步数覆盖今日目标' : '选择常用目标，或直接输入任意步数'}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{messages.length === 0}}" class="quick-targets" aria-label="常用目标">
+      <view class="quick-targets-head">
+        <view class="quick-targets-title">快速设置</view>
+        <button class="quick-custom-action" data-text="设置今天运动目标" bindtap="handleSuggestionTap" hover-class="is-pressed" hover-stay-time="80" aria-label="设置其他目标">
+          其他目标 <text aria-hidden="true">＋</text>
+        </button>
+      </view>
+      <view class="quick-targets-row">
+        <button
+          wx:for="{{suggestions}}"
+          wx:key="text"
+          wx:if="{{!item.custom}}"
+          class="quick-target"
+          data-text="{{item.text}}"
+          bindtap="handleSuggestionTap"
+          hover-class="is-pressed"
+          hover-stay-time="80"
+          aria-label="{{item.text}}"
+        >
+          <view class="quick-target-copy">
+            <view class="quick-target-main"><text class="quick-target-value">{{item.label}}</text><text wx:if="{{item.unit}}" class="quick-target-unit">{{item.unit}}</text></view>
+            <text class="quick-target-caption">{{item.caption}}</text>
+          </view>
+        </button>
       </view>
     </view>
 
     <scroll-view class="chat-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-into-view="{{scrollToMessage}}">
       <view class="chat-content">
-        <view
-          wx:for="{{messages}}"
-          wx:key="id"
-          id="{{item.id}}"
-          class="message-row {{item.role === 'user' ? 'is-user' : ''}}"
-        >
-          <view class="message-avatar" aria-hidden="true">
-            <view class="message-avatar-mark {{item.role === 'user' ? 'is-user' : ''}}"></view>
-          </view>
-          <view class="message-group">
-            <view class="message-author">{{item.role === 'user' ? '你' : '运动助手'}}</view>
-            <view class="message-bubble {{item.success ? 'is-success' : ''}}">{{item.content}}</view>
-          </view>
+        <view wx:if="{{messages.length === 0}}" class="empty-conversation">
+          <view class="empty-conversation-mark" aria-hidden="true"></view>
+          <view class="empty-conversation-copy"><view class="empty-conversation-title">告诉我你想设置的步数</view><view class="empty-conversation-text">我会先检查绑定和会员状态，成功后同步更新上方目标。</view></view>
         </view>
-
-        <view wx:if="{{messages.length === 1}}" class="suggestion-block">
-          <view class="suggestion-title">常用目标</view>
-          <view class="suggestion-list">
-            <button
-              wx:for="{{suggestions}}"
-              wx:key="text"
-              class="suggestion-item pressable {{item.custom ? 'is-custom' : ''}}"
-              data-text="{{item.text}}"
-              bindtap="handleSuggestionTap"
-              hover-class="is-pressed"
-              hover-stay-time="80"
-              aria-label="{{item.text}}"
-            >
-              <view class="suggestion-copy">
-                <view class="suggestion-main">
-                  <text class="suggestion-text">{{item.label}}</text>
-                  <text wx:if="{{item.unit}}" class="suggestion-unit">{{item.unit}}</text>
-                </view>
-                <text class="suggestion-caption">{{item.caption}}</text>
-              </view>
-              <view wx:if="{{item.custom}}" class="suggestion-action" aria-hidden="true">设置</view>
-            </button>
-          </view>
+        <view wx:for="{{messages}}" wx:key="id" id="{{item.id}}" class="message-row {{item.role === 'user' ? 'is-user' : ''}}">
+          <view class="message-avatar" aria-hidden="true"><view class="message-avatar-mark {{item.role === 'user' ? 'is-user' : ''}}"></view></view>
+          <view class="message-group"><view class="message-author">{{item.role === 'user' ? '你' : '运动助手'}}</view><view class="message-bubble {{item.success ? 'is-success' : ''}}">{{item.content}}</view></view>
         </view>
-
         <view wx:if="{{chatLoading}}" class="message-row">
-          <view class="message-avatar" aria-hidden="true">
-            <view class="message-avatar-mark"></view>
-          </view>
-          <view class="message-group">
-            <view class="message-author">运动助手</view>
-            <view class="message-bubble typing-bubble">
-              <view class="typing-dot"></view>
-              <view class="typing-dot"></view>
-              <view class="typing-dot"></view>
-            </view>
-          </view>
+          <view class="message-avatar" aria-hidden="true"><view class="message-avatar-mark"></view></view>
+          <view class="message-group"><view class="message-author">运动助手</view><view class="message-bubble typing-bubble"><view class="typing-dot"></view><view class="typing-dot"></view><view class="typing-dot"></view></view></view>
         </view>
       </view>
     </scroll-view>
 
     <view class="composer-wrap">
-      <view wx:if="{{!isBound}}" class="composer-notice">
-        <view class="notice-dot"></view>
-        未绑定时会自动引导绑定
-      </view>
+      <view wx:if="{{!isBound}}" class="composer-notice"><view class="notice-dot"></view>未绑定时会自动引导绑定</view>
       <view class="composer {{inputFocused ? 'is-focused' : ''}} {{chatLoading ? 'is-disabled' : ''}}">
         <input
           class="composer-input"
           value="{{inputText}}"
-          placeholder="例如：今天运动目标 20000 步"
+          placeholder="输入目标，例如 18,000 步"
           placeholder-class="composer-placeholder"
           maxlength="500"
           confirm-type="send"
@@ -125,14 +117,7 @@
           disabled="{{chatLoading}}"
           aria-label="输入今天运动目标"
         />
-        <button
-          class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}"
-          bindtap="sendChatMessage"
-          disabled="{{!inputText || chatLoading}}"
-          aria-label="发送消息"
-        >
-          <text class="send-label">发送</text>
-        </button>
+        <button class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}" bindtap="sendChatMessage" disabled="{{!inputText || chatLoading}}" aria-label="发送消息"><text class="send-label">发送</text></button>
       </view>
     </view>
   </view>
@@ -140,46 +125,20 @@
   <view wx:if="{{dialogVisible}}" class="binding-overlay" catchtouchmove="noop">
     <view class="binding-dialog" role="dialog" aria-label="绑定 Zepp Life 账号">
       <view class="dialog-header">
-        <view class="dialog-title">
-          {{dialogStage === 'captcha' ? '创建 Zepp Life 账号' : (dialogStage === 'scan' ? '绑定微信' : '运动账号提示')}}
-        </view>
-        <button class="dialog-close {{binding ? 'is-disabled' : ''}}" bindtap="closeBindingDialog" disabled="{{binding}}" aria-label="关闭绑定弹窗">
-          <view class="dialog-close-icon" aria-hidden="true"></view>
-        </button>
+        <view class="dialog-title">{{dialogStage === 'captcha' ? '创建 Zepp Life 账号' : (dialogStage === 'scan' ? '绑定微信' : '运动账号提示')}}</view>
+        <button class="dialog-close {{binding ? 'is-disabled' : ''}}" bindtap="closeBindingDialog" disabled="{{binding}}" aria-label="关闭绑定弹窗"><view class="dialog-close-icon" aria-hidden="true"></view></button>
       </view>
-
       <block wx:if="{{dialogStage === 'captcha'}}">
         <view class="dialog-description">输入验证码后，系统会为当前账号自动完成注册。</view>
         <image class="captcha-image" src="{{captchaImage}}" mode="aspectFit" aria-label="Zepp 注册验证码" />
-        <input
-          class="captcha-input"
-          value="{{captchaCode}}"
-          placeholder="输入图片验证码"
-          maxlength="12"
-          bindinput="handleCaptchaInput"
-          confirm-type="done"
-          bindconfirm="submitCaptcha"
-          focus
-        />
-        <button class="dialog-primary {{binding ? 'is-disabled' : ''}}" bindtap="submitCaptcha" loading="{{binding}}" disabled="{{binding}}">
-          创建账号并获取二维码
-        </button>
+        <input class="captcha-input" value="{{captchaCode}}" placeholder="输入图片验证码" maxlength="12" bindinput="handleCaptchaInput" confirm-type="done" bindconfirm="submitCaptcha" focus />
+        <button class="dialog-primary {{binding ? 'is-disabled' : ''}}" bindtap="submitCaptcha" loading="{{binding}}" disabled="{{binding}}">创建账号并获取二维码</button>
       </block>
-
       <block wx:elif="{{dialogStage === 'scan'}}">
         <view class="dialog-description">请使用微信扫码，或长按二维码识别。</view>
-        <image
-          class="bind-qrcode"
-          src="{{qrcodeImage}}"
-          mode="aspectFit"
-          show-menu-by-longpress
-          aria-label="Zepp Life 微信绑定二维码"
-        />
-        <button class="dialog-primary {{binding ? 'is-disabled' : ''}}" bindtap="refreshBinding" loading="{{binding}}" disabled="{{binding}}">
-          我已扫码，检查绑定结果
-        </button>
+        <image class="bind-qrcode" src="{{qrcodeImage}}" mode="aspectFit" show-menu-by-longpress aria-label="Zepp Life 微信绑定二维码" />
+        <button class="dialog-primary {{binding ? 'is-disabled' : ''}}" bindtap="refreshBinding" loading="{{binding}}" disabled="{{binding}}">我已扫码，检查绑定结果</button>
       </block>
-
       <view wx:if="{{bindingMessage}}" class="binding-message">{{bindingMessage}}</view>
       <view wx:if="{{bindingError}}" class="binding-error">{{bindingError}}</view>
     </view>

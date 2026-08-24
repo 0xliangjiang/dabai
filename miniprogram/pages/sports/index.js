@@ -6,6 +6,7 @@ Page({
     isBound: false,
     account: null,
     membershipExpiresAt: "",
+    todayTargetSteps: "",
     binding: false,
     dialogVisible: false,
     dialogStage: "",
@@ -14,11 +15,7 @@ Page({
     qrcodeImage: "",
     bindingMessage: "",
     bindingError: "",
-    messages: [{
-      id: "welcome",
-      role: "assistant",
-      content: "告诉我今天的运动目标，我会先确认账号、绑定和会员状态，再为你完成设置。"
-    }],
+    messages: [],
     inputText: "",
     inputFocused: false,
     chatLoading: false,
@@ -63,7 +60,10 @@ Page({
     this.setData({
       isBound: Boolean(result && result.isBound),
       account: result && result.account ? result.account : null,
-      membershipExpiresAt: formatDate(result && result.membershipExpiresAt)
+      membershipExpiresAt: formatDate(result && result.membershipExpiresAt),
+      todayTargetSteps: formatSteps(
+        result && (result.todayTargetSteps != null ? result.todayTargetSteps : result.lastTargetSteps)
+      )
     });
   },
 
@@ -184,6 +184,7 @@ Page({
         scrollToMessage: assistantMessage.id
       });
       if (result.action === "steps_updated") {
+        this.setData({ todayTargetSteps: formatSteps(result.steps) });
         wx.showToast({ title: "今日目标设置成功", icon: "success" });
       } else if (result.action === "bind_required" && !this.data.binding) {
         await this.handleBindTap();
@@ -248,4 +249,10 @@ function formatDate(value) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatSteps(value) {
+  const steps = Number(value);
+  if (!Number.isInteger(steps) || steps <= 0) return "";
+  return steps.toLocaleString("en-US");
 }

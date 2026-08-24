@@ -27,8 +27,45 @@ export type SportsAccountRecord = {
   captchaKey: string | null;
   captchaExpiresAt: Date | null;
   membershipExpiresAt: Date | null;
+  lastTargetSteps: number | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type SportsDailyTargetRecord = {
+  id: string;
+  userId: string;
+  targetDate: string;
+  steps: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type SportsAdminUserRecord = {
+  id: string;
+  openid: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+  userStatus: string;
+  createdAt: Date;
+  account: Pick<SportsAccountRecord, "email" | "status" | "bindStatus" | "membershipExpiresAt" | "updatedAt"> | null;
+  todayTargetSteps: number | null;
+};
+
+export type SportsAccessCodeRecord = {
+  id: string;
+  codeHash: string;
+  codeHint: string;
+  batchId: string;
+  durationDays: number;
+  status: string;
+  validUntil: Date | null;
+  redeemedByUserId: string | null;
+  redeemedAt: Date | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  redeemedByNickname?: string | null;
 };
 
 export type ReferralSummary = {
@@ -379,10 +416,46 @@ export type Repositories = {
           | "captchaKey"
           | "captchaExpiresAt"
           | "membershipExpiresAt"
+          | "lastTargetSteps"
         >
       >
     ): Promise<SportsAccountRecord>;
     claimCaptcha(userId: string, now: Date): Promise<boolean>;
+    listAdmin(options: {
+      page: number;
+      pageSize: number;
+      search?: string;
+      bindStatus?: "bound" | "unbound" | "none";
+      targetDate: string;
+    }): Promise<{ total: number; items: SportsAdminUserRecord[] }>;
+    adminUnbind(userId: string): Promise<SportsAccountRecord | undefined>;
+  };
+  sportsDailyTargets: {
+    findByUserAndDate(
+      userId: string,
+      targetDate: string
+    ): Promise<SportsDailyTargetRecord | undefined>;
+    upsert(userId: string, targetDate: string, steps: number): Promise<SportsDailyTargetRecord>;
+  };
+  sportsAccessCodes: {
+    createBatch(inputs: Array<{
+      codeHash: string;
+      codeHint: string;
+      batchId: string;
+      durationDays: number;
+      validUntil: Date | null;
+    }>): Promise<SportsAccessCodeRecord[]>;
+    list(options: {
+      page: number;
+      pageSize: number;
+      status?: "active" | "redeemed" | "revoked" | "expired";
+      search?: string;
+    }): Promise<{ total: number; items: SportsAccessCodeRecord[] }>;
+    revoke(id: string, now: Date): Promise<SportsAccessCodeRecord | undefined>;
+    redeem(userId: string, codeHash: string, now: Date): Promise<
+      | { ok: true; membershipExpiresAt: Date; durationDays: number }
+      | { ok: false; reason: "invalid" | "expired" | "used" | "no_account" }
+    >;
   };
   settings: {
     getCommissionSharingRatio(): Promise<number | null>;

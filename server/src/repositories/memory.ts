@@ -19,6 +19,8 @@ import type {
   ProductSnapshotRecord,
   Repositories,
   SportsAccountRecord,
+  SportsAccessCodeRecord,
+  SportsDailyTargetRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
   UserRecord,
@@ -36,6 +38,8 @@ export function createRepositories(): Repositories {
   const users = new Map<string, UserRecord>();
   const usersByOpenid = new Map<string, string>();
   const sportsAccounts = new Map<string, SportsAccountRecord>();
+  const sportsDailyTargets = new Map<string, SportsDailyTargetRecord>();
+  const sportsAccessCodes = new Map<string, SportsAccessCodeRecord>();
   const conversions = new Map<string, ConversionRecord>();
   const copyEvents = new Map<string, CopyEventRecord>();
   const productSnapshots = new Map<string, ProductSnapshotRecord>();
@@ -265,6 +269,7 @@ export function createRepositories(): Repositories {
           captchaKey: input.captchaKey,
           captchaExpiresAt: input.captchaExpiresAt,
           membershipExpiresAt: input.membershipExpiresAt,
+          lastTargetSteps: null,
           createdAt: now,
           updatedAt: now
         };
@@ -291,6 +296,109 @@ export function createRepositories(): Repositories {
         }
         sportsAccounts.set(userId, { ...current, status: "registering", updatedAt: new Date() });
         return true;
+      },
+      async listAdmin(options) {
+        const search = options.search?.trim().toLowerCase();
+        let all = [...users.values()].filter((user) => !deletedUserIds.has(user.id));
+        all = all.filter((user) => {
+          const account = sportsAccounts.get(user.id);
+          if (options.bindStatus === "none" && account) return false;
+          if (options.bindStatus === "bound" && account?.bindStatus !== "bound") return false;
+          if (options.bindStatus === "unbound" && (!account || account.bindStatus === "bound")) return false;
+          if (!search) return true;
+          return [user.nickname ?? "", user.openid, user.id, account?.email ?? ""]
+            .some((value) => value.toLowerCase().includes(search));
+        });
+        all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const start = (options.page - 1) * options.pageSize;
+        return {
+          total: all.length,
+          items: all.slice(start, start + options.pageSize).map((user) => {
+            const account = sportsAccounts.get(user.id);
+            return {
+              id: user.id,
+              openid: user.openid,
+              nickname: user.nickname,
+              avatarUrl: user.avatarUrl,
+              userStatus: user.status,
+              createdAt: user.createdAt,
+              account: account ? {
+                email: account.email,
+                status: account.status,
+                bindStatus: account.bindStatus,
+                membershipExpiresAt: account.membershipExpiresAt,
+                updatedAt: account.updatedAt
+              } : null,
+              todayTargetSteps: sportsDailyTargets.get(`${user.id}:${options.targetDate}`)?.steps ?? null
+            };
+          })
+        };
+      },
+      async adminUnbind(userId) {
+        const current = sportsAccounts.get(userId);
+        if (!current) return undefined;
+        const updated = { ...current, bindStatus: "unbound", status: "registered", updatedAt: new Date() };
+        sportsAccounts.set(userId, updated);
+        return updated;
+      }
+    },
+    sportsDailyTargets: {
+      async findByUserAndDate(userId, targetDate) {
+        return sportsDailyTargets.get(`${userId}:${targetDate}`);
+      },
+      async upsert(userId, targetDate, steps) {
+        const key = `${userId}:${targetDate}`;
+        const current = sportsDailyTargets.get(key);
+        const now = new Date();
+        const record: SportsDailyTargetRecord = current
+          ? { ...current, steps, updatedAt: now }
+          : { id: randomUUID(), userId, targetDate, steps, createdAt: now, updatedAt: now };
+        sportsDailyTargets.set(key, record);
+        return record;
+      }
+    },
+    sportsAccessCodes: {
+      async createBatch(inputs) {
+        const now = new Date();
+        return inputs.map((input) => {
+          const record: SportsAccessCodeRecord = {
+            id: randomUUID(), ...input, status: "active", redeemedByUserId: null,
+            redeemedAt: null, revokedAt: null, createdAt: now, updatedAt: now
+          };
+          sportsAccessCodes.set(record.id, record);
+          return record;
+        });
+      },
+      async list(options) {
+        const now = Date.now();
+        const search = options.search?.trim().toLowerCase();
+        const all = [...sportsAccessCodes.values()].filter((record) => {
+          const effectiveStatus = record.status === "active" && record.validUntil && record.validUntil.getTime() <= now ? "expired" : record.status;
+          if (options.status && effectiveStatus !== options.status) return false;
+          return !search || record.codeHint.toLowerCase().includes(search) || record.batchId.toLowerCase().includes(search);
+        }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const start = (options.page - 1) * options.pageSize;
+        return { total: all.length, items: all.slice(start, start + options.pageSize) };
+      },
+      async revoke(id, now) {
+        const current = sportsAccessCodes.get(id);
+        if (!current || current.status !== "active") return undefined;
+        const updated = { ...current, status: "revoked", revokedAt: now, updatedAt: now };
+        sportsAccessCodes.set(id, updated);
+        return updated;
+      },
+      async redeem(userId, codeHash, now) {
+        const account = sportsAccounts.get(userId);
+        if (!account) return { ok: false, reason: "no_account" as const };
+        const code = [...sportsAccessCodes.values()].find((item) => item.codeHash === codeHash);
+        if (!code) return { ok: false, reason: "invalid" as const };
+        if (code.status !== "active") return { ok: false, reason: "used" as const };
+        if (code.validUntil && code.validUntil.getTime() <= now.getTime()) return { ok: false, reason: "expired" as const };
+        const base = account.membershipExpiresAt && account.membershipExpiresAt > now ? account.membershipExpiresAt : now;
+        const membershipExpiresAt = new Date(base.getTime() + code.durationDays * 86_400_000);
+        sportsAccessCodes.set(code.id, { ...code, status: "redeemed", redeemedByUserId: userId, redeemedAt: now, updatedAt: now });
+        sportsAccounts.set(userId, { ...account, membershipExpiresAt, updatedAt: now });
+        return { ok: true, membershipExpiresAt, durationDays: code.durationDays };
       }
     },
     settings: {

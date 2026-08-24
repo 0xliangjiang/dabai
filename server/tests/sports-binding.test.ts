@@ -4,6 +4,7 @@ import type { AppConfig } from "../src/config/env.js";
 import type { ZeppClient } from "../src/integrations/zepp/client.js";
 import { decryptCredential } from "../src/integrations/zepp/credentials.js";
 import { createRepositories } from "../src/repositories/memory.js";
+import { sportsTargetDate } from "../src/routes/sports.js";
 
 const credentialKey = "test-zepp-credential-key-1234567890";
 
@@ -220,6 +221,23 @@ describe("sports account binding", () => {
     expect(response.json()).toMatchObject({ success: true, action: "steps_updated", steps: 20_000 });
     expect(response.json().reply).toBe("设置成功，今天的运动目标为 20,000 步。");
     expect(zeppClient.stepUpdates).toEqual([20_000]);
+
+    const account = await app.inject({ method: "GET", url: "/api/sports/account", headers });
+    expect(account.json()).toMatchObject({ isBound: true, todayTargetSteps: 20_000 });
+    expect(
+      await repositories.sportsDailyTargets.findByUserAndDate(
+        "user-sports-chat",
+        sportsTargetDate()
+      )
+    ).toMatchObject({ steps: 20_000 });
+
+    await repositories.sportsDailyTargets.upsert(
+      "user-sports-chat",
+      sportsTargetDate(new Date(Date.now() - 24 * 60 * 60 * 1000)),
+      10_000
+    );
+    const reloadedAccount = await app.inject({ method: "GET", url: "/api/sports/account", headers });
+    expect(reloadedAccount.json()).toMatchObject({ todayTargetSteps: 20_000 });
   });
 
   test("does not call Zepp for an informational step message", async () => {
@@ -236,5 +254,67 @@ describe("sports account binding", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().action).toBe("reply");
     expect(zeppClient.stepUpdates).toEqual([]);
+  });
+
+  test("generates one-time access codes, redeems membership, and lets admin unbind safely", async () => {
+    const repositories = createRepositories();
+    const zeppClient = new MockZeppClient();
+    const app = await createApp({
+      config: testConfig,
+      repositories,
+      zeppClient,
+      sportsQrEncoder: async (ticket) => `data:image/png;base64,qr-${ticket}`
+    });
+    apps.push(app);
+    const user = await repositories.users.findOrCreateByOpenid("openid-sports-code");
+    const userId = user.id;
+    const userHeaders = { authorization: `Bearer local_${userId}` };
+    const adminHeaders = { "x-admin-token": "dev-admin-token" };
+
+    await app.inject({ method: "POST", url: "/api/sports/bind/start", headers: userHeaders });
+    zeppClient.bound = true;
+    await app.inject({ method: "POST", url: "/api/sports/bind/refresh", headers: userHeaders });
+    const before = await repositories.sportsAccounts.findByUser(userId);
+
+    const generated = await app.inject({
+      method: "POST",
+      url: "/api/admin/sports/access-codes/generate",
+      headers: adminHeaders,
+      payload: { count: 2, durationDays: 30, validUntil: null }
+    });
+    expect(generated.statusCode).toBe(200);
+    const rawCode = generated.json().codes[0].code as string;
+    expect(rawCode).toMatch(/^STEP-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/);
+
+    const redeemed = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers: userHeaders,
+      payload: { message: rawCode, history: [] }
+    });
+    expect(redeemed.json()).toMatchObject({ success: true, action: "access_code_redeemed" });
+    const after = await repositories.sportsAccounts.findByUser(userId);
+    expect(after!.membershipExpiresAt!.getTime() - before!.membershipExpiresAt!.getTime()).toBe(30 * 86_400_000);
+
+    const reused = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers: userHeaders,
+      payload: { message: rawCode, history: [] }
+    });
+    expect(reused.json()).toMatchObject({ success: false, action: "access_code_invalid" });
+
+    const listedCodes = await app.inject({ method: "GET", url: "/api/admin/sports/access-codes", headers: adminHeaders });
+    expect(listedCodes.json().items[0]).not.toHaveProperty("codeHash");
+    expect(listedCodes.json().items.some((item: { effectiveStatus: string }) => item.effectiveStatus === "redeemed")).toBe(true);
+
+    const users = await app.inject({ method: "GET", url: "/api/admin/sports/users?bindStatus=bound", headers: adminHeaders });
+    expect(users.json().items).toHaveLength(1);
+    expect(users.json().items[0].account.email).toMatch(/@gmail\.com$/);
+
+    const unbound = await app.inject({ method: "POST", url: `/api/admin/sports/users/${userId}/unbind`, headers: adminHeaders });
+    expect(unbound.json()).toMatchObject({ ok: true, account: { bindStatus: "unbound" } });
+    const preserved = await repositories.sportsAccounts.findByUser(userId);
+    expect(preserved?.membershipExpiresAt).toEqual(after?.membershipExpiresAt);
   });
 });

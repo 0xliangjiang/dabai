@@ -9,6 +9,7 @@ import { reattributePendingOrders, reconcileOrderLedger, resolveCommissionOption
 import { createDealAiParser, MinimaxError } from "../integrations/minimax/client.js";
 import { registerAdminDealRoutes } from "./deals.js";
 import { registerAdminArticleRoutes } from "./articles.js";
+import { registerAdminSportsRoutes } from "./sports-admin.js";
 import { handleMediaUpload } from "./uploads.js";
 import { centsToPoints } from "../domain/points.js";
 
@@ -30,6 +31,7 @@ export async function registerAdminRoutes(
   });
 
   await registerAdminArticleRoutes(app, repositories);
+  await registerAdminSportsRoutes(app, repositories);
 
   app.get("/api/admin/overview", async () => ({
     metrics: await repositories.admin.overview()

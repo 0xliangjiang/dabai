@@ -120,8 +120,11 @@ export async function registerOrderRoutes(
 }
 
 function orderStatusesForTab(status?: string): string[] | undefined {
-  if (status === "paid" || status === "received" || status === "settled") return [status];
-  if (status === "closed") return ["refunded", "invalid"];
+  // 用户只需要四个稳定分类：已收货但尚未结算仍属于已付款阶段，
+  // 失效订单与退款订单统一进入已退款，卡片内继续显示真实细分状态。
+  if (status === "paid") return ["paid", "received"];
+  if (status === "settled") return ["settled"];
+  if (status === "refunded") return ["refunded", "invalid"];
   return undefined;
 }
 

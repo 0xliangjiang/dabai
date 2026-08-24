@@ -1,14 +1,13 @@
 page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
 
-.order-tabs-scroll {
+.order-tabs-shell {
   width: 100%;
   margin: -2rpx 0 2rpx;
-  white-space: nowrap;
 }
 
 .order-tabs {
-  display: inline-flex;
-  min-width: 100%;
+  display: flex;
+  width: 100%;
   padding: 4rpx;
   gap: 8rpx;
   border: 1rpx solid rgba(16, 76, 53, 0.08);
@@ -18,29 +17,34 @@ page { padding-bottom: calc(160rpx + env(safe-area-inset-bottom)); }
 }
 
 .order-tab {
-  flex: 1 0 auto;
-  min-width: 128rpx;
+  display: block;
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
   height: 68rpx;
   margin: 0;
-  padding: 0 22rpx;
+  padding: 0 8rpx;
   border: 0;
   border-radius: 14rpx;
   background: transparent;
   color: #64756d;
   font-size: 25rpx;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 68rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   box-sizing: border-box;
-}
-
-.order-tab::after {
-  border: 0;
 }
 
 .order-tab.active {
   background: #0a7a52;
   color: #ffffff;
-  box-shadow: 0 6rpx 16rpx rgba(10, 122, 82, 0.2);
+  box-shadow: 0 6rpx 16rpx -8rpx rgba(10, 122, 82, 0.45), 0 2rpx 6rpx rgba(16, 76, 53, 0.12);
+}
+
+.order-tab-pressed {
+  opacity: 0.78;
 }
 
 .refresh-row {

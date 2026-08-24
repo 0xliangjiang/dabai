@@ -16,6 +16,7 @@ import type {
   ReferralSummary,
   Repositories,
   SportsAccountRecord,
+  SportsAccessCodeRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
   UserRecord,
@@ -306,6 +307,113 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           data: { status: "registering" }
         });
         return result.count === 1;
+      },
+      async listAdmin(options) {
+        const search = options.search?.trim();
+        const accountFilter = options.bindStatus === "none"
+          ? { is: null }
+          : options.bindStatus === "bound"
+            ? { is: { bindStatus: "bound" } }
+            : options.bindStatus === "unbound"
+              ? { is: { bindStatus: { not: "bound" } } }
+              : undefined;
+        const where: Prisma.UserWhereInput = {
+          deletedAt: null,
+          ...(accountFilter ? { sportsAccount: accountFilter } : {}),
+          ...(search ? { OR: [
+            { nickname: { contains: search } }, { openid: { contains: search } }, { id: { contains: search } },
+            { sportsAccount: { is: { email: { contains: search } } } }
+          ] } : {})
+        };
+        const [total, rows] = await prisma.$transaction([
+          prisma.user.count({ where }),
+          prisma.user.findMany({
+            where, orderBy: { createdAt: "desc" }, skip: (options.page - 1) * options.pageSize, take: options.pageSize,
+            include: { sportsAccount: true, sportsDailyTargets: { where: { targetDate: options.targetDate }, take: 1 } }
+          })
+        ]);
+        return { total, items: rows.map((row) => ({
+          id: row.id, openid: row.openid, nickname: row.nickname, avatarUrl: row.avatarUrl,
+          userStatus: row.status, createdAt: row.createdAt,
+          account: row.sportsAccount ? {
+            email: row.sportsAccount.email, status: row.sportsAccount.status, bindStatus: row.sportsAccount.bindStatus,
+            membershipExpiresAt: row.sportsAccount.membershipExpiresAt, updatedAt: row.sportsAccount.updatedAt
+          } : null,
+          todayTargetSteps: row.sportsDailyTargets[0]?.steps ?? null
+        })) };
+      },
+      async adminUnbind(userId) {
+        const existing = await prisma.sportsAccount.findUnique({ where: { userId } });
+        if (!existing) return undefined;
+        return mapSportsAccount(await prisma.sportsAccount.update({
+          where: { userId }, data: { bindStatus: "unbound", status: "registered" }
+        }));
+      }
+    },
+    sportsDailyTargets: {
+      async findByUserAndDate(userId, targetDate) {
+        const record = await prisma.sportsDailyTarget.findUnique({
+          where: { userId_targetDate: { userId, targetDate } }
+        });
+        return record ?? undefined;
+      },
+      async upsert(userId, targetDate, steps) {
+        return prisma.sportsDailyTarget.upsert({
+          where: { userId_targetDate: { userId, targetDate } },
+          create: { userId, targetDate, steps },
+          update: { steps }
+        });
+      }
+    },
+    sportsAccessCodes: {
+      async createBatch(inputs) {
+        const created = await prisma.$transaction(inputs.map((input) => prisma.sportsAccessCode.create({ data: input })));
+        return created.map(mapSportsAccessCode);
+      },
+      async list(options) {
+        const now = new Date();
+        const search = options.search?.trim();
+        const statusWhere: Prisma.SportsAccessCodeWhereInput = options.status === "expired"
+          ? { status: "active", validUntil: { lte: now } }
+          : options.status === "active"
+            ? { status: "active", OR: [{ validUntil: null }, { validUntil: { gt: now } }] }
+            : options.status ? { status: options.status } : {};
+        const where: Prisma.SportsAccessCodeWhereInput = {
+          ...statusWhere,
+          ...(search ? { AND: [{ OR: [{ codeHint: { contains: search } }, { batchId: { contains: search } }] }] } : {})
+        };
+        const [total, rows] = await prisma.$transaction([
+          prisma.sportsAccessCode.count({ where }),
+          prisma.sportsAccessCode.findMany({
+            where, orderBy: { createdAt: "desc" }, skip: (options.page - 1) * options.pageSize, take: options.pageSize,
+            include: { redeemedBy: { select: { nickname: true } } }
+          })
+        ]);
+        return { total, items: rows.map((row) => ({ ...mapSportsAccessCode(row), redeemedByNickname: row.redeemedBy?.nickname ?? null })) };
+      },
+      async revoke(id, now) {
+        const result = await prisma.sportsAccessCode.updateMany({ where: { id, status: "active" }, data: { status: "revoked", revokedAt: now } });
+        if (result.count !== 1) return undefined;
+        const row = await prisma.sportsAccessCode.findUnique({ where: { id } });
+        return row ? mapSportsAccessCode(row) : undefined;
+      },
+      async redeem(userId, codeHash, now) {
+        return prisma.$transaction(async (tx) => {
+          const account = await tx.sportsAccount.findUnique({ where: { userId } });
+          if (!account) return { ok: false, reason: "no_account" as const };
+          const code = await tx.sportsAccessCode.findUnique({ where: { codeHash } });
+          if (!code) return { ok: false, reason: "invalid" as const };
+          if (code.status !== "active") return { ok: false, reason: "used" as const };
+          if (code.validUntil && code.validUntil <= now) return { ok: false, reason: "expired" as const };
+          const claimed = await tx.sportsAccessCode.updateMany({
+            where: { id: code.id, status: "active" }, data: { status: "redeemed", redeemedByUserId: userId, redeemedAt: now }
+          });
+          if (claimed.count !== 1) return { ok: false, reason: "used" as const };
+          const base = account.membershipExpiresAt && account.membershipExpiresAt > now ? account.membershipExpiresAt : now;
+          const membershipExpiresAt = new Date(base.getTime() + code.durationDays * 86_400_000);
+          await tx.sportsAccount.update({ where: { userId }, data: { membershipExpiresAt } });
+          return { ok: true, membershipExpiresAt, durationDays: code.durationDays };
+        });
       }
     },
     settings: {
@@ -1289,6 +1397,10 @@ function mapUser(user: {
 }
 
 function mapSportsAccount(record: SportsAccountRecord): SportsAccountRecord {
+  return record;
+}
+
+function mapSportsAccessCode(record: SportsAccessCodeRecord): SportsAccessCodeRecord {
   return record;
 }
 

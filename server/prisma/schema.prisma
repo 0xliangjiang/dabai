@@ -30,6 +30,8 @@ model User {
   withdrawals       Withdrawal[]
   pointAdjustments  PointAdjustment[]
   sportsAccount     SportsAccount?
+  sportsDailyTargets SportsDailyTarget[]
+  redeemedSportsCodes SportsAccessCode[]
 
   // 二级分销：邀请人（上线），仅新用户首次注册时绑定，永久不变
   inviter  User?  @relation("Referral", fields: [inviterId], references: [id])
@@ -51,12 +53,48 @@ model SportsAccount {
   captchaKey          String?   @db.VarChar(512)
   captchaExpiresAt    DateTime?
   membershipExpiresAt DateTime?
+  lastTargetSteps     Int?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([bindStatus, updatedAt])
+}
+
+model SportsDailyTarget {
+  id         String   @id @default(cuid())
+  userId     String
+  targetDate String   @db.VarChar(10)
+  steps      Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, targetDate])
+  @@index([targetDate, updatedAt])
+}
+
+model SportsAccessCode {
+  id               String    @id @default(cuid())
+  codeHash         String    @unique @db.Char(64)
+  codeHint         String    @db.VarChar(24)
+  batchId          String    @db.VarChar(36)
+  durationDays     Int
+  status           String    @default("active") @db.VarChar(20)
+  validUntil       DateTime?
+  redeemedByUserId String?
+  redeemedAt       DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  redeemedBy User? @relation(fields: [redeemedByUserId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([batchId])
+  @@index([redeemedByUserId, redeemedAt])
 }
 
 model Setting {

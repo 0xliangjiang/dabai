@@ -21,6 +21,8 @@ import {
   RotateCcw,
   Search,
   Settings,
+  Footprints,
+  KeyRound,
   ShieldQuestion,
   Users,
   WalletCards,
@@ -41,6 +43,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Toaster } from "./components/ui/toaster";
 import { DealManager } from "./DealManager";
 import { ArticleManager } from "./ArticleManager";
+import { SportsCodeManager, SportsUserManager } from "./SportsManagement";
 import {
   apiBaseUrl,
   fetchAdminApi,
@@ -113,6 +116,13 @@ const NAV_GROUPS = [
       { id: "conversions", label: "查询历史", icon: Search },
       { id: "attribution", label: "待复核", icon: ClipboardCheck },
       { id: "claims", label: "申诉审核", icon: ShieldQuestion }
+    ]
+  },
+  {
+    label: "步数管理",
+    items: [
+      { id: "sports-users", label: "用户管理", icon: Footprints },
+      { id: "sports-codes", label: "卡密管理", icon: KeyRound }
     ]
   },
   {
@@ -980,6 +990,8 @@ export function App() {
 
           {activeNav === "deals" && <DealManager adminToken={adminToken} />}
           {activeNav === "articles" && <ArticleManager adminToken={adminToken} />}
+          {activeNav === "sports-users" && <SportsUserManager adminToken={adminToken} />}
+          {activeNav === "sports-codes" && <SportsCodeManager adminToken={adminToken} />}
 
           {activeNav === "users" && (
           <SectionCard
