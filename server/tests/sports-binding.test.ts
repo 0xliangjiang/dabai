@@ -306,6 +306,7 @@ describe("sports account binding", () => {
 
     const listedCodes = await app.inject({ method: "GET", url: "/api/admin/sports/access-codes", headers: adminHeaders });
     expect(listedCodes.json().items[0]).not.toHaveProperty("codeHash");
+    expect(listedCodes.json().items.some((item: { code: string | null }) => item.code === rawCode)).toBe(true);
     expect(listedCodes.json().items.some((item: { effectiveStatus: string }) => item.effectiveStatus === "redeemed")).toBe(true);
 
     const users = await app.inject({ method: "GET", url: "/api/admin/sports/users?bindStatus=bound", headers: adminHeaders });

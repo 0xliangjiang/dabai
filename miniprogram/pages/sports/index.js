@@ -177,7 +177,7 @@ Page({
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: result.reply || "我暂时没有理解，请换一种说法。",
-        success: result.action === "steps_updated"
+        success: result.action === "steps_updated" || result.action === "access_code_redeemed"
       };
       this.setData({
         messages: [...this.data.messages, assistantMessage],
@@ -186,6 +186,11 @@ Page({
       if (result.action === "steps_updated") {
         this.setData({ todayTargetSteps: formatSteps(result.steps) });
         wx.showToast({ title: "今日目标设置成功", icon: "success" });
+      } else if (result.action === "access_code_redeemed") {
+        // 先用兑换响应立即更新顶部状态，再拉取账号作为服务端权威值。
+        this.setData({ membershipExpiresAt: formatDate(result.membershipExpiresAt) });
+        await this.loadAccount();
+        wx.showToast({ title: "会员有效期已更新", icon: "success" });
       } else if (result.action === "bind_required" && !this.data.binding) {
         await this.handleBindTap();
       }

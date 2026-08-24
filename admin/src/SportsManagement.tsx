@@ -26,6 +26,7 @@ type SportsUser = {
 
 type AccessCode = {
   id: string;
+  code: string | null;
   codeHint: string;
   batchId: string;
   durationDays: number;
@@ -174,7 +175,7 @@ export function SportsCodeManager({ adminToken }: { adminToken: string }) {
       });
       setCreatedCodes(result.codes.map((item) => item.code));
       setCreatedBatchId(result.batchId);
-      toast(`已生成 ${result.codes.length} 个卡密，请立即保存`);
+      toast(`已生成 ${result.codes.length} 个卡密`);
       await load(1);
     } catch { toast("卡密生成失败，请检查参数后重试", "error"); }
     finally { setGenerating(false); }
@@ -202,24 +203,24 @@ export function SportsCodeManager({ adminToken }: { adminToken: string }) {
   return <div className="mt-6 space-y-4">
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40">
       <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-end">
-        <div className="mr-auto max-w-md"><div className="flex items-center gap-2 text-base font-semibold"><KeyRound className="h-5 w-5 text-emerald-600" />生成卡密</div><p className="mt-1 text-sm leading-6 text-slate-500">兑换后从当前有效期继续增加时长；卡密明文只在生成成功后显示一次。</p></div>
+        <div className="mr-auto max-w-md"><div className="flex items-center gap-2 text-base font-semibold"><KeyRound className="h-5 w-5 text-emerald-600" />生成卡密</div><p className="mt-1 text-sm leading-6 text-slate-500">兑换后从当前有效期继续增加时长；完整卡密会保存在后台，之后仍可查看。</p></div>
         <label className="w-full text-xs font-medium text-slate-500 lg:w-auto">生成数量<input aria-label="生成数量" className="mt-1 block h-9 w-full rounded-md border border-slate-200 px-3 text-sm tabular-nums outline-none focus:border-emerald-400 lg:w-28" type="number" min={1} max={100} value={count} onChange={(e) => setCount(e.target.value)} /></label>
         <label className="w-full text-xs font-medium text-slate-500 lg:w-auto">增加时长（天）<input aria-label="增加时长（天）" className="mt-1 block h-9 w-full rounded-md border border-slate-200 px-3 text-sm tabular-nums outline-none focus:border-emerald-400 lg:w-32" type="number" min={1} max={3650} value={durationDays} onChange={(e) => setDurationDays(e.target.value)} /></label>
         <label className="w-full text-xs font-medium text-slate-500 lg:w-auto">兑换截止日（可选）<input aria-label="兑换截止日" className="mt-1 block h-9 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-emerald-400 lg:w-40" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} /></label>
         <Button className="w-full lg:w-auto" disabled={generating} onClick={() => void generate()}><ShieldCheck className="h-4 w-4" />{generating ? "生成中…" : "生成卡密"}</Button>
       </div>
       {createdCodes.length > 0 ? <div className="border-t border-amber-200 bg-amber-50/70 p-5" aria-live="polite">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="font-medium text-amber-900">请立即保存这批卡密</div><div className="mt-1 text-xs text-amber-700">关闭或刷新后只能看到脱敏编号，无法恢复完整卡密。</div></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => void copyCreated()}><Copy className="h-4 w-4" />复制全部</Button><Button size="sm" variant="outline" onClick={downloadCreated}><Download className="h-4 w-4" />下载 TXT</Button></div></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="font-medium text-amber-900">本批卡密已生成</div><div className="mt-1 text-xs text-amber-700">完整卡密已保存，可随时在下方记录中查看和搜索。</div></div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => void copyCreated()}><Copy className="h-4 w-4" />复制全部</Button><Button size="sm" variant="outline" onClick={downloadCreated}><Download className="h-4 w-4" />下载 TXT</Button></div></div>
         <textarea aria-label="刚生成的卡密" readOnly className="mt-3 h-32 w-full resize-y rounded-lg border border-amber-200 bg-white p-3 font-mono text-sm leading-6 outline-none focus-visible:ring-2 focus-visible:ring-emerald-300" value={createdCodes.join("\n")} />
       </div> : null}
     </section>
     <ManagerCard title="卡密记录" subtitle={`共 ${total} 个卡密；已使用卡密保留兑换人与时间`}>
       <DataToolbar actions={<Button size="sm" variant="outline" disabled={loading} onClick={() => void load(page)}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />刷新</Button>}>
-        <SearchInput aria-label="搜索卡密" placeholder="搜索脱敏卡密或批次 ID…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void load(1); }} />
+        <SearchInput aria-label="搜索卡密" placeholder="搜索完整卡密或批次 ID…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void load(1); }} />
         <FilterSelect aria-label="卡密状态" value={status} onChange={(e) => { setStatus(e.target.value); void load(1, e.target.value); }}><option value="">全部状态</option><option value="active">可兑换</option><option value="redeemed">已使用</option><option value="expired">已过期</option><option value="revoked">已撤销</option></FilterSelect>
       </DataToolbar>
       <Table><TableHeader><TableRow><TableHead>卡密</TableHead><TableHead>增加时长</TableHead><TableHead>兑换截止</TableHead><TableHead>状态</TableHead><TableHead>使用人</TableHead><TableHead>生成时间</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
-        {items.map((code) => <TableRow key={code.id}><TableCell><div className="font-mono text-xs font-medium">{code.codeHint}</div><div className="mt-1 font-mono text-[10px] text-slate-400">批次 {code.batchId.slice(0, 8)}</div></TableCell><TableCell className="font-semibold tabular-nums">{code.durationDays} 天</TableCell><TableCell className="tabular-nums">{code.validUntil ? formatDate(code.validUntil) : "不限"}</TableCell><TableCell><CodeBadge status={code.effectiveStatus} /></TableCell><TableCell>{code.redeemedByUserId ? <div><div className="max-w-36 truncate text-sm">{code.redeemedByNickname || "未设置昵称"}</div><div className="mt-0.5 font-mono text-[10px] text-slate-400">{code.redeemedByUserId.slice(0, 10)}…</div></div> : "—"}</TableCell><TableCell className="text-xs tabular-nums text-slate-500">{formatDateTime(code.createdAt)}</TableCell><TableCell className="text-right">{code.effectiveStatus === "active" ? <Button size="sm" variant="danger" onClick={() => void revoke(code)}><RotateCcw className="h-4 w-4" />撤销</Button> : <span className="text-xs text-slate-400">—</span>}</TableCell></TableRow>)}
+        {items.map((code) => <TableRow key={code.id}><TableCell><div className="font-mono text-xs font-semibold text-slate-700">{code.code || code.codeHint}</div>{!code.code ? <div className="mt-1 text-[10px] text-amber-600">旧卡密仅保留脱敏编号</div> : null}<div className="mt-1 font-mono text-[10px] text-slate-400">批次 {code.batchId.slice(0, 8)}</div></TableCell><TableCell className="font-semibold tabular-nums">{code.durationDays} 天</TableCell><TableCell className="tabular-nums">{code.validUntil ? formatDate(code.validUntil) : "不限"}</TableCell><TableCell><CodeBadge status={code.effectiveStatus} /></TableCell><TableCell>{code.redeemedByUserId ? <div><div className="max-w-36 truncate text-sm">{code.redeemedByNickname || "未设置昵称"}</div><div className="mt-0.5 font-mono text-[10px] text-slate-400">{code.redeemedByUserId.slice(0, 10)}…</div></div> : "—"}</TableCell><TableCell className="text-xs tabular-nums text-slate-500">{formatDateTime(code.createdAt)}</TableCell><TableCell className="text-right">{code.effectiveStatus === "active" ? <Button size="sm" variant="danger" onClick={() => void revoke(code)}><RotateCcw className="h-4 w-4" />撤销</Button> : <span className="text-xs text-slate-400">—</span>}</TableCell></TableRow>)}
         {!loading && items.length === 0 ? <TableRow><TableCell colSpan={7} className="py-12 text-center text-sm text-slate-400">还没有符合条件的卡密。可在上方生成第一批。</TableCell></TableRow> : null}
       </TableBody></Table><TableFooter page={page} pageSize={50} total={total} loading={loading} onPageChange={(next) => void load(next)} />
     </ManagerCard>

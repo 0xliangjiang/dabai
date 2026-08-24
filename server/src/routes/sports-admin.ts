@@ -69,6 +69,7 @@ export async function registerAdminSportsRoutes(app: FastifyInstance, repositori
     if (validUntil && validUntil.getTime() <= Date.now()) return reply.code(400).send({ error: "兑换截止时间必须晚于当前时间" });
     const codes = Array.from({ length: parsed.data.count }, generateSportsAccessCode);
     const records = await repositories.sportsAccessCodes.createBatch(codes.map((code) => ({
+      code,
       codeHash: hashSportsAccessCode(code),
       codeHint: sportsAccessCodeHint(code),
       batchId,

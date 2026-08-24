@@ -380,7 +380,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             : options.status ? { status: options.status } : {};
         const where: Prisma.SportsAccessCodeWhereInput = {
           ...statusWhere,
-          ...(search ? { AND: [{ OR: [{ codeHint: { contains: search } }, { batchId: { contains: search } }] }] } : {})
+          ...(search ? { AND: [{ OR: [{ code: { contains: search } }, { codeHint: { contains: search } }, { batchId: { contains: search } }] }] } : {})
         };
         const [total, rows] = await prisma.$transaction([
           prisma.sportsAccessCode.count({ where }),

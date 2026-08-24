@@ -375,7 +375,7 @@ export function createRepositories(): Repositories {
         const all = [...sportsAccessCodes.values()].filter((record) => {
           const effectiveStatus = record.status === "active" && record.validUntil && record.validUntil.getTime() <= now ? "expired" : record.status;
           if (options.status && effectiveStatus !== options.status) return false;
-          return !search || record.codeHint.toLowerCase().includes(search) || record.batchId.toLowerCase().includes(search);
+          return !search || record.code?.toLowerCase().includes(search) || record.codeHint.toLowerCase().includes(search) || record.batchId.toLowerCase().includes(search);
         }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         const start = (options.page - 1) * options.pageSize;
         return { total: all.length, items: all.slice(start, start + options.pageSize) };

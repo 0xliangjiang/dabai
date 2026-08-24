@@ -54,6 +54,7 @@ export type SportsAdminUserRecord = {
 
 export type SportsAccessCodeRecord = {
   id: string;
+  code: string | null;
   codeHash: string;
   codeHint: string;
   batchId: string;
@@ -439,6 +440,7 @@ export type Repositories = {
   };
   sportsAccessCodes: {
     createBatch(inputs: Array<{
+      code: string;
       codeHash: string;
       codeHint: string;
       batchId: string;

@@ -78,6 +78,7 @@ model SportsDailyTarget {
 
 model SportsAccessCode {
   id               String    @id @default(cuid())
+  code             String?   @db.VarChar(32)
   codeHash         String    @unique @db.Char(64)
   codeHint         String    @db.VarChar(24)
   batchId          String    @db.VarChar(36)
