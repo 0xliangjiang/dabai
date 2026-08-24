@@ -69,6 +69,18 @@ export type SportsAccessCodeRecord = {
   redeemedByNickname?: string | null;
 };
 
+export type SportsAdGrantRecord = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  status: string;
+  expiresAt: Date;
+  reservedAt: Date | null;
+  usedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ReferralSummary = {
   downlineCount: number;
   earnedCents: number;
@@ -371,6 +383,11 @@ export type Repositories = {
       input?: { unionid?: string | null; inviterId?: string | null }
     ): Promise<UserRecord>;
     findById(id: string): Promise<UserRecord | undefined>;
+    applyPendingSportsInviteRewards(
+      inviterId: string,
+      durationDays: number,
+      now: Date
+    ): Promise<{ rewardedCount: number; membershipExpiresAt: Date | null }>;
     // 认证路径专用：被软删用户带 token 回访时自动复活（清除 deletedAt），
     // 让删除后又回来的用户重新出现在后台、可被管理。truly 不存在则返回 undefined。
     getOrReviveById(id: string): Promise<UserRecord | undefined>;
@@ -458,6 +475,12 @@ export type Repositories = {
       | { ok: true; membershipExpiresAt: Date; durationDays: number }
       | { ok: false; reason: "invalid" | "expired" | "used" | "no_account" }
     >;
+  };
+  sportsAdGrants: {
+    create(userId: string, tokenHash: string, now: Date, expiresAt: Date): Promise<SportsAdGrantRecord>;
+    reserve(userId: string, tokenHash: string, now: Date): Promise<boolean>;
+    complete(userId: string, tokenHash: string, now: Date): Promise<boolean>;
+    release(userId: string, tokenHash: string): Promise<void>;
   };
   settings: {
     getCommissionSharingRatio(): Promise<number | null>;

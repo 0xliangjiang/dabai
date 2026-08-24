@@ -20,6 +20,7 @@ import type {
   Repositories,
   SportsAccountRecord,
   SportsAccessCodeRecord,
+  SportsAdGrantRecord,
   SportsDailyTargetRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
@@ -40,6 +41,8 @@ export function createRepositories(): Repositories {
   const sportsAccounts = new Map<string, SportsAccountRecord>();
   const sportsDailyTargets = new Map<string, SportsDailyTargetRecord>();
   const sportsAccessCodes = new Map<string, SportsAccessCodeRecord>();
+  const sportsAdGrants = new Map<string, SportsAdGrantRecord>();
+  const rewardedSportsInviteeIds = new Set<string>();
   const conversions = new Map<string, ConversionRecord>();
   const copyEvents = new Map<string, CopyEventRecord>();
   const productSnapshots = new Map<string, ProductSnapshotRecord>();
@@ -107,6 +110,29 @@ export function createRepositories(): Repositories {
       async findById(id: string) {
         if (deletedUserIds.has(id)) return undefined;
         return users.get(id);
+      },
+      async applyPendingSportsInviteRewards(inviterId, durationDays, now) {
+        const account = sportsAccounts.get(inviterId);
+        if (!account || !Number.isInteger(durationDays) || durationDays <= 0) {
+          return { rewardedCount: 0, membershipExpiresAt: account?.membershipExpiresAt ?? null };
+        }
+        const pending = [...users.values()].filter((user) =>
+          user.inviterId === inviterId &&
+          !deletedUserIds.has(user.id) &&
+          !rewardedSportsInviteeIds.has(user.id)
+        );
+        if (pending.length === 0) {
+          return { rewardedCount: 0, membershipExpiresAt: account.membershipExpiresAt };
+        }
+        pending.forEach((user) => rewardedSportsInviteeIds.add(user.id));
+        const base = account.membershipExpiresAt && account.membershipExpiresAt > now
+          ? account.membershipExpiresAt
+          : now;
+        const membershipExpiresAt = new Date(
+          base.getTime() + pending.length * durationDays * 86_400_000
+        );
+        sportsAccounts.set(inviterId, { ...account, membershipExpiresAt, updatedAt: now });
+        return { rewardedCount: pending.length, membershipExpiresAt };
       },
       async getOrReviveById(id: string) {
         const user = users.get(id);
@@ -399,6 +425,33 @@ export function createRepositories(): Repositories {
         sportsAccessCodes.set(code.id, { ...code, status: "redeemed", redeemedByUserId: userId, redeemedAt: now, updatedAt: now });
         sportsAccounts.set(userId, { ...account, membershipExpiresAt, updatedAt: now });
         return { ok: true, membershipExpiresAt, durationDays: code.durationDays };
+      }
+    },
+    sportsAdGrants: {
+      async create(userId, tokenHash, now, expiresAt) {
+        const record: SportsAdGrantRecord = {
+          id: randomUUID(), userId, tokenHash, status: "active", expiresAt,
+          reservedAt: null, usedAt: null, createdAt: now, updatedAt: now
+        };
+        sportsAdGrants.set(tokenHash, record);
+        return record;
+      },
+      async reserve(userId, tokenHash, now) {
+        const record = sportsAdGrants.get(tokenHash);
+        if (!record || record.userId !== userId || record.status !== "active" || record.expiresAt <= now) return false;
+        sportsAdGrants.set(tokenHash, { ...record, status: "reserved", reservedAt: now, updatedAt: now });
+        return true;
+      },
+      async complete(userId, tokenHash, now) {
+        const record = sportsAdGrants.get(tokenHash);
+        if (!record || record.userId !== userId || record.status !== "reserved") return false;
+        sportsAdGrants.set(tokenHash, { ...record, status: "used", usedAt: now, updatedAt: now });
+        return true;
+      },
+      async release(userId, tokenHash) {
+        const record = sportsAdGrants.get(tokenHash);
+        if (!record || record.userId !== userId || record.status !== "reserved") return;
+        sportsAdGrants.set(tokenHash, { ...record, status: "active", reservedAt: null, updatedAt: new Date() });
       }
     },
     settings: {

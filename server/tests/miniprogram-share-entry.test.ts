@@ -101,4 +101,28 @@ describe("mini program timeline invitation entry", () => {
 
     expect(reLaunch).not.toHaveBeenCalled();
   });
+
+  test("keeps a sports invitee on the sports page so login can bind the inviter", async () => {
+    vi.useFakeTimers();
+    const storage = new Map<string, unknown>([["pending_inviter", "sports-inviter"]]);
+    let app: MiniProgramApp | null = null;
+    const reLaunch = vi.fn();
+    (globalThis as Record<string, unknown>).wx = {
+      getAccountInfoSync: () => ({ miniProgram: { envVersion: "release" } }),
+      getStorageSync: (key: string) => storage.get(key) ?? "",
+      setStorageSync: (key: string, value: unknown) => storage.set(key, value),
+      reLaunch
+    };
+    (globalThis as Record<string, unknown>).getCurrentPages = () => [{ route: "pages/sports/index" }];
+    (globalThis as Record<string, unknown>).App = (definition: MiniProgramApp) => {
+      app = definition;
+    };
+
+    require(appModulePath);
+    app!.onShow({ scene: 1007, query: { inviter: "sports-inviter" } });
+    await vi.runAllTimersAsync();
+
+    expect(app!.globalData.pendingInviter).toBe("sports-inviter");
+    expect(reLaunch).not.toHaveBeenCalled();
+  });
 });

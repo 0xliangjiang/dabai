@@ -14,4 +14,12 @@ describe("mini program sports membership refresh", () => {
     expect(sportsPage).toContain("await this.loadAccount()");
     expect(sportsPage).toContain('title: "会员有效期已更新"');
   });
+
+  test("shows all three expiry recovery paths and retries the pending target after an ad", () => {
+    expect(sportsPage).toContain("handleWatchAd");
+    expect(sportsPage).toContain('accessGrantToken: reward.grantToken');
+    expect(sportsPage).toContain("redeemAccessCode");
+    expect(sportsPage).toContain("onShareAppMessage");
+    expect(sportsPage).toContain("pendingExpiredMessage: text");
+  });
 });

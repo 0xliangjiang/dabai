@@ -30,6 +30,13 @@ export async function registerAuthRoutes(
         unionid: session.unionid,
         inviterId
       });
+      if (user.inviterId) {
+        await repositories.users.applyPendingSportsInviteRewards(
+          user.inviterId,
+          positiveDays(config.sportsInviteRewardDays, 3),
+          new Date()
+        );
+      }
       return {
         token: signUserToken(user.id, config.authTokenSecret),
         user
@@ -41,6 +48,10 @@ export async function registerAuthRoutes(
       throw error;
     }
   });
+}
+
+function positiveDays(value: number | undefined, fallback: number): number {
+  return Number.isInteger(value) && value! > 0 ? value! : fallback;
 }
 
 class WechatLoginError extends Error {

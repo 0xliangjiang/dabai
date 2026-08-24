@@ -98,7 +98,7 @@ App({
     this.routingInvitedGuest = true;
     setTimeout(() => {
       const current = getCurrentPages().pop();
-      if (current && current.route === "pages/invite/index") {
+      if (current && ["pages/invite/index", "pages/sports/index"].includes(current.route)) {
         this.routingInvitedGuest = false;
         return;
       }

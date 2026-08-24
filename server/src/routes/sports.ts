@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import QRCode from "qrcode";
 import { z } from "zod";
@@ -22,6 +22,7 @@ const captchaSchema = z.object({
 
 const sportsChatSchema = z.object({
   message: z.string().trim().min(1, "请输入内容").max(500, "消息不能超过 500 字"),
+  accessGrantToken: z.string().trim().min(32).max(128).optional(),
   history: z.array(z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().trim().min(1).max(500)
@@ -78,6 +79,36 @@ export async function registerSportsRoutes(
       durationDays: result.durationDays,
       membershipExpiresAt: result.membershipExpiresAt,
       message: `兑换成功，运动会员已增加 ${result.durationDays} 天。`
+    };
+  });
+
+  app.post("/api/sports/ad/reward", {
+    config: { rateLimit: { max: 30, timeWindow: "1 day" } }
+  }, async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
+    if (!config.sportsRewardedVideoAdUnitId?.trim()) {
+      return reply.code(503).send({ error: "激励广告暂未配置，请使用卡密或邀请好友" });
+    }
+    const account = await repositories.sportsAccounts.findByUser(request.userId);
+    if (!account || account.bindStatus !== "bound") {
+      return reply.code(409).send({ error: "请先绑定 Zepp Life 账号" });
+    }
+    if (account.membershipExpiresAt && account.membershipExpiresAt.getTime() > Date.now()) {
+      return reply.code(409).send({ error: "会员仍在有效期内，无需观看广告" });
+    }
+    const now = new Date();
+    const grantToken = randomBytes(24).toString("hex");
+    await repositories.sportsAdGrants.create(
+      request.userId,
+      hashAdGrantToken(grantToken),
+      now,
+      new Date(now.getTime() + 15 * 60_000)
+    );
+    return {
+      success: true,
+      grantToken,
+      expiresAt: new Date(now.getTime() + 15 * 60_000).toISOString(),
+      message: "已解锁 1 次运动目标设置，请在 15 分钟内使用。"
     };
   });
 
@@ -140,6 +171,7 @@ export async function registerSportsRoutes(
       return { success: false, action: "bind_required", reply: "还没有运动账号，请先点击上方“绑定账号”完成注册和绑定。" };
     }
 
+    let reservedGrantHash = "";
     try {
       if (account.bindStatus !== "bound") {
         const isBound = await zeppClient.checkBindStatus(account.zeppUserId);
@@ -148,8 +180,28 @@ export async function registerSportsRoutes(
         }
         account = await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" });
       }
-      if (!account.membershipExpiresAt || account.membershipExpiresAt.getTime() <= Date.now()) {
-        return { success: false, action: "membership_expired", reply: "运动会员已到期，续费后即可继续设置今天的运动目标。" };
+      const membershipExpired = !account.membershipExpiresAt || account.membershipExpiresAt.getTime() <= Date.now();
+      if (membershipExpired) {
+        if (!parsed.data.accessGrantToken) {
+          return {
+            success: false,
+            action: "membership_expired",
+            reply: "运动会员已到期。你可以看广告解锁 1 次、输入卡密延期，或邀请新用户增加 3 天。"
+          };
+        }
+        reservedGrantHash = hashAdGrantToken(parsed.data.accessGrantToken);
+        const reserved = await repositories.sportsAdGrants.reserve(
+          request.userId,
+          reservedGrantHash,
+          new Date()
+        );
+        if (!reserved) {
+          return {
+            success: false,
+            action: "ad_grant_invalid",
+            reply: "本次广告解锁已失效或已使用，请重新观看广告。"
+          };
+        }
       }
 
       // 与 AI-Step 的 bindband 保持一致：第三方接口直接接收托管账号和目标步数。
@@ -164,6 +216,9 @@ export async function registerSportsRoutes(
         sportsTargetDate(),
         result.steps
       );
+      if (reservedGrantHash) {
+        await repositories.sportsAdGrants.complete(request.userId, reservedGrantHash, new Date());
+      }
       return {
         success: true,
         action: "steps_updated",
@@ -172,6 +227,9 @@ export async function registerSportsRoutes(
         reply: `设置成功，今天的运动目标为 ${result.steps.toLocaleString("zh-CN")} 步。`
       };
     } catch (error) {
+      if (reservedGrantHash) {
+        await repositories.sportsAdGrants.release(request.userId, reservedGrantHash);
+      }
       request.log.warn({ err: error, userId: request.userId, steps: intent.steps }, "Zepp step update failed");
       return reply.code(502).send({ error: "运动目标设置失败，请稍后重试" });
     }
@@ -214,6 +272,12 @@ export async function registerSportsRoutes(
             account = await repositories.sportsAccounts.findByUser(request.userId);
             if (!account) throw error;
           }
+          await repositories.users.applyPendingSportsInviteRewards(
+            request.userId,
+            positiveDays(config.sportsInviteRewardDays, 3),
+            new Date()
+          );
+          account = await repositories.sportsAccounts.findByUser(request.userId) ?? account;
         }
         account = await repositories.sportsAccounts.update(request.userId, {
           status: "registering",
@@ -426,6 +490,14 @@ function randomString(alphabet: string, length: number): string {
 function trialExpiry(days = 3): Date | null {
   if (!Number.isFinite(days) || days <= 0) return null;
   return new Date(Date.now() + days * 24 * 60 * 60_000);
+}
+
+function hashAdGrantToken(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function positiveDays(value: number | undefined, fallback: number): number {
+  return Number.isInteger(value) && value! > 0 ? value! : fallback;
 }
 
 function maskEmail(email: string): string {

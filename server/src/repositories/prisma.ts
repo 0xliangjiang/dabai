@@ -16,6 +16,7 @@ import type {
   ReferralSummary,
   Repositories,
   SportsAccountRecord,
+  SportsAdGrantRecord,
   SportsAccessCodeRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
@@ -67,6 +68,47 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         const user = await prisma.user.findUnique({ where: { id } });
         // 软删除用户视为不存在
         return user && !user.deletedAt ? mapUser(user) : undefined;
+      },
+      async applyPendingSportsInviteRewards(inviterId, durationDays, now) {
+        if (!Number.isInteger(durationDays) || durationDays <= 0) {
+          return { rewardedCount: 0, membershipExpiresAt: null };
+        }
+        return prisma.$transaction(async (tx) => {
+          // 同一邀请人的奖励串行结算，避免多个新用户同时注册时覆盖有效期。
+          await tx.$queryRaw`SELECT id FROM SportsAccount WHERE userId = ${inviterId} FOR UPDATE`;
+          const account = await tx.sportsAccount.findUnique({ where: { userId: inviterId } });
+          if (!account) return { rewardedCount: 0, membershipExpiresAt: null };
+
+          const pending = await tx.user.findMany({
+            where: { inviterId, sportsInviteRewardedAt: null, deletedAt: null },
+            select: { id: true }
+          });
+          if (pending.length === 0) {
+            return { rewardedCount: 0, membershipExpiresAt: account.membershipExpiresAt };
+          }
+          const claimed = await tx.user.updateMany({
+            where: {
+              id: { in: pending.map((item) => item.id) },
+              inviterId,
+              sportsInviteRewardedAt: null
+            },
+            data: { sportsInviteRewardedAt: now }
+          });
+          if (claimed.count === 0) {
+            return { rewardedCount: 0, membershipExpiresAt: account.membershipExpiresAt };
+          }
+          const base = account.membershipExpiresAt && account.membershipExpiresAt > now
+            ? account.membershipExpiresAt
+            : now;
+          const membershipExpiresAt = new Date(
+            base.getTime() + claimed.count * durationDays * 86_400_000
+          );
+          await tx.sportsAccount.update({
+            where: { userId: inviterId },
+            data: { membershipExpiresAt }
+          });
+          return { rewardedCount: claimed.count, membershipExpiresAt };
+        });
       },
       async getOrReviveById(id: string) {
         const user = await prisma.user.findUnique({ where: { id } });
@@ -413,6 +455,33 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           const membershipExpiresAt = new Date(base.getTime() + code.durationDays * 86_400_000);
           await tx.sportsAccount.update({ where: { userId }, data: { membershipExpiresAt } });
           return { ok: true, membershipExpiresAt, durationDays: code.durationDays };
+        });
+      }
+    },
+    sportsAdGrants: {
+      async create(userId, tokenHash, now, expiresAt) {
+        return mapSportsAdGrant(await prisma.sportsAdGrant.create({
+          data: { userId, tokenHash, status: "active", expiresAt, createdAt: now }
+        }));
+      },
+      async reserve(userId, tokenHash, now) {
+        const result = await prisma.sportsAdGrant.updateMany({
+          where: { userId, tokenHash, status: "active", expiresAt: { gt: now } },
+          data: { status: "reserved", reservedAt: now }
+        });
+        return result.count === 1;
+      },
+      async complete(userId, tokenHash, now) {
+        const result = await prisma.sportsAdGrant.updateMany({
+          where: { userId, tokenHash, status: "reserved" },
+          data: { status: "used", usedAt: now }
+        });
+        return result.count === 1;
+      },
+      async release(userId, tokenHash) {
+        await prisma.sportsAdGrant.updateMany({
+          where: { userId, tokenHash, status: "reserved" },
+          data: { status: "active", reservedAt: null }
         });
       }
     },
@@ -1401,6 +1470,10 @@ function mapSportsAccount(record: SportsAccountRecord): SportsAccountRecord {
 }
 
 function mapSportsAccessCode(record: SportsAccessCodeRecord): SportsAccessCodeRecord {
+  return record;
+}
+
+function mapSportsAdGrant(record: SportsAdGrantRecord): SportsAdGrantRecord {
   return record;
 }
 

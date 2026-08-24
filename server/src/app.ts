@@ -187,7 +187,9 @@ export async function createApp(options: CreateAppOptions = {}) {
     exchangeEnabled: await repositories.settings.getExchangeEnabled(),
     referralEnabled: await repositories.settings.getReferralEnabled(),
     ordersTabEnabled: await repositories.settings.getOrdersTabEnabled(),
-    sportsEnabled: await repositories.settings.getSportsEnabled()
+    sportsEnabled: await repositories.settings.getSportsEnabled(),
+    sportsInviteRewardDays: positiveDays(config.sportsInviteRewardDays, 3),
+    sportsRewardedVideoAdUnitId: config.sportsRewardedVideoAdUnitId?.trim() || ""
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
@@ -224,6 +226,10 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier);
 
   return app;
+}
+
+function positiveDays(value: number | undefined, fallback: number): number {
+  return Number.isInteger(value) && value! > 0 ? value! : fallback;
 }
 
 function resolveUserId(token: string, config: AppConfig): string | null {

@@ -240,6 +240,97 @@ describe("sports account binding", () => {
     expect(reloadedAccount.json()).toMatchObject({ todayTargetSteps: 20_000 });
   });
 
+  test("lets an expired member consume one rewarded-ad grant exactly once", async () => {
+    const repositories = createRepositories();
+    const zeppClient = new MockZeppClient();
+    const app = await createApp({
+      config: { ...testConfig, sportsRewardedVideoAdUnitId: "adunit-test-rewarded-video" },
+      repositories,
+      zeppClient,
+      sportsQrEncoder: async (ticket) => `data:image/png;base64,qr-${ticket}`
+    });
+    apps.push(app);
+    const headers = { authorization: "Bearer local_user-sports-ad" };
+
+    await app.inject({ method: "POST", url: "/api/sports/bind/start", headers });
+    zeppClient.bound = true;
+    await app.inject({ method: "POST", url: "/api/sports/bind/refresh", headers });
+    await repositories.sportsAccounts.update("user-sports-ad", {
+      membershipExpiresAt: new Date(Date.now() - 60_000)
+    });
+
+    const expired = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers,
+      payload: { message: "目标设为 18000 步", history: [] }
+    });
+    expect(expired.json()).toMatchObject({ success: false, action: "membership_expired" });
+
+    const reward = await app.inject({ method: "POST", url: "/api/sports/ad/reward", headers });
+    expect(reward.statusCode).toBe(200);
+    const grantToken = reward.json().grantToken as string;
+
+    const granted = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers,
+      payload: { message: "目标设为 18000 步", history: [], accessGrantToken: grantToken }
+    });
+    expect(granted.json()).toMatchObject({ success: true, action: "steps_updated", steps: 18_000 });
+
+    const replay = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers,
+      payload: { message: "目标设为 20000 步", history: [], accessGrantToken: grantToken }
+    });
+    expect(replay.json()).toMatchObject({ success: false, action: "ad_grant_invalid" });
+    expect(zeppClient.stepUpdates).toEqual([18_000]);
+  });
+
+  test("adds three membership days once when a genuinely new user is invited", async () => {
+    const repositories = createRepositories();
+    const zeppClient = new MockZeppClient();
+    const app = await createApp({
+      config: { ...testConfig, sportsInviteRewardDays: 3 },
+      repositories,
+      zeppClient,
+      sportsQrEncoder: async (ticket) => `data:image/png;base64,qr-${ticket}`
+    });
+    apps.push(app);
+
+    const inviterLogin = await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "mock-sports-inviter" }
+    });
+    const inviter = inviterLogin.json() as { token: string; user: { id: string } };
+    await app.inject({
+      method: "POST",
+      url: "/api/sports/bind/start",
+      headers: { authorization: `Bearer ${inviter.token}` }
+    });
+    const before = await repositories.sportsAccounts.findByUser(inviter.user.id);
+
+    await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "mock-sports-invitee", inviterId: inviter.user.id }
+    });
+    const afterFirstLogin = await repositories.sportsAccounts.findByUser(inviter.user.id);
+    expect(afterFirstLogin!.membershipExpiresAt!.getTime() - before!.membershipExpiresAt!.getTime())
+      .toBe(3 * 86_400_000);
+
+    await app.inject({
+      method: "POST",
+      url: "/api/auth/wechat-login",
+      payload: { code: "mock-sports-invitee", inviterId: inviter.user.id }
+    });
+    const afterRepeatLogin = await repositories.sportsAccounts.findByUser(inviter.user.id);
+    expect(afterRepeatLogin!.membershipExpiresAt!.getTime()).toBe(afterFirstLogin!.membershipExpiresAt!.getTime());
+  });
+
   test("does not call Zepp for an informational step message", async () => {
     const zeppClient = new MockZeppClient();
     const app = await createApp({ config: testConfig, zeppClient });

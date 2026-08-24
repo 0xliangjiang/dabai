@@ -56,7 +56,39 @@
       </view>
     </view>
 
-    <view wx:if="{{messages.length === 0}}" class="quick-targets" aria-label="常用目标">
+    <view wx:if="{{isBound && membershipExpired}}" class="expiry-recovery" aria-label="运动会员已到期">
+      <view class="recovery-head">
+        <view class="recovery-copy">
+          <view class="recovery-title">会员已到期，选择一种方式继续</view>
+          <view class="recovery-subtitle">广告解锁本次设置；卡密和邀请会延长有效期。</view>
+        </view>
+        <view class="recovery-reward">邀请 +{{sportsInviteRewardDays}} 天</view>
+      </view>
+
+      <button class="recovery-ad-action {{adLoading ? 'is-loading' : ''}} {{adStepGrantToken ? 'is-unlocked' : ''}}" bindtap="handleWatchAd" loading="{{adLoading}}" disabled="{{adLoading}}" hover-class="is-pressed" hover-stay-time="80">
+        <view class="recovery-action-icon is-ad" aria-hidden="true">▶</view>
+        <view class="recovery-action-copy"><view class="recovery-action-title">{{adStepGrantToken ? '已解锁 1 次，输入目标即可' : '看广告，免费设置 1 次'}}</view><view class="recovery-action-meta">{{adStepGrantToken ? '本次授权使用后自动失效' : '每看完一次广告，可提交一次运动目标'}}</view></view>
+        <text wx:if="{{!adLoading}}" class="recovery-action-arrow" aria-hidden="true">→</text>
+      </button>
+
+      <view class="recovery-secondary-actions">
+        <button class="recovery-secondary-action" bindtap="toggleAccessCode" hover-class="is-pressed" hover-stay-time="80">
+          <view class="recovery-action-icon is-code" aria-hidden="true">◇</view>
+          <view class="recovery-action-copy"><view class="recovery-action-title">输入卡密</view><view class="recovery-action-meta">增加会员使用天数</view></view>
+        </button>
+        <button class="recovery-secondary-action" open-type="share" hover-class="is-pressed" hover-stay-time="80">
+          <view class="recovery-action-icon is-invite" aria-hidden="true">＋</view>
+          <view class="recovery-action-copy"><view class="recovery-action-title">邀请好友</view><view class="recovery-action-meta">每位新用户增加 {{sportsInviteRewardDays}} 天</view></view>
+        </button>
+      </view>
+
+      <view wx:if="{{codeExpanded}}" class="recovery-code-form">
+        <input class="recovery-code-input" value="{{accessCode}}" placeholder="输入完整卡密" maxlength="64" bindinput="handleAccessCodeInput" confirm-type="done" bindconfirm="redeemAccessCode" focus aria-label="运动会员卡密" />
+        <button class="recovery-code-submit {{!accessCode || codeRedeeming ? 'is-disabled' : ''}}" bindtap="redeemAccessCode" loading="{{codeRedeeming}}" disabled="{{!accessCode || codeRedeeming}}">兑换</button>
+      </view>
+    </view>
+
+    <view wx:if="{{messages.length === 0 && !(isBound && membershipExpired)}}" class="quick-targets" aria-label="常用目标">
       <view class="quick-targets-head">
         <view class="quick-targets-title">快速设置</view>
         <button class="quick-custom-action" data-text="设置今天运动目标" bindtap="handleSuggestionTap" hover-class="is-pressed" hover-stay-time="80" aria-label="设置其他目标">
@@ -102,6 +134,7 @@
 
     <view class="composer-wrap">
       <view wx:if="{{!isBound}}" class="composer-notice"><view class="notice-dot"></view>未绑定时会自动引导绑定</view>
+      <view wx:elif="{{membershipExpired}}" class="composer-notice is-expired"><view class="notice-dot"></view>先选择上方任一种方式继续使用</view>
       <view class="composer {{inputFocused ? 'is-focused' : ''}} {{chatLoading ? 'is-disabled' : ''}}">
         <input
           class="composer-input"
