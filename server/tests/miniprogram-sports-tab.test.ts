@@ -9,6 +9,7 @@ describe("mini program sports feature switch", () => {
   test("hides the sports tab before config loads and whenever the switch is disabled", () => {
     expect(tabBarSource).toContain('const INITIAL_LIST = FULL_LIST.filter((item) => item.pagePath !== "/pages/sports/index")');
     expect(tabBarSource).toContain("list: INITIAL_LIST");
+    expect(tabBarSource).toMatch(/attached\(\)\s*{[\s\S]*?this\.applyConfig\(\)/);
     expect(tabBarSource).toContain('if (!sportsEnabled && item.pagePath === "/pages/sports/index") return false');
   });
 

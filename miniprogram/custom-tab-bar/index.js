@@ -21,7 +21,9 @@ Component({
 
   lifetimes: {
     attached() {
-      this.syncSelected();
+      // 首次挂载必须主动拉取配置；不能只依赖 pageLifetimes.show，
+      // 否则默认隐藏的运动入口在部分页面不会恢复。
+      this.applyConfig();
     }
   },
 
