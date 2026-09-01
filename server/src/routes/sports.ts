@@ -20,7 +20,6 @@ import {
   virtualPaymentAppKey,
   WechatVirtualPaymentError
 } from "../integrations/wechat/virtual-payment.js";
-import { createSportsChatReply } from "../integrations/minimax/sports-chat.js";
 
 export type QrEncoder = (content: string) => Promise<string>;
 
@@ -35,6 +34,10 @@ const sportsChatSchema = z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().trim().min(1).max(500)
   })).max(12).default([])
+});
+
+const sportsTargetSchema = z.object({
+  steps: z.number().int().min(MIN_SPORTS_STEPS).max(MAX_SPORTS_STEPS)
 });
 
 const accessCodeSchema = z.object({
@@ -234,6 +237,29 @@ export async function registerSportsRoutes(
     };
   });
 
+  app.post("/api/sports/target", {
+    config: { rateLimit: { max: 30, timeWindow: "1 minute" } }
+  }, async (request, reply) => {
+    const parsed = sportsTargetSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: `今日目标需要在 ${MIN_SPORTS_STEPS}-${MAX_SPORTS_STEPS} 步之间`
+      });
+    }
+    if (await repositories.settings.getSportsEnabled()) {
+      return reply.code(409).send({ error: "手动目标仅在运动账号服务暂停时使用" });
+    }
+    const targetDate = sportsTargetDate();
+    await repositories.sportsDailyTargets.upsert(request.userId, targetDate, parsed.data.steps);
+    return {
+      success: true,
+      action: "target_saved",
+      steps: parsed.data.steps,
+      date: targetDate,
+      message: `今日目标已保存为 ${parsed.data.steps.toLocaleString("zh-CN")} 步`
+    };
+  });
+
   app.post("/api/sports/chat", {
     config: { rateLimit: { max: 12, timeWindow: "1 minute" } }
   }, async (request, reply) => {
@@ -242,30 +268,8 @@ export async function registerSportsRoutes(
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
     }
     const sportsEnabled = await repositories.settings.getSportsEnabled();
-    const existingAccount = sportsEnabled
-      ? undefined
-      : await repositories.sportsAccounts.findByUser(request.userId);
-    if (!sportsEnabled && existingAccount?.bindStatus !== "bound") {
-      try {
-        const chatReply = await createSportsChatReply(
-          {
-            apiUrl: config.minimaxApiUrl,
-            apiKey: config.minimaxApiKey,
-            model: config.minimaxModel
-          },
-          parsed.data.message,
-          parsed.data.history
-        );
-        return { success: true, action: "reply", mode: "chat_only", reply: chatReply };
-      } catch (error) {
-        request.log.warn({ err: error, userId: request.userId }, "sports AI chat fallback used");
-        return {
-          success: true,
-          action: "reply",
-          mode: "chat_only",
-          reply: chatOnlyFallback(parsed.data.message)
-        };
-      }
+    if (!sportsEnabled) {
+      return reply.code(404).send({ error: "对话功能已关闭，请使用手动目标设置" });
     }
 
     const possibleAccessCode = normalizeSportsAccessCode(parsed.data.message);
@@ -313,7 +317,7 @@ export async function registerSportsRoutes(
 
     const readinessError = validateStepApiConfig(config);
     if (readinessError) return reply.code(503).send({ error: readinessError });
-    let account = existingAccount ?? await repositories.sportsAccounts.findByUser(request.userId);
+    let account = await repositories.sportsAccounts.findByUser(request.userId);
     if (!account?.zeppUserId) {
       return { success: false, action: "bind_required", reply: "还没有运动账号，请先点击上方“绑定账号”完成注册和绑定。" };
     }
@@ -577,8 +581,8 @@ function accountView(account?: SportsAccountRecord, todayTargetSteps: number | n
       status: "unbound",
       account: null,
       membershipExpiresAt: null,
-      todayTargetSteps: null,
-      lastTargetSteps: null
+      todayTargetSteps,
+      lastTargetSteps: todayTargetSteps
     };
   }
   return {
@@ -657,14 +661,6 @@ function maskEmail(email: string): string {
 
 function publicError(error: unknown, fallback: string): string {
   return error instanceof ZeppClientError ? error.message : fallback;
-}
-
-function chatOnlyFallback(message: string): string {
-  const intent = recognizeSportsIntent(message);
-  if (intent.type === "set_steps" || intent.type === "ask_steps") {
-    return "运动账号服务当前未开启，我不会修改或同步步数。你可以告诉我运动目的、每周可用时间和当前基础，我来帮你规划合适的日常目标。";
-  }
-  return "运动账号服务当前未开启，但我仍可以陪你聊训练计划、恢复方法和日常运动习惯。告诉我你的目标和当前运动基础吧。";
 }
 
 async function defaultQrEncoder(content: string): Promise<string> {

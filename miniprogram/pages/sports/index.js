@@ -22,6 +22,10 @@ Page({
     accessCode: "",
     codeRedeeming: false,
     todayTargetSteps: "",
+    manualTargetInput: "",
+    manualTargetSaving: false,
+    manualTargetError: "",
+    manualTargetFocused: false,
     binding: false,
     dialogVisible: false,
     dialogStage: "",
@@ -65,6 +69,8 @@ Page({
       this.setData({
         sportsEnabled: enabled,
         accountFeaturesEnabled: enabled || this.data.isBound,
+        messages: enabled ? this.data.messages : [],
+        inputText: enabled ? this.data.inputText : "",
         sportsInviteRewardDays: Number(config.sportsInviteRewardDays) || 3,
         rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || ""),
         virtualPaymentProducts,
@@ -72,6 +78,7 @@ Page({
           ? this.data.membershipDialogVisible
           : false
       });
+      wx.setNavigationBarTitle({ title: enabled ? "运动助手" : "步数目标" });
       getApp().globalData.sportsEnabled = enabled;
     } catch (_error) {
       const enabled = getApp().globalData.sportsEnabled !== false;
@@ -79,6 +86,7 @@ Page({
         sportsEnabled: enabled,
         accountFeaturesEnabled: enabled || this.data.isBound
       });
+      wx.setNavigationBarTitle({ title: enabled ? "运动助手" : "步数目标" });
     }
   },
 
@@ -94,16 +102,71 @@ Page({
 
   applyAccount(result) {
     const isBound = Boolean(result && result.isBound);
+    const targetSteps = result && (result.todayTargetSteps != null
+      ? result.todayTargetSteps
+      : result.lastTargetSteps);
     this.setData({
       isBound,
       accountFeaturesEnabled: this.data.sportsEnabled || isBound,
       account: result && result.account ? result.account : null,
       membershipExpiresAt: formatDate(result && result.membershipExpiresAt),
       membershipExpired: isMembershipExpired(result && result.membershipExpiresAt),
-      todayTargetSteps: formatSteps(
-        result && (result.todayTargetSteps != null ? result.todayTargetSteps : result.lastTargetSteps)
-      )
+      todayTargetSteps: formatSteps(targetSteps),
+      manualTargetInput: targetSteps ? String(targetSteps) : ""
     });
+  },
+
+  handleManualTargetInput(event) {
+    this.setData({
+      manualTargetInput: String(event.detail.value || "").replace(/\D/g, "").slice(0, 6),
+      manualTargetError: ""
+    });
+  },
+
+  selectManualTarget(event) {
+    this.setData({
+      manualTargetInput: String(event.currentTarget.dataset.steps || ""),
+      manualTargetError: ""
+    });
+  },
+
+  handleManualTargetFocus() {
+    this.setData({ manualTargetFocused: true });
+  },
+
+  handleManualTargetBlur() {
+    this.setData({ manualTargetFocused: false });
+  },
+
+  async saveManualTarget() {
+    if (this.data.manualTargetSaving) return;
+    const steps = Number(this.data.manualTargetInput);
+    if (!Number.isInteger(steps) || steps < 1000 || steps > 100000) {
+      this.setData({ manualTargetError: "请输入 1,000-100,000 之间的整数步数" });
+      return;
+    }
+    this.setData({ manualTargetSaving: true, manualTargetError: "" });
+    try {
+      await api.ensureLogin();
+      const result = await api.request("/api/sports/target", {
+        method: "POST",
+        data: { steps }
+      });
+      this.setData({
+        todayTargetSteps: formatSteps(result.steps),
+        manualTargetInput: String(result.steps)
+      });
+      wx.showToast({ title: "今日目标已保存", icon: "success" });
+    } catch (error) {
+      const message = String((error && error.error) || "");
+      this.setData({
+        manualTargetError: message && !/^not found$/i.test(message)
+          ? message
+          : "目标保存失败，请稍后重试"
+      });
+    } finally {
+      this.setData({ manualTargetSaving: false });
+    }
   },
 
   async handleBindTap() {

@@ -23,13 +23,20 @@
     </button>
   </view>
 
-  <view class="chat-panel anim-up delay-1" aria-label="运动 AI 助手对话">
+  <view class="chat-panel anim-up delay-1" aria-label="{{sportsEnabled ? '运动目标设置' : '手动步数目标设置'}}">
     <view class="chat-header">
-      <view class="assistant-identity">
+      <view wx:if="{{sportsEnabled}}" class="assistant-identity">
         <view class="assistant-avatar" aria-hidden="true"><view class="activity-line"></view></view>
         <view class="assistant-copy">
           <view class="assistant-name">运动助手</view>
-          <view class="assistant-state">{{accountFeaturesEnabled ? '目标设置 · 账号校验 · 即时反馈' : '运动问答 · 计划建议 · 日常陪伴'}}</view>
+          <view class="assistant-state">目标设置 · 账号校验 · 即时反馈</view>
+        </view>
+      </view>
+      <view wx:else class="assistant-identity">
+        <view class="manual-goal-icon" aria-hidden="true"><view class="manual-goal-icon-core"></view></view>
+        <view class="assistant-copy">
+          <view class="assistant-name">今日步数目标</view>
+          <view class="assistant-state">手动设置 · 仅记录目标</view>
         </view>
       </view>
       <view class="chat-header-actions">
@@ -44,10 +51,11 @@
           <view class="membership-header-icon" aria-hidden="true"><view class="membership-header-icon-core"></view></view>
           <text class="membership-header-label">购买会员</text>
         </button>
-        <view class="system-state"><view class="system-state-dot"></view>READY</view>
+        <view wx:if="{{sportsEnabled}}" class="system-state"><view class="system-state-dot"></view>READY</view>
       </view>
     </view>
 
+    <block wx:if="{{sportsEnabled}}">
     <view wx:if="{{accountFeaturesEnabled}}" class="goal-dashboard" aria-label="今日运动目标">
       <view class="goal-ring-wrap">
         <view class="goal-ring {{todayTargetSteps ? 'has-target' : ''}}">
@@ -133,8 +141,8 @@
         <view wx:if="{{messages.length === 0}}" class="empty-conversation">
           <view class="empty-conversation-mark" aria-hidden="true"></view>
           <view class="empty-conversation-copy">
-            <view class="empty-conversation-title">{{accountFeaturesEnabled ? '告诉我你想设置的步数' : '想聊点什么运动问题？'}}</view>
-            <view class="empty-conversation-text">{{accountFeaturesEnabled ? '我会先检查绑定和会员状态，成功后同步更新上方目标。' : '可以问训练计划、恢复建议或日常运动习惯。'}}</view>
+            <view class="empty-conversation-title">告诉我你想设置的步数</view>
+            <view class="empty-conversation-text">我会先检查绑定和会员状态，成功后同步更新上方目标。</view>
           </view>
         </view>
         <view wx:for="{{messages}}" wx:key="id" id="{{item.id}}" class="message-row {{item.role === 'user' ? 'is-user' : ''}}">
@@ -155,7 +163,7 @@
         <input
           class="composer-input"
           value="{{inputText}}"
-          placeholder="{{accountFeaturesEnabled ? '输入目标，例如 18,000 步' : '输入运动问题，和助手聊一聊'}}"
+          placeholder="输入目标，例如 18,000 步"
           placeholder-class="composer-placeholder"
           maxlength="500"
           confirm-type="send"
@@ -164,9 +172,56 @@
           bindblur="handleComposerBlur"
           bindconfirm="sendChatMessage"
           disabled="{{chatLoading}}"
-          aria-label="{{accountFeaturesEnabled ? '输入今天运动目标' : '输入运动问题'}}"
+          aria-label="输入今天运动目标"
         />
         <button class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}" bindtap="sendChatMessage" disabled="{{!inputText || chatLoading}}" aria-label="发送消息"><text class="send-label">发送</text></button>
+      </view>
+    </view>
+    </block>
+
+    <view wx:else class="manual-goal-panel" aria-label="手动设置今日步数目标">
+      <view class="manual-goal-current">
+        <view class="manual-goal-current-label">今日目标</view>
+        <view class="manual-goal-current-value"><text>{{todayTargetSteps || '未设置'}}</text><text wx:if="{{todayTargetSteps}}" class="manual-goal-current-unit">步</text></view>
+        <view class="manual-goal-current-note">这里只记录你的目标，不会同步或修改实际步数。</view>
+      </view>
+
+      <view class="manual-goal-form">
+        <view class="manual-goal-label">选择常用目标</view>
+        <view class="manual-goal-presets">
+          <button class="manual-goal-preset {{manualTargetInput === '10000' ? 'is-selected' : ''}}" data-steps="10000" bindtap="selectManualTarget" hover-class="is-pressed" hover-stay-time="80">10,000 步</button>
+          <button class="manual-goal-preset {{manualTargetInput === '20000' ? 'is-selected' : ''}}" data-steps="20000" bindtap="selectManualTarget" hover-class="is-pressed" hover-stay-time="80">20,000 步</button>
+        </view>
+
+        <view class="manual-goal-label is-custom">自定义目标</view>
+        <view class="manual-goal-input-row {{manualTargetFocused ? 'is-focused' : ''}} {{manualTargetError ? 'has-error' : ''}}">
+          <input
+            class="manual-goal-input"
+            type="number"
+            value="{{manualTargetInput}}"
+            placeholder="例如 18000"
+            placeholder-class="manual-goal-placeholder"
+            maxlength="6"
+            confirm-type="done"
+            bindinput="handleManualTargetInput"
+            bindfocus="handleManualTargetFocus"
+            bindblur="handleManualTargetBlur"
+            bindconfirm="saveManualTarget"
+            disabled="{{manualTargetSaving}}"
+            aria-label="今日步数目标"
+          />
+          <text class="manual-goal-input-unit">步</text>
+          <button
+            class="manual-goal-save {{!manualTargetInput || manualTargetSaving ? 'is-disabled' : ''}}"
+            bindtap="saveManualTarget"
+            loading="{{manualTargetSaving}}"
+            disabled="{{!manualTargetInput || manualTargetSaving}}"
+            hover-class="is-pressed"
+            hover-stay-time="80"
+          >保存目标</button>
+        </view>
+        <view wx:if="{{manualTargetError}}" class="manual-goal-error">{{manualTargetError}}</view>
+        <view wx:else class="manual-goal-helper">可设置 1,000-100,000 步，保存后当天有效。</view>
       </view>
     </view>
   </view>

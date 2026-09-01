@@ -31,15 +31,20 @@ describe("mini program sports feature switch", () => {
     expect(sportsPageSource).toContain("const config = await api.getAppConfig()");
   });
 
-  test("uses chat-only mode for new users while preserving bound-account features", () => {
+  test("uses manual goal mode without AI chat when the account-service switch is off", () => {
     expect(sportsPageSource).toContain("sportsEnabled: enabled");
     expect(sportsPageSource).toContain("accountFeaturesEnabled: this.data.sportsEnabled || isBound");
     expect(sportsPageSource).not.toContain('wx.switchTab({ url: "/pages/home/index" })');
     expect(sportsPageTemplate).toContain('wx:if="{{accountFeaturesEnabled}}" class="account-panel');
-    expect(sportsPageTemplate).toContain('wx:if="{{accountFeaturesEnabled}}" class="goal-dashboard');
+    expect(sportsPageTemplate).toContain('wx:if="{{sportsEnabled}}"');
+    expect(sportsPageTemplate).toContain('wx:else class="manual-goal-panel"');
+    expect(sportsPageTemplate).toContain("手动设置 · 仅记录目标");
+    expect(sportsPageTemplate).toContain("不会同步或修改实际步数");
+    expect(sportsPageTemplate).toContain('bindtap="saveManualTarget"');
     expect(sportsPageTemplate).toContain('wx:if="{{virtualPaymentProducts.length}}"');
     expect(sportsPageTemplate).toContain('wx:if="{{membershipDialogVisible}}" class="membership-overlay"');
     expect(sportsPageTemplate).not.toContain("accountFeaturesEnabled && isBound && virtualPaymentProducts.length");
-    expect(sportsPageTemplate).toContain("想聊点什么运动问题？");
+    expect(sportsPageSource).toContain('api.request("/api/sports/target"');
+    expect(sportsPageSource).toContain('wx.setNavigationBarTitle({ title: enabled ? "运动助手" : "步数目标" })');
   });
 });

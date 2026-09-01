@@ -287,7 +287,7 @@ describe("sports account binding", () => {
     expect(response.json().error).toContain("ZEPP_CREDENTIAL_KEY");
   });
 
-  test("blocks new accounts but keeps bound users and membership features available when the switch is disabled", async () => {
+  test("uses manual goals without AI or step syncing when the switch is disabled", async () => {
     const repositories = createRepositories();
     const zeppClient = new MockZeppClient();
     const app = await createApp({
@@ -319,11 +319,34 @@ describe("sports account binding", () => {
       headers: newUserHeaders,
       payload: { message: "帮我把今天的步数改成两万", history: [] }
     });
-    expect(chat.statusCode).toBe(200);
-    expect(chat.json()).toMatchObject({ success: true, action: "reply", mode: "chat_only" });
-    expect(chat.json().reply).toContain("不会修改或同步步数");
+    expect(chat.statusCode).toBe(404);
+    expect(chat.json()).toEqual({ error: "对话功能已关闭，请使用手动目标设置" });
+
+    const manualTarget = await app.inject({
+      method: "POST",
+      url: "/api/sports/target",
+      headers: newUserHeaders,
+      payload: { steps: 18_000 }
+    });
+    expect(manualTarget.statusCode).toBe(200);
+    expect(manualTarget.json()).toMatchObject({ success: true, action: "target_saved", steps: 18_000 });
+
+    const manualAccount = await app.inject({
+      method: "GET",
+      url: "/api/sports/account",
+      headers: newUserHeaders
+    });
+    expect(manualAccount.json()).toMatchObject({ isBound: false, todayTargetSteps: 18_000 });
 
     await repositories.settings.setSportsEnabled(true);
+    const enabledManualTarget = await app.inject({
+      method: "POST",
+      url: "/api/sports/target",
+      headers: newUserHeaders,
+      payload: { steps: 20_000 }
+    });
+    expect(enabledManualTarget.statusCode).toBe(409);
+
     const boundHeaders = { authorization: "Bearer local_user-sports-existing" };
     await app.inject({ method: "POST", url: "/api/sports/bind/start", headers: boundHeaders });
     zeppClient.bound = true;
@@ -340,8 +363,17 @@ describe("sports account binding", () => {
       headers: boundHeaders,
       payload: { message: "今天运动目标 12345 步", history: [] }
     });
-    expect(existingChat.statusCode).toBe(200);
-    expect(existingChat.json()).toMatchObject({ success: true, action: "steps_updated", steps: 12_345 });
+    expect(existingChat.statusCode).toBe(404);
+
+    const existingManualTarget = await app.inject({
+      method: "POST",
+      url: "/api/sports/target",
+      headers: boundHeaders,
+      payload: { steps: 12_345 }
+    });
+    expect(existingManualTarget.statusCode).toBe(200);
+    expect(existingManualTarget.json()).toMatchObject({ action: "target_saved", steps: 12_345 });
+    expect(zeppClient.stepUpdates).toEqual([]);
   });
 
   test("falls back to manual captcha after OCR retries are exhausted", async () => {
