@@ -81,6 +81,22 @@ export type SportsAdGrantRecord = {
   updatedAt: Date;
 };
 
+export type SportsVirtualPaymentOrderRecord = {
+  id: string;
+  outTradeNo: string;
+  userId: string;
+  productId: string;
+  durationDays: number;
+  priceCents: number;
+  env: number;
+  status: string;
+  wxOrderId: string | null;
+  paidAt: Date | null;
+  deliveredAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ReferralSummary = {
   downlineCount: number;
   earnedCents: number;
@@ -481,6 +497,21 @@ export type Repositories = {
     reserve(userId: string, tokenHash: string, now: Date): Promise<boolean>;
     complete(userId: string, tokenHash: string, now: Date): Promise<boolean>;
     release(userId: string, tokenHash: string): Promise<void>;
+  };
+  sportsVirtualPaymentOrders: {
+    create(input: {
+      outTradeNo: string;
+      userId: string;
+      productId: string;
+      durationDays: number;
+      priceCents: number;
+      env: number;
+    }): Promise<SportsVirtualPaymentOrderRecord>;
+    findByOutTradeNo(outTradeNo: string): Promise<SportsVirtualPaymentOrderRecord | undefined>;
+    deliver(
+      outTradeNo: string,
+      input: { wxOrderId?: string | null; paidAt: Date; deliveredAt: Date }
+    ): Promise<{ order: SportsVirtualPaymentOrderRecord; membershipExpiresAt: Date; alreadyDelivered: boolean } | undefined>;
   };
   settings: {
     getCommissionSharingRatio(): Promise<number | null>;

@@ -56,6 +56,29 @@
       </view>
     </view>
 
+    <view wx:if="{{isBound && virtualPaymentProducts.length}}" class="membership-purchase" aria-label="购买运动会员">
+      <view class="membership-purchase-head">
+        <view><view class="membership-purchase-title">购买运动会员</view><view class="membership-purchase-subtitle">支付完成后自动延长有效期</view></view>
+        <view class="membership-purchase-badge">微信虚拟支付</view>
+      </view>
+      <view class="membership-plan-list">
+        <button
+          wx:for="{{virtualPaymentProducts}}"
+          wx:key="productId"
+          class="membership-plan {{paymentLoadingProductId === item.productId ? 'is-loading' : ''}}"
+          data-product-id="{{item.productId}}"
+          bindtap="handleBuyMembership"
+          loading="{{paymentLoadingProductId === item.productId}}"
+          disabled="{{!!paymentLoadingProductId}}"
+          hover-class="is-pressed"
+          hover-stay-time="80"
+        >
+          <view class="membership-plan-copy"><view class="membership-plan-label">{{item.label}}</view><view class="membership-plan-days">{{item.durationText}}</view></view>
+          <view class="membership-plan-price"><text class="membership-plan-currency">¥</text>{{item.priceText}}</view>
+        </button>
+      </view>
+    </view>
+
     <view wx:if="{{isBound && membershipExpired}}" class="expiry-recovery" aria-label="运动会员已到期">
       <view class="recovery-head">
         <view class="recovery-copy">

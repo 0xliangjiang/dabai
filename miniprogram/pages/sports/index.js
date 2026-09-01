@@ -10,6 +10,8 @@ Page({
     membershipExpired: false,
     sportsInviteRewardDays: 3,
     rewardedVideoAdUnitId: "",
+    virtualPaymentProducts: [],
+    paymentLoadingProductId: "",
     adLoading: false,
     adStepGrantToken: "",
     pendingExpiredMessage: "",
@@ -41,6 +43,7 @@ Page({
     syncTabBar(this);
     if (!(await this.ensureSportsEnabled())) return;
     await this.loadAccount();
+    await this.reconcilePendingVirtualPayment();
   },
 
   async ensureSportsEnabled() {
@@ -49,7 +52,14 @@ Page({
       const enabled = config.sportsEnabled !== false;
       this.setData({
         sportsInviteRewardDays: Number(config.sportsInviteRewardDays) || 3,
-        rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || "")
+        rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || ""),
+        virtualPaymentProducts: Array.isArray(config.sportsVirtualPaymentProducts)
+          ? config.sportsVirtualPaymentProducts.map((item) => ({
+              ...item,
+              priceText: (Number(item.priceCents) / 100).toFixed(2),
+              durationText: item.permanent ? "永久有效" : `增加 ${item.durationDays} 天`
+            }))
+          : []
       });
       getApp().globalData.sportsEnabled = enabled;
       if (enabled) return true;
@@ -310,6 +320,65 @@ Page({
     }
   },
 
+  async handleBuyMembership(event) {
+    const productId = String(event.currentTarget.dataset.productId || "");
+    if (!productId || this.data.paymentLoadingProductId) return;
+    if (typeof wx.requestVirtualPayment !== "function") {
+      wx.showModal({ title: "暂不支持", content: "当前微信版本不支持虚拟支付，请升级微信后重试。", showCancel: false });
+      return;
+    }
+    this.setData({ paymentLoadingProductId: productId });
+    try {
+      await api.ensureLogin();
+      const login = await wxLogin();
+      const order = await api.request("/api/sports/virtual-payment/create", {
+        method: "POST",
+        data: { code: login.code, productId }
+      });
+      wx.setStorageSync("sportsPendingVirtualPayment", order.outTradeNo);
+      await requestVirtualPayment(order.payment);
+      const confirmed = await this.confirmVirtualPayment(order.outTradeNo);
+      if (confirmed) wx.showToast({
+        title: confirmed.permanent ? "已开通永久会员" : `会员已增加 ${confirmed.durationDays} 天`,
+        icon: "success"
+      });
+    } catch (error) {
+      const message = String((error && (error.error || error.errMsg)) || "支付失败，请稍后重试");
+      if (/cancel/i.test(message)) {
+        wx.removeStorageSync("sportsPendingVirtualPayment");
+      } else {
+        wx.showToast({ title: message, icon: "none" });
+      }
+    } finally {
+      this.setData({ paymentLoadingProductId: "" });
+    }
+  },
+
+  async reconcilePendingVirtualPayment() {
+    const outTradeNo = String(wx.getStorageSync("sportsPendingVirtualPayment") || "");
+    if (!outTradeNo) return;
+    try {
+      await this.confirmVirtualPayment(outTradeNo);
+    } catch (error) {
+      const message = String((error && error.error) || "");
+      if (message && message !== "支付尚未完成") console.warn("确认会员支付结果失败", error);
+    }
+  },
+
+  async confirmVirtualPayment(outTradeNo) {
+    const result = await api.request("/api/sports/virtual-payment/confirm", {
+      method: "POST",
+      data: { outTradeNo }
+    });
+    wx.removeStorageSync("sportsPendingVirtualPayment");
+    this.setData({
+      membershipExpiresAt: formatDate(result.membershipExpiresAt),
+      membershipExpired: false
+    });
+    await this.loadAccount();
+    return result;
+  },
+
   onShareAppMessage() {
     const user = api.getCurrentUser();
     return {
@@ -377,6 +446,16 @@ function formatSteps(value) {
   const steps = Number(value);
   if (!Number.isInteger(steps) || steps <= 0) return "";
   return steps.toLocaleString("en-US");
+}
+
+function wxLogin() {
+  return new Promise((resolve, reject) => wx.login({ success: resolve, fail: reject }));
+}
+
+function requestVirtualPayment(payment) {
+  return new Promise((resolve, reject) => {
+    wx.requestVirtualPayment({ ...payment, success: resolve, fail: reject });
+  });
 }
 
 function isMembershipExpired(value) {

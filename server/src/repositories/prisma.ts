@@ -18,6 +18,7 @@ import type {
   SportsAccountRecord,
   SportsAdGrantRecord,
   SportsAccessCodeRecord,
+  SportsVirtualPaymentOrderRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
   UserRecord,
@@ -482,6 +483,59 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         await prisma.sportsAdGrant.updateMany({
           where: { userId, tokenHash, status: "reserved" },
           data: { status: "active", reservedAt: null }
+        });
+      }
+    },
+    sportsVirtualPaymentOrders: {
+      async create(input) {
+        return mapSportsVirtualPaymentOrder(await prisma.sportsVirtualPaymentOrder.create({ data: input }));
+      },
+      async findByOutTradeNo(outTradeNo) {
+        const row = await prisma.sportsVirtualPaymentOrder.findUnique({ where: { outTradeNo } });
+        return row ? mapSportsVirtualPaymentOrder(row) : undefined;
+      },
+      async deliver(outTradeNo, input) {
+        return prisma.$transaction(async (tx) => {
+          const order = await tx.sportsVirtualPaymentOrder.findUnique({ where: { outTradeNo } });
+          if (!order) return undefined;
+          const account = await tx.sportsAccount.findUnique({ where: { userId: order.userId } });
+          if (!account) return undefined;
+          if (order.deliveredAt) {
+            return {
+              order: mapSportsVirtualPaymentOrder(order),
+              membershipExpiresAt: account.membershipExpiresAt!,
+              alreadyDelivered: true
+            };
+          }
+          const claimed = await tx.sportsVirtualPaymentOrder.updateMany({
+            where: { id: order.id, deliveredAt: null },
+            data: {
+              status: "delivered", wxOrderId: input.wxOrderId ?? null,
+              paidAt: input.paidAt, deliveredAt: input.deliveredAt
+            }
+          });
+          if (claimed.count !== 1) {
+            const current = await tx.sportsVirtualPaymentOrder.findUnique({ where: { id: order.id } });
+            const currentAccount = await tx.sportsAccount.findUnique({ where: { userId: order.userId } });
+            if (!current || !currentAccount?.membershipExpiresAt) return undefined;
+            return {
+              order: mapSportsVirtualPaymentOrder(current),
+              membershipExpiresAt: currentAccount.membershipExpiresAt,
+              alreadyDelivered: true
+            };
+          }
+          const base = account.membershipExpiresAt && account.membershipExpiresAt > input.deliveredAt
+            ? account.membershipExpiresAt : input.deliveredAt;
+          const membershipExpiresAt = order.durationDays === 0
+            ? new Date("9999-12-31T23:59:59.999Z")
+            : new Date(base.getTime() + order.durationDays * 86_400_000);
+          await tx.sportsAccount.update({ where: { userId: order.userId }, data: { membershipExpiresAt } });
+          const delivered = await tx.sportsVirtualPaymentOrder.findUnique({ where: { id: order.id } });
+          return {
+            order: mapSportsVirtualPaymentOrder(delivered!),
+            membershipExpiresAt,
+            alreadyDelivered: false
+          };
         });
       }
     },
@@ -1691,6 +1745,10 @@ function mapWithdrawal(record: {
   createdAt: Date;
   updatedAt: Date;
 }): WithdrawalRecord {
+  return record;
+}
+
+function mapSportsVirtualPaymentOrder(record: SportsVirtualPaymentOrderRecord): SportsVirtualPaymentOrderRecord {
   return record;
 }
 

@@ -13,6 +13,13 @@ import type { ZeppClient } from "../integrations/zepp/client.js";
 import { ZeppClientError } from "../integrations/zepp/client.js";
 import { hashSportsAccessCode, normalizeSportsAccessCode } from "../domain/sports-access-code.js";
 import type { Repositories, SportsAccountRecord } from "../repositories/types.js";
+import { resolveWechatSession } from "./auth.js";
+import {
+  createVirtualPaymentApi,
+  createVirtualPaymentSignatures,
+  virtualPaymentAppKey,
+  WechatVirtualPaymentError
+} from "../integrations/wechat/virtual-payment.js";
 
 export type QrEncoder = (content: string) => Promise<string>;
 
@@ -33,13 +40,25 @@ const accessCodeSchema = z.object({
   code: z.string().trim().min(12, "请输入完整卡密").max(64, "卡密格式不正确")
 });
 
+const virtualPaymentCreateSchema = z.object({
+  code: z.string().trim().min(1),
+  productId: z.string().trim().min(1).max(64)
+});
+
+const virtualPaymentConfirmSchema = z.object({
+  outTradeNo: z.string().trim().regex(/^[A-Za-z0-9_\-|*@]{8,32}$/)
+});
+
 export async function registerSportsRoutes(
   app: FastifyInstance,
   repositories: Repositories,
   config: AppConfig,
   zeppClient: ZeppClient,
-  qrEncoder: QrEncoder = defaultQrEncoder
+  qrEncoder: QrEncoder = defaultQrEncoder,
+  wechatAuthFetch: typeof fetch = fetch,
+  wechatApiFetch: typeof fetch = fetch
 ) {
+  const virtualPaymentApi = createVirtualPaymentApi(wechatApiFetch);
   const requireSportsEnabled = async (reply: FastifyReply) => {
     if (await repositories.settings.getSportsEnabled()) return true;
     await reply.code(404).send({ error: "运动功能暂未开放" });
@@ -54,6 +73,113 @@ export async function registerSportsRoutes(
       repositories.sportsDailyTargets.findByUserAndDate(request.userId, targetDate)
     ]);
     return accountView(account, dailyTarget?.steps ?? null);
+  });
+
+  app.post("/api/sports/virtual-payment/create", async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
+    const parsed = virtualPaymentCreateSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "支付参数不正确" });
+    const product = config.sportsVirtualPaymentProducts?.find((item) => item.productId === parsed.data.productId);
+    const env = config.sportsVirtualPaymentEnv === 1 ? 1 : 0;
+    const offerId = config.sportsVirtualPaymentOfferId?.trim() || "";
+    const appKey = virtualPaymentAppKey(config, env);
+    if (!product || !offerId || !appKey) {
+      return reply.code(503).send({ error: "会员支付暂未配置完成" });
+    }
+    const [user, account] = await Promise.all([
+      repositories.users.findById(request.userId),
+      repositories.sportsAccounts.findByUser(request.userId)
+    ]);
+    if (!user || !account) return reply.code(409).send({ error: "请先创建运动账号" });
+    let session;
+    try {
+      session = await resolveWechatSession(parsed.data.code, config, wechatAuthFetch);
+    } catch (error) {
+      request.log.warn({ err: error, userId: request.userId }, "refresh WeChat session for virtual payment failed");
+      return reply.code(401).send({ error: "微信登录失败，请重试" });
+    }
+    if (session.openid !== user.openid || !session.sessionKey) {
+      return reply.code(401).send({ error: "微信登录态已变化，请重试" });
+    }
+    const outTradeNo = createSportsOutTradeNo();
+    const signData = JSON.stringify({
+      offerId,
+      buyQuantity: 1,
+      env,
+      currencyType: "CNY",
+      productId: product.productId,
+      goodsPrice: product.priceCents,
+      outTradeNo,
+      attach: `sports:${product.durationDays}`
+    });
+    const signatures = createVirtualPaymentSignatures({ appKey, sessionKey: session.sessionKey, signData });
+    await repositories.sportsVirtualPaymentOrders.create({
+      outTradeNo,
+      userId: request.userId,
+      productId: product.productId,
+      durationDays: product.durationDays,
+      priceCents: product.priceCents,
+      env
+    });
+    return {
+      outTradeNo,
+      payment: { signData, ...signatures, mode: "short_series_goods" }
+    };
+  });
+
+  app.post("/api/sports/virtual-payment/confirm", async (request, reply) => {
+    if (!(await requireSportsEnabled(reply))) return;
+    const parsed = virtualPaymentConfirmSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "订单号不正确" });
+    const order = await repositories.sportsVirtualPaymentOrders.findByOutTradeNo(parsed.data.outTradeNo);
+    if (!order || order.userId !== request.userId) return reply.code(404).send({ error: "支付订单不存在" });
+    if (order.deliveredAt) {
+      const account = await repositories.sportsAccounts.findByUser(request.userId);
+      return { success: true, alreadyDelivered: true, membershipExpiresAt: account?.membershipExpiresAt };
+    }
+    const user = await repositories.users.findById(request.userId);
+    if (!user) return reply.code(404).send({ error: "用户不存在" });
+    try {
+      const result = await virtualPaymentApi.queryOrder(config, {
+        openid: user.openid,
+        outTradeNo: order.outTradeNo,
+        env: order.env === 1 ? 1 : 0
+      });
+      if (![2, 3, 4].includes(result.status)) {
+        return reply.code(409).send({ error: result.status === 1 ? "支付尚未完成" : "订单未处于可发货状态" });
+      }
+      const now = new Date();
+      const delivered = await repositories.sportsVirtualPaymentOrders.deliver(order.outTradeNo, {
+        wxOrderId: result.wxOrderId,
+        paidAt: now,
+        deliveredAt: now
+      });
+      if (!delivered) return reply.code(409).send({ error: "运动账号不存在，暂时无法发货" });
+      if (!delivered.alreadyDelivered && result.status !== 4) {
+        try {
+          await virtualPaymentApi.notifyProvided(config, {
+            outTradeNo: order.outTradeNo,
+            wxOrderId: result.wxOrderId,
+            env: order.env === 1 ? 1 : 0
+          });
+        } catch (error) {
+          request.log.warn({ err: error, outTradeNo: order.outTradeNo }, "notify virtual goods delivery failed");
+        }
+      }
+      return {
+        success: true,
+        alreadyDelivered: delivered.alreadyDelivered,
+        durationDays: order.durationDays,
+        permanent: order.durationDays === 0,
+        membershipExpiresAt: delivered.membershipExpiresAt
+      };
+    } catch (error) {
+      if (error instanceof WechatVirtualPaymentError) {
+        request.log.warn({ err: error, outTradeNo: order.outTradeNo }, "confirm virtual payment failed");
+        return reply.code(502).send({ error: "支付结果确认失败，请稍后重试" });
+      }
+      throw error;
+    }
   });
 
   app.post("/api/sports/access-code/redeem", async (request, reply) => {
@@ -480,6 +606,10 @@ function generateRandomEmail(): string {
 
 function generatePassword(): string {
   return randomString("abcdefghijklmnopqrstuvwxyz", 12);
+}
+
+function createSportsOutTradeNo(): string {
+  return `SP${Date.now().toString(36).toUpperCase()}${randomBytes(6).toString("hex").toUpperCase()}`;
 }
 
 function randomString(alphabet: string, length: number): string {

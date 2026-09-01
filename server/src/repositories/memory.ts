@@ -22,6 +22,7 @@ import type {
   SportsAccessCodeRecord,
   SportsAdGrantRecord,
   SportsDailyTargetRecord,
+  SportsVirtualPaymentOrderRecord,
   UpsertAttributionInput,
   UpsertOrderInput,
   UserRecord,
@@ -33,6 +34,7 @@ const EXCHANGE_ENABLED_KEY = "exchange_enabled";
 const ORDERS_TAB_ENABLED_KEY = "orders_tab_enabled";
 const SPORTS_ENABLED_KEY = "sports_enabled";
 const REFERRAL_RATIO_KEY = "referral_commission_ratio";
+const PERMANENT_MEMBERSHIP_EXPIRY = "9999-12-31T23:59:59.999Z";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
 
 export function createRepositories(): Repositories {
@@ -42,6 +44,7 @@ export function createRepositories(): Repositories {
   const sportsDailyTargets = new Map<string, SportsDailyTargetRecord>();
   const sportsAccessCodes = new Map<string, SportsAccessCodeRecord>();
   const sportsAdGrants = new Map<string, SportsAdGrantRecord>();
+  const sportsVirtualPaymentOrders = new Map<string, SportsVirtualPaymentOrderRecord>();
   const rewardedSportsInviteeIds = new Set<string>();
   const conversions = new Map<string, ConversionRecord>();
   const copyEvents = new Map<string, CopyEventRecord>();
@@ -452,6 +455,41 @@ export function createRepositories(): Repositories {
         const record = sportsAdGrants.get(tokenHash);
         if (!record || record.userId !== userId || record.status !== "reserved") return;
         sportsAdGrants.set(tokenHash, { ...record, status: "active", reservedAt: null, updatedAt: new Date() });
+      }
+    },
+    sportsVirtualPaymentOrders: {
+      async create(input) {
+        const now = new Date();
+        const record: SportsVirtualPaymentOrderRecord = {
+          id: randomUUID(), ...input, status: "created", wxOrderId: null,
+          paidAt: null, deliveredAt: null, createdAt: now, updatedAt: now
+        };
+        sportsVirtualPaymentOrders.set(record.outTradeNo, record);
+        return record;
+      },
+      async findByOutTradeNo(outTradeNo) {
+        return sportsVirtualPaymentOrders.get(outTradeNo);
+      },
+      async deliver(outTradeNo, input) {
+        const order = sportsVirtualPaymentOrders.get(outTradeNo);
+        if (!order) return undefined;
+        const account = sportsAccounts.get(order.userId);
+        if (!account) return undefined;
+        if (order.deliveredAt) {
+          return { order, membershipExpiresAt: account.membershipExpiresAt!, alreadyDelivered: true };
+        }
+        const base = account.membershipExpiresAt && account.membershipExpiresAt > input.deliveredAt
+          ? account.membershipExpiresAt : input.deliveredAt;
+        const membershipExpiresAt = order.durationDays === 0
+          ? new Date(PERMANENT_MEMBERSHIP_EXPIRY)
+          : new Date(base.getTime() + order.durationDays * 86_400_000);
+        const delivered = {
+          ...order, status: "delivered", wxOrderId: input.wxOrderId ?? null,
+          paidAt: input.paidAt, deliveredAt: input.deliveredAt, updatedAt: input.deliveredAt
+        };
+        sportsVirtualPaymentOrders.set(outTradeNo, delivered);
+        sportsAccounts.set(order.userId, { ...account, membershipExpiresAt, updatedAt: input.deliveredAt });
+        return { order: delivered, membershipExpiresAt, alreadyDelivered: false };
       }
     },
     settings: {

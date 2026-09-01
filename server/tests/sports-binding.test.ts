@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { createApp } from "../src/app.js";
-import type { AppConfig } from "../src/config/env.js";
+import { loadConfig, type AppConfig } from "../src/config/env.js";
 import type { ZeppClient } from "../src/integrations/zepp/client.js";
 import { decryptCredential } from "../src/integrations/zepp/credentials.js";
 import { createRepositories } from "../src/repositories/memory.js";
@@ -99,6 +99,135 @@ describe("sports account binding", () => {
 
   afterEach(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
+  });
+
+  test("confirms virtual payment against WeChat and grants membership only once", async () => {
+    const repositories = createRepositories();
+    const user = await repositories.users.findOrCreateByOpenid("openid-paying-user");
+    await repositories.sportsAccounts.create({
+      userId: user.id,
+      email: "paying-user@gmail.com",
+      passwordCipher: "encrypted-password",
+      captchaKey: "captcha",
+      captchaExpiresAt: new Date(Date.now() + 60_000),
+      membershipExpiresAt: null
+    });
+    const apiCalls: string[] = [];
+    const wechatApiFetch: typeof fetch = async (input, init) => {
+      const url = String(input);
+      apiCalls.push(url);
+      if (url.includes("/cgi-bin/token")) {
+        return new Response(JSON.stringify({ access_token: "access-token", expires_in: 7200 }), {
+          status: 200, headers: { "content-type": "application/json" }
+        });
+      }
+      if (url.includes("/xpay/query_order")) {
+        expect(JSON.parse(String(init?.body))).toMatchObject({ openid: user.openid, env: 1 });
+        return new Response(JSON.stringify({
+          errcode: 0,
+          errmsg: "ok",
+          order: { status: 2, wx_order_id: "wx-order-1" }
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.includes("/xpay/notify_provide_goods")) {
+        return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      }
+      throw new Error(`unexpected WeChat API call: ${url}`);
+    };
+    const app = await createApp({
+      config: {
+        ...testConfig,
+        wechatAppId: "wx-test-app",
+        wechatAppSecret: "wechat-secret",
+        sportsVirtualPaymentOfferId: "offer-1",
+        sportsVirtualPaymentSandboxAppKey: "sandbox-app-key",
+        sportsVirtualPaymentEnv: 1,
+        sportsVirtualPaymentProducts: [
+          { productId: "sports_member_30d", label: "30天会员", durationDays: 30, priceCents: 990 }
+        ]
+      },
+      repositories,
+      zeppClient: new MockZeppClient(),
+      wechatAuthFetch: async () => new Response(JSON.stringify({
+        openid: user.openid,
+        session_key: "session-key"
+      }), { status: 200, headers: { "content-type": "application/json" } }),
+      wechatApiFetch
+    });
+    apps.push(app);
+    const headers = { authorization: `Bearer local_${user.id}` };
+
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/sports/virtual-payment/create",
+      headers,
+      payload: { code: "fresh-wx-code", productId: "sports_member_30d" }
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json().payment).toMatchObject({ mode: "short_series_goods" });
+    expect(JSON.parse(created.json().payment.signData)).toMatchObject({
+      offerId: "offer-1", productId: "sports_member_30d", goodsPrice: 990, env: 1
+    });
+
+    const confirmed = await app.inject({
+      method: "POST",
+      url: "/api/sports/virtual-payment/confirm",
+      headers,
+      payload: { outTradeNo: created.json().outTradeNo }
+    });
+    expect(confirmed.statusCode).toBe(200);
+    expect(confirmed.json()).toMatchObject({ success: true, alreadyDelivered: false, durationDays: 30 });
+    const firstExpiry = (await repositories.sportsAccounts.findByUser(user.id))!.membershipExpiresAt!.getTime();
+
+    const repeated = await app.inject({
+      method: "POST",
+      url: "/api/sports/virtual-payment/confirm",
+      headers,
+      payload: { outTradeNo: created.json().outTradeNo }
+    });
+    expect(repeated.statusCode).toBe(200);
+    expect(repeated.json().alreadyDelivered).toBe(true);
+    expect((await repositories.sportsAccounts.findByUser(user.id))!.membershipExpiresAt!.getTime()).toBe(firstExpiry);
+    expect(apiCalls.some((url) => url.includes("/xpay/query_order"))).toBe(true);
+  });
+
+  test("loads all membership products and treats the lifetime product as permanent", async () => {
+    const productsJson = JSON.stringify([
+      { productId: "sports_member_week", label: "周卡", durationDays: 7, priceCents: 288 },
+      { productId: "sports_member_month", label: "月卡", durationDays: 30, priceCents: 888 },
+      { productId: "sports_member_quarter", label: "季卡", durationDays: 90, priceCents: 1888 },
+      { productId: "sports_member_year", label: "年卡", durationDays: 365, priceCents: 2888 },
+      { productId: "sports_lifetime", label: "永久卡", durationDays: 0, priceCents: 3888, permanent: true }
+    ]);
+    const parsed = loadConfig({ SPORTS_VIRTUAL_PAYMENT_PRODUCTS_JSON: productsJson });
+    expect(parsed.sportsVirtualPaymentProducts).toHaveLength(5);
+    expect(parsed.sportsVirtualPaymentProducts?.map((product) => product.priceCents)).toEqual([288, 888, 1888, 2888, 3888]);
+    expect(parsed.sportsVirtualPaymentProducts?.at(-1)).toMatchObject({ durationDays: 0, permanent: true });
+
+    const repositories = createRepositories();
+    const user = await repositories.users.findOrCreateByOpenid("openid-lifetime-user");
+    await repositories.sportsAccounts.create({
+      userId: user.id,
+      email: "lifetime-user@gmail.com",
+      passwordCipher: "encrypted-password",
+      captchaKey: "captcha",
+      captchaExpiresAt: new Date(Date.now() + 60_000),
+      membershipExpiresAt: null
+    });
+    const order = await repositories.sportsVirtualPaymentOrders.create({
+      outTradeNo: "SPLIFETIMEORDER1",
+      userId: user.id,
+      productId: "sports_lifetime",
+      durationDays: 0,
+      priceCents: 3888,
+      env: 0
+    });
+    const now = new Date();
+    const first = await repositories.sportsVirtualPaymentOrders.deliver(order.outTradeNo, { paidAt: now, deliveredAt: now });
+    expect(first?.membershipExpiresAt.getUTCFullYear()).toBe(9999);
+    const repeated = await repositories.sportsVirtualPaymentOrders.deliver(order.outTradeNo, { paidAt: now, deliveredAt: now });
+    expect(repeated?.alreadyDelivered).toBe(true);
+    expect(repeated?.membershipExpiresAt.getTime()).toBe(first?.membershipExpiresAt.getTime());
   });
 
   test("creates one managed account, returns QR, then confirms binding", async () => {

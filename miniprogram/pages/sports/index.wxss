@@ -745,6 +745,52 @@
 .send-label { font-size: 19rpx; font-weight: 600; line-height: 1; }
 
 /* ---- 会员到期恢复 ---- */
+.membership-purchase {
+  margin: 24rpx 24rpx 0;
+  padding: 24rpx;
+  border: 1rpx solid rgba(175, 138, 55, 0.22);
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #fffdf7 0%, #f9f4e7 100%);
+}
+
+.membership-purchase-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.membership-purchase-title { color: #302817; font-size: 30rpx; font-weight: 700; }
+.membership-purchase-subtitle { margin-top: 5rpx; color: #82775e; font-size: 22rpx; }
+.membership-purchase-badge {
+  flex: none;
+  padding: 8rpx 12rpx;
+  border-radius: 999rpx;
+  color: #80631f;
+  background: rgba(208, 169, 75, 0.13);
+  font-size: 19rpx;
+  letter-spacing: 1rpx;
+}
+
+.membership-plan-list { display: flex; gap: 14rpx; margin-top: 20rpx; overflow-x: auto; }
+.membership-plan {
+  min-width: 190rpx;
+  min-height: 116rpx;
+  margin: 0;
+  padding: 18rpx;
+  border: 1rpx solid rgba(128, 99, 31, 0.18);
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.84);
+  text-align: left;
+  line-height: 1.2;
+}
+.membership-plan::after { border: 0; }
+.membership-plan[disabled] { opacity: 0.58; }
+.membership-plan-label { color: #342b18; font-size: 26rpx; font-weight: 700; }
+.membership-plan-days { margin-top: 6rpx; color: #8b7c5b; font-size: 20rpx; }
+.membership-plan-price { margin-top: 14rpx; color: #9a6d13; font-size: 28rpx; font-weight: 750; }
+.membership-plan-currency { margin-right: 2rpx; font-size: 20rpx; }
+
 .expiry-recovery {
   flex: 0 0 auto;
   padding: 18rpx 20rpx 20rpx;

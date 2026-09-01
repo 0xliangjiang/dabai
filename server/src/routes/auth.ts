@@ -7,6 +7,7 @@ import type { Repositories } from "../repositories/types.js";
 type WechatCode2SessionResponse = {
   openid?: string;
   unionid?: string;
+  session_key?: string;
   errcode?: number;
   errmsg?: string;
 };
@@ -61,11 +62,11 @@ class WechatLoginError extends Error {
   }
 }
 
-async function resolveWechatSession(
+export async function resolveWechatSession(
   code: string,
   config: AppConfig,
   wechatAuthFetch: typeof fetch
-): Promise<{ openid: string; unionid?: string | null }> {
+): Promise<{ openid: string; unionid?: string | null; sessionKey?: string }> {
   if (shouldUseMockWechatSession(code, config)) {
     return { openid: `mock_openid_${code}`, unionid: null };
   }
@@ -88,7 +89,8 @@ async function resolveWechatSession(
 
   return {
     openid: payload.openid,
-    unionid: payload.unionid ?? null
+    unionid: payload.unionid ?? null,
+    sessionKey: payload.session_key
   };
 }
 

@@ -45,9 +45,22 @@ export type AppConfig = {
   sportsTrialDays?: number;
   sportsInviteRewardDays?: number;
   sportsRewardedVideoAdUnitId?: string;
+  sportsVirtualPaymentOfferId?: string;
+  sportsVirtualPaymentAppKey?: string;
+  sportsVirtualPaymentSandboxAppKey?: string;
+  sportsVirtualPaymentEnv?: 0 | 1;
+  sportsVirtualPaymentProducts?: SportsVirtualPaymentProduct[];
   nanrunApiUrl?: string;
   nanrunApiKey?: string;
   nanrunTlsCaBase64?: string;
+};
+
+export type SportsVirtualPaymentProduct = {
+  productId: string;
+  label: string;
+  durationDays: number;
+  priceCents: number;
+  permanent?: boolean;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -104,10 +117,42 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sportsTrialDays: Number(env.SPORTS_TRIAL_DAYS ?? 3),
     sportsInviteRewardDays: Number(env.SPORTS_INVITE_REWARD_DAYS ?? 3),
     sportsRewardedVideoAdUnitId: env.SPORTS_REWARDED_VIDEO_AD_UNIT_ID ?? "",
+    sportsVirtualPaymentOfferId: env.SPORTS_VIRTUAL_PAYMENT_OFFER_ID ?? "",
+    sportsVirtualPaymentAppKey: env.SPORTS_VIRTUAL_PAYMENT_APP_KEY ?? "",
+    sportsVirtualPaymentSandboxAppKey: env.SPORTS_VIRTUAL_PAYMENT_SANDBOX_APP_KEY ?? "",
+    sportsVirtualPaymentEnv: env.SPORTS_VIRTUAL_PAYMENT_ENV === "1" ? 1 : 0,
+    sportsVirtualPaymentProducts: parseSportsVirtualPaymentProducts(env.SPORTS_VIRTUAL_PAYMENT_PRODUCTS_JSON),
     nanrunApiUrl: env.NANRUN_API_URL ?? "https://api.nan.run/api/xiaomisport",
     nanrunApiKey: env.NANRUN_API_KEY ?? "",
     nanrunTlsCaBase64: env.NANRUN_TLS_CA_BASE64 ?? "",
   };
+}
+
+function parseSportsVirtualPaymentProducts(value: string | undefined): SportsVirtualPaymentProduct[] {
+  if (!value?.trim()) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const candidate = item as Record<string, unknown>;
+      const productId = String(candidate.productId ?? "").trim();
+      const label = String(candidate.label ?? "").trim();
+      const durationDays = Number(candidate.durationDays);
+      const priceCents = Number(candidate.priceCents);
+      const permanent = candidate.permanent === true;
+      if (
+        !/^[A-Za-z0-9_-]{1,64}$/.test(productId) ||
+        !label || label.length > 30 ||
+        !Number.isInteger(durationDays) ||
+        (permanent ? durationDays !== 0 : durationDays < 1 || durationDays > 3650) ||
+        !Number.isInteger(priceCents) || priceCents < 100 || priceCents > 1_000_000
+      ) return [];
+      return [{ productId, label, durationDays, priceCents, ...(permanent ? { permanent: true } : {}) }];
+    });
+  } catch (_error) {
+    return [];
+  }
 }
 
 function booleanEnv(value: string | undefined, fallback: boolean): boolean {

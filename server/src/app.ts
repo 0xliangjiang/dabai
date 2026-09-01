@@ -189,7 +189,12 @@ export async function createApp(options: CreateAppOptions = {}) {
     ordersTabEnabled: await repositories.settings.getOrdersTabEnabled(),
     sportsEnabled: await repositories.settings.getSportsEnabled(),
     sportsInviteRewardDays: positiveDays(config.sportsInviteRewardDays, 3),
-    sportsRewardedVideoAdUnitId: config.sportsRewardedVideoAdUnitId?.trim() || ""
+    sportsRewardedVideoAdUnitId: config.sportsRewardedVideoAdUnitId?.trim() || "",
+    sportsVirtualPaymentProducts: virtualPaymentConfigured(config)
+      ? (config.sportsVirtualPaymentProducts ?? []).map(({ productId, label, durationDays, priceCents, permanent }) => ({
+          productId, label, durationDays, priceCents, permanent: permanent === true
+        }))
+      : []
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
@@ -210,7 +215,9 @@ export async function createApp(options: CreateAppOptions = {}) {
         nanrunApiKey: config.nanrunApiKey,
         nanrunTlsCaBase64: config.nanrunTlsCaBase64
       }),
-    options.sportsQrEncoder
+    options.sportsQrEncoder,
+    options.wechatAuthFetch,
+    options.wechatApiFetch
   );
   await registerConversionRoutes(app, repositories, config);
   await registerOrderRoutes(app, repositories, config);
@@ -230,6 +237,16 @@ export async function createApp(options: CreateAppOptions = {}) {
 
 function positiveDays(value: number | undefined, fallback: number): number {
   return Number.isInteger(value) && value! > 0 ? value! : fallback;
+}
+
+function virtualPaymentConfigured(config: AppConfig): boolean {
+  const env = config.sportsVirtualPaymentEnv === 1 ? 1 : 0;
+  const appKey = env === 1 ? config.sportsVirtualPaymentSandboxAppKey : config.sportsVirtualPaymentAppKey;
+  return Boolean(
+    config.sportsVirtualPaymentOfferId?.trim() &&
+    appKey?.trim() &&
+    config.sportsVirtualPaymentProducts?.length
+  );
 }
 
 function resolveUserId(token: string, config: AppConfig): string | null {
