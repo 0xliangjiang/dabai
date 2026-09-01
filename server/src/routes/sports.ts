@@ -62,12 +62,11 @@ export async function registerSportsRoutes(
   const virtualPaymentApi = createVirtualPaymentApi(wechatApiFetch);
   const requireSportsEnabled = async (reply: FastifyReply) => {
     if (await repositories.settings.getSportsEnabled()) return true;
-    await reply.code(404).send({ error: "运动账号服务暂未开放" });
+    await reply.code(404).send({ error: "新用户运动账号服务暂未开放" });
     return false;
   };
 
-  app.get("/api/sports/account", async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
+  app.get("/api/sports/account", async (request) => {
     const targetDate = sportsTargetDate();
     const [account, dailyTarget] = await Promise.all([
       repositories.sportsAccounts.findByUser(request.userId),
@@ -77,7 +76,6 @@ export async function registerSportsRoutes(
   });
 
   app.post("/api/sports/virtual-payment/create", async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
     const parsed = virtualPaymentCreateSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "支付参数不正确" });
     const product = config.sportsVirtualPaymentProducts?.find((item) => item.productId === parsed.data.productId);
@@ -129,7 +127,6 @@ export async function registerSportsRoutes(
   });
 
   app.post("/api/sports/virtual-payment/confirm", async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
     const parsed = virtualPaymentConfirmSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "订单号不正确" });
     const order = await repositories.sportsVirtualPaymentOrders.findByOutTradeNo(parsed.data.outTradeNo);
@@ -184,7 +181,6 @@ export async function registerSportsRoutes(
   });
 
   app.post("/api/sports/access-code/redeem", async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
     const parsed = accessCodeSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "卡密格式不正确" });
     const result = await repositories.sportsAccessCodes.redeem(
@@ -212,7 +208,6 @@ export async function registerSportsRoutes(
   app.post("/api/sports/ad/reward", {
     config: { rateLimit: { max: 30, timeWindow: "1 day" } }
   }, async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
     if (!config.sportsRewardedVideoAdUnitId?.trim()) {
       return reply.code(503).send({ error: "激励广告暂未配置，请使用卡密或邀请好友" });
     }
@@ -247,7 +242,10 @@ export async function registerSportsRoutes(
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
     }
     const sportsEnabled = await repositories.settings.getSportsEnabled();
-    if (!sportsEnabled) {
+    const existingAccount = sportsEnabled
+      ? undefined
+      : await repositories.sportsAccounts.findByUser(request.userId);
+    if (!sportsEnabled && existingAccount?.bindStatus !== "bound") {
       try {
         const chatReply = await createSportsChatReply(
           {
@@ -315,7 +313,7 @@ export async function registerSportsRoutes(
 
     const readinessError = validateStepApiConfig(config);
     if (readinessError) return reply.code(503).send({ error: readinessError });
-    let account = await repositories.sportsAccounts.findByUser(request.userId);
+    let account = existingAccount ?? await repositories.sportsAccounts.findByUser(request.userId);
     if (!account?.zeppUserId) {
       return { success: false, action: "bind_required", reply: "还没有运动账号，请先点击上方“绑定账号”完成注册和绑定。" };
     }
@@ -387,13 +385,12 @@ export async function registerSportsRoutes(
   app.post("/api/sports/bind/start", {
     config: { rateLimit: { max: 5, timeWindow: "10 minutes" } }
   }, async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
-    const readinessError = validateFeatureConfig(config);
-    if (readinessError) return reply.code(503).send({ error: readinessError });
-
     try {
       const existing = await repositories.sportsAccounts.findByUser(request.userId);
       if (existing?.bindStatus === "bound") return accountView(existing);
+      if (!(await requireSportsEnabled(reply))) return;
+      const readinessError = validateFeatureConfig(config);
+      if (readinessError) return reply.code(503).send({ error: readinessError });
       if (existing?.zeppUserId) return await qrView(existing, zeppClient, qrEncoder);
 
       const password = existing

@@ -524,7 +524,7 @@ export type Repositories = {
     setReferralEnabled(enabled: boolean): Promise<void>;
     getOrdersTabEnabled(): Promise<boolean>; // 订单 tab 是否展示（默认开，审核时可关）
     setOrdersTabEnabled(enabled: boolean): Promise<void>;
-    getSportsEnabled(): Promise<boolean>; // 运动账号服务是否开放（默认开）
+    getSportsEnabled(): Promise<boolean>; // 新用户运动账号服务是否开放（默认开）
     setSportsEnabled(enabled: boolean): Promise<void>;
     getOverrides(): Promise<Record<string, string>>;
     setMany(entries: Array<{ key: string; value: string }>): Promise<void>;

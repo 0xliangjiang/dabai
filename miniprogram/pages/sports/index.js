@@ -5,6 +5,7 @@ const { inviterSuffix, inviterQuery } = require("../../utils/share");
 Page({
   data: {
     sportsEnabled: true,
+    accountFeaturesEnabled: false,
     isBound: false,
     account: null,
     membershipExpiresAt: "",
@@ -43,9 +44,9 @@ Page({
 
   async onShow() {
     syncTabBar(this);
-    if (!(await this.loadSportsConfig())) return;
+    await this.loadSportsConfig();
     await this.loadAccount();
-    await this.reconcilePendingVirtualPayment();
+    if (this.data.accountFeaturesEnabled) await this.reconcilePendingVirtualPayment();
   },
 
   async loadSportsConfig() {
@@ -63,23 +64,21 @@ Page({
         : [];
       this.setData({
         sportsEnabled: enabled,
+        accountFeaturesEnabled: enabled || this.data.isBound,
         sportsInviteRewardDays: Number(config.sportsInviteRewardDays) || 3,
         rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || ""),
-        virtualPaymentProducts: enabled ? virtualPaymentProducts : [],
-        membershipDialogVisible: enabled && virtualPaymentProducts.length
+        virtualPaymentProducts,
+        membershipDialogVisible: virtualPaymentProducts.length
           ? this.data.membershipDialogVisible
-          : false,
-        ...(!enabled ? disabledSportsAccountState() : {})
+          : false
       });
       getApp().globalData.sportsEnabled = enabled;
-      return enabled;
     } catch (_error) {
       const enabled = getApp().globalData.sportsEnabled !== false;
       this.setData({
         sportsEnabled: enabled,
-        ...(!enabled ? disabledSportsAccountState() : {})
+        accountFeaturesEnabled: enabled || this.data.isBound
       });
-      return enabled;
     }
   },
 
@@ -94,8 +93,10 @@ Page({
   },
 
   applyAccount(result) {
+    const isBound = Boolean(result && result.isBound);
     this.setData({
-      isBound: Boolean(result && result.isBound),
+      isBound,
+      accountFeaturesEnabled: this.data.sportsEnabled || isBound,
       account: result && result.account ? result.account : null,
       membershipExpiresAt: formatDate(result && result.membershipExpiresAt),
       membershipExpired: isMembershipExpired(result && result.membershipExpiresAt),
@@ -106,12 +107,12 @@ Page({
   },
 
   async handleBindTap() {
-    if (!this.data.sportsEnabled) return;
     if (this.data.binding) return;
     if (this.data.isBound) {
       wx.showToast({ title: "账号已绑定", icon: "success" });
       return;
     }
+    if (!this.data.sportsEnabled) return;
     this.setData({ binding: true, bindingError: "" });
     try {
       await api.ensureLogin();
@@ -465,23 +466,6 @@ function formatDate(value) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function disabledSportsAccountState() {
-  return {
-    isBound: false,
-    account: null,
-    membershipExpiresAt: "",
-    membershipExpired: false,
-    todayTargetSteps: "",
-    virtualPaymentProducts: [],
-    membershipDialogVisible: false,
-    paymentLoadingProductId: "",
-    adStepGrantToken: "",
-    pendingExpiredMessage: "",
-    codeExpanded: false,
-    dialogVisible: false
-  };
 }
 
 function formatSteps(value) {

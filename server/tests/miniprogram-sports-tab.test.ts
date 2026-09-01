@@ -31,12 +31,15 @@ describe("mini program sports feature switch", () => {
     expect(sportsPageSource).toContain("const config = await api.getAppConfig()");
   });
 
-  test("turns the sports page into chat-only mode when account services are disabled", () => {
+  test("uses chat-only mode for new users while preserving bound-account features", () => {
     expect(sportsPageSource).toContain("sportsEnabled: enabled");
-    expect(sportsPageSource).toContain("disabledSportsAccountState()");
+    expect(sportsPageSource).toContain("accountFeaturesEnabled: this.data.sportsEnabled || isBound");
     expect(sportsPageSource).not.toContain('wx.switchTab({ url: "/pages/home/index" })');
-    expect(sportsPageTemplate).toContain('wx:if="{{sportsEnabled}}" class="account-panel');
-    expect(sportsPageTemplate).toContain('wx:if="{{sportsEnabled}}" class="goal-dashboard');
+    expect(sportsPageTemplate).toContain('wx:if="{{accountFeaturesEnabled}}" class="account-panel');
+    expect(sportsPageTemplate).toContain('wx:if="{{accountFeaturesEnabled}}" class="goal-dashboard');
+    expect(sportsPageTemplate).toContain('wx:if="{{virtualPaymentProducts.length}}"');
+    expect(sportsPageTemplate).toContain('wx:if="{{membershipDialogVisible}}" class="membership-overlay"');
+    expect(sportsPageTemplate).not.toContain("accountFeaturesEnabled && isBound && virtualPaymentProducts.length");
     expect(sportsPageTemplate).toContain("想聊点什么运动问题？");
   });
 });

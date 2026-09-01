@@ -1,5 +1,5 @@
 <view class="sports-page">
-  <view wx:if="{{sportsEnabled}}" class="account-panel anim-up" aria-label="运动账号信息">
+  <view wx:if="{{accountFeaturesEnabled}}" class="account-panel anim-up" aria-label="运动账号信息">
     <view class="account-emblem" aria-hidden="true"><view class="emblem-line"></view></view>
     <view class="account-summary">
       <view class="account-heading"><view class="account-label">运动账号</view><view class="account-platform">ZEPP LIFE</view></view>
@@ -29,12 +29,12 @@
         <view class="assistant-avatar" aria-hidden="true"><view class="activity-line"></view></view>
         <view class="assistant-copy">
           <view class="assistant-name">运动助手</view>
-          <view class="assistant-state">{{sportsEnabled ? '目标设置 · 账号校验 · 即时反馈' : '运动问答 · 计划建议 · 日常陪伴'}}</view>
+          <view class="assistant-state">{{accountFeaturesEnabled ? '目标设置 · 账号校验 · 即时反馈' : '运动问答 · 计划建议 · 日常陪伴'}}</view>
         </view>
       </view>
       <view class="chat-header-actions">
         <button
-          wx:if="{{sportsEnabled && isBound && virtualPaymentProducts.length}}"
+          wx:if="{{virtualPaymentProducts.length}}"
           class="membership-header-action"
           bindtap="openMembershipDialog"
           hover-class="is-pressed"
@@ -48,7 +48,7 @@
       </view>
     </view>
 
-    <view wx:if="{{sportsEnabled}}" class="goal-dashboard" aria-label="今日运动目标">
+    <view wx:if="{{accountFeaturesEnabled}}" class="goal-dashboard" aria-label="今日运动目标">
       <view class="goal-ring-wrap">
         <view class="goal-ring {{todayTargetSteps ? 'has-target' : ''}}">
           <view class="goal-ring-core">
@@ -69,7 +69,7 @@
       </view>
     </view>
 
-    <view wx:if="{{sportsEnabled && isBound && membershipExpired}}" class="expiry-recovery" aria-label="运动会员已到期">
+    <view wx:if="{{accountFeaturesEnabled && isBound && membershipExpired}}" class="expiry-recovery" aria-label="运动会员已到期">
       <view class="recovery-head">
         <view class="recovery-copy">
           <view class="recovery-title">会员已到期，选择一种方式继续</view>
@@ -101,7 +101,7 @@
       </view>
     </view>
 
-    <view wx:if="{{sportsEnabled && messages.length === 0 && !(isBound && membershipExpired)}}" class="quick-targets" aria-label="常用目标">
+    <view wx:if="{{accountFeaturesEnabled && messages.length === 0 && !(isBound && membershipExpired)}}" class="quick-targets" aria-label="常用目标">
       <view class="quick-targets-head">
         <view class="quick-targets-title">快速设置</view>
         <button class="quick-custom-action" data-text="设置今天运动目标" bindtap="handleSuggestionTap" hover-class="is-pressed" hover-stay-time="80" aria-label="设置其他目标">
@@ -133,8 +133,8 @@
         <view wx:if="{{messages.length === 0}}" class="empty-conversation">
           <view class="empty-conversation-mark" aria-hidden="true"></view>
           <view class="empty-conversation-copy">
-            <view class="empty-conversation-title">{{sportsEnabled ? '告诉我你想设置的步数' : '想聊点什么运动问题？'}}</view>
-            <view class="empty-conversation-text">{{sportsEnabled ? '我会先检查绑定和会员状态，成功后同步更新上方目标。' : '可以问训练计划、恢复建议或日常运动习惯。'}}</view>
+            <view class="empty-conversation-title">{{accountFeaturesEnabled ? '告诉我你想设置的步数' : '想聊点什么运动问题？'}}</view>
+            <view class="empty-conversation-text">{{accountFeaturesEnabled ? '我会先检查绑定和会员状态，成功后同步更新上方目标。' : '可以问训练计划、恢复建议或日常运动习惯。'}}</view>
           </view>
         </view>
         <view wx:for="{{messages}}" wx:key="id" id="{{item.id}}" class="message-row {{item.role === 'user' ? 'is-user' : ''}}">
@@ -149,13 +149,13 @@
     </scroll-view>
 
     <view class="composer-wrap">
-      <view wx:if="{{sportsEnabled && !isBound}}" class="composer-notice"><view class="notice-dot"></view>未绑定时会自动引导绑定</view>
-      <view wx:elif="{{sportsEnabled && membershipExpired}}" class="composer-notice is-expired"><view class="notice-dot"></view>先选择上方任一种方式继续使用</view>
+      <view wx:if="{{accountFeaturesEnabled && !isBound}}" class="composer-notice"><view class="notice-dot"></view>未绑定时会自动引导绑定</view>
+      <view wx:elif="{{accountFeaturesEnabled && membershipExpired}}" class="composer-notice is-expired"><view class="notice-dot"></view>先选择上方任一种方式继续使用</view>
       <view class="composer {{inputFocused ? 'is-focused' : ''}} {{chatLoading ? 'is-disabled' : ''}}">
         <input
           class="composer-input"
           value="{{inputText}}"
-          placeholder="{{sportsEnabled ? '输入目标，例如 18,000 步' : '输入运动问题，和助手聊一聊'}}"
+          placeholder="{{accountFeaturesEnabled ? '输入目标，例如 18,000 步' : '输入运动问题，和助手聊一聊'}}"
           placeholder-class="composer-placeholder"
           maxlength="500"
           confirm-type="send"
@@ -164,14 +164,14 @@
           bindblur="handleComposerBlur"
           bindconfirm="sendChatMessage"
           disabled="{{chatLoading}}"
-          aria-label="{{sportsEnabled ? '输入今天运动目标' : '输入运动问题'}}"
+          aria-label="{{accountFeaturesEnabled ? '输入今天运动目标' : '输入运动问题'}}"
         />
         <button class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}" bindtap="sendChatMessage" disabled="{{!inputText || chatLoading}}" aria-label="发送消息"><text class="send-label">发送</text></button>
       </view>
     </view>
   </view>
 
-  <view wx:if="{{sportsEnabled && membershipDialogVisible}}" class="membership-overlay" catchtouchmove="noop" bindtap="closeMembershipDialog">
+  <view wx:if="{{membershipDialogVisible}}" class="membership-overlay" catchtouchmove="noop" bindtap="closeMembershipDialog">
     <view class="membership-dialog" role="dialog" aria-label="选择运动会员套餐" catchtap="noop">
       <view class="dialog-header">
         <view class="membership-dialog-heading">
@@ -208,7 +208,7 @@
     </view>
   </view>
 
-  <view wx:if="{{sportsEnabled && dialogVisible}}" class="binding-overlay" catchtouchmove="noop">
+  <view wx:if="{{accountFeaturesEnabled && dialogVisible}}" class="binding-overlay" catchtouchmove="noop">
     <view class="binding-dialog" role="dialog" aria-label="绑定 Zepp Life 账号">
       <view class="dialog-header">
         <view class="dialog-title">{{dialogStage === 'captcha' ? '创建 Zepp Life 账号' : (dialogStage === 'scan' ? '绑定微信' : '运动账号提示')}}</view>

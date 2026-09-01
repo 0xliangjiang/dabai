@@ -1,6 +1,6 @@
 const { getAppConfig } = require("../utils/api");
 
-// 完整 tab 列表；运动入口始终展示，后台开关只控制运动账号服务。
+// 完整 tab 列表；运动入口始终展示，后台开关只控制新用户使用运动账号服务。
 const FULL_LIST = [
   { pagePath: "/pages/home/index", label: "优惠", icon: "/assets/tab/badge-percent.svg" },
   { pagePath: "/pages/deals/index", label: "线报", icon: "/assets/tab/newspaper.svg" },
@@ -42,7 +42,7 @@ Component({
 
   lifetimes: {
     attached() {
-      // 首次挂载主动拉取配置，保证订单开关和运动账号服务状态及时同步。
+      // 首次挂载主动拉取配置，保证订单开关和新用户运动账号状态及时同步。
       this.applyConfig();
     }
   },
