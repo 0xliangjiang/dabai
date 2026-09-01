@@ -11,6 +11,7 @@ Page({
     sportsInviteRewardDays: 3,
     rewardedVideoAdUnitId: "",
     virtualPaymentProducts: [],
+    membershipDialogVisible: false,
     paymentLoadingProductId: "",
     adLoading: false,
     adStepGrantToken: "",
@@ -48,18 +49,24 @@ Page({
 
   async ensureSportsEnabled() {
     try {
-      const config = await api.request("/api/app-config");
+      const config = await api.getAppConfig();
       const enabled = config.sportsEnabled !== false;
-      this.setData({
-        sportsInviteRewardDays: Number(config.sportsInviteRewardDays) || 3,
-        rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || ""),
-        virtualPaymentProducts: Array.isArray(config.sportsVirtualPaymentProducts)
-          ? config.sportsVirtualPaymentProducts.map((item) => ({
+      const virtualPaymentProducts = Array.isArray(config.sportsVirtualPaymentProducts)
+        ? config.sportsVirtualPaymentProducts
+            .filter((item) => item.productId !== "sports_member_quarter")
+            .map((item) => ({
               ...item,
               priceText: (Number(item.priceCents) / 100).toFixed(2),
               durationText: item.permanent ? "永久有效" : `增加 ${item.durationDays} 天`
             }))
-          : []
+        : [];
+      this.setData({
+        sportsInviteRewardDays: Number(config.sportsInviteRewardDays) || 3,
+        rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || ""),
+        virtualPaymentProducts,
+        membershipDialogVisible: virtualPaymentProducts.length
+          ? this.data.membershipDialogVisible
+          : false
       });
       getApp().globalData.sportsEnabled = enabled;
       if (enabled) return true;
@@ -354,6 +361,16 @@ Page({
     }
   },
 
+  openMembershipDialog() {
+    if (!this.data.virtualPaymentProducts.length) return;
+    this.setData({ membershipDialogVisible: true });
+  },
+
+  closeMembershipDialog() {
+    if (this.data.paymentLoadingProductId) return;
+    this.setData({ membershipDialogVisible: false });
+  },
+
   async reconcilePendingVirtualPayment() {
     const outTradeNo = String(wx.getStorageSync("sportsPendingVirtualPayment") || "");
     if (!outTradeNo) return;
@@ -373,7 +390,8 @@ Page({
     wx.removeStorageSync("sportsPendingVirtualPayment");
     this.setData({
       membershipExpiresAt: formatDate(result.membershipExpiresAt),
-      membershipExpired: false
+      membershipExpired: false,
+      membershipDialogVisible: false
     });
     await this.loadAccount();
     return result;

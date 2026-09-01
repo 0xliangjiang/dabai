@@ -32,7 +32,20 @@
           <view class="assistant-state">目标设置 · 账号校验 · 即时反馈</view>
         </view>
       </view>
-      <view class="system-state"><view class="system-state-dot"></view>READY</view>
+      <view class="chat-header-actions">
+        <button
+          wx:if="{{isBound && virtualPaymentProducts.length}}"
+          class="membership-header-action"
+          bindtap="openMembershipDialog"
+          hover-class="is-pressed"
+          hover-stay-time="80"
+          aria-label="购买运动会员，查看全部套餐"
+        >
+          <view class="membership-header-icon" aria-hidden="true"><view class="membership-header-icon-core"></view></view>
+          <text class="membership-header-label">购买会员</text>
+        </button>
+        <view class="system-state"><view class="system-state-dot"></view>READY</view>
+      </view>
     </view>
 
     <view class="goal-dashboard" aria-label="今日运动目标">
@@ -53,29 +66,6 @@
         <view class="goal-stat"><view class="goal-stat-label">账号连接</view><view class="goal-stat-value {{isBound ? 'is-positive' : ''}}">{{isBound ? '正常' : '未绑定'}}</view></view>
         <view class="goal-stat"><view class="goal-stat-label">会员有效期</view><view class="goal-stat-value text-cut">{{membershipExpiresAt || '未开通'}}</view></view>
         <view class="goal-hint">{{todayTargetSteps ? '可继续输入新步数覆盖今日目标' : '选择常用目标，或直接输入任意步数'}}</view>
-      </view>
-    </view>
-
-    <view wx:if="{{isBound && virtualPaymentProducts.length}}" class="membership-purchase" aria-label="购买运动会员">
-      <view class="membership-purchase-head">
-        <view><view class="membership-purchase-title">购买运动会员</view><view class="membership-purchase-subtitle">支付完成后自动延长有效期</view></view>
-        <view class="membership-purchase-badge">微信虚拟支付</view>
-      </view>
-      <view class="membership-plan-list">
-        <button
-          wx:for="{{virtualPaymentProducts}}"
-          wx:key="productId"
-          class="membership-plan {{paymentLoadingProductId === item.productId ? 'is-loading' : ''}}"
-          data-product-id="{{item.productId}}"
-          bindtap="handleBuyMembership"
-          loading="{{paymentLoadingProductId === item.productId}}"
-          disabled="{{!!paymentLoadingProductId}}"
-          hover-class="is-pressed"
-          hover-stay-time="80"
-        >
-          <view class="membership-plan-copy"><view class="membership-plan-label">{{item.label}}</view><view class="membership-plan-days">{{item.durationText}}</view></view>
-          <view class="membership-plan-price"><text class="membership-plan-currency">¥</text>{{item.priceText}}</view>
-        </button>
       </view>
     </view>
 
@@ -175,6 +165,43 @@
         />
         <button class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}" bindtap="sendChatMessage" disabled="{{!inputText || chatLoading}}" aria-label="发送消息"><text class="send-label">发送</text></button>
       </view>
+    </view>
+  </view>
+
+  <view wx:if="{{membershipDialogVisible}}" class="membership-overlay" catchtouchmove="noop" bindtap="closeMembershipDialog">
+    <view class="membership-dialog" role="dialog" aria-label="选择运动会员套餐" catchtap="noop">
+      <view class="dialog-header">
+        <view class="membership-dialog-heading">
+          <view class="dialog-title">选择运动会员套餐</view>
+          <view class="membership-dialog-subtitle">支付完成后自动延长有效期</view>
+        </view>
+        <button class="dialog-close {{paymentLoadingProductId ? 'is-disabled' : ''}}" bindtap="closeMembershipDialog" disabled="{{!!paymentLoadingProductId}}" aria-label="关闭会员套餐弹窗"><view class="dialog-close-icon" aria-hidden="true"></view></button>
+      </view>
+      <view class="membership-dialog-plans">
+        <button
+          wx:for="{{virtualPaymentProducts}}"
+          wx:key="productId"
+          class="membership-dialog-plan {{item.permanent ? 'is-permanent' : ''}} {{paymentLoadingProductId === item.productId ? 'is-loading' : ''}}"
+          data-product-id="{{item.productId}}"
+          bindtap="handleBuyMembership"
+          loading="{{paymentLoadingProductId === item.productId}}"
+          disabled="{{!!paymentLoadingProductId}}"
+          hover-class="is-pressed"
+          hover-stay-time="80"
+          aria-label="购买{{item.label}}，价格 {{item.priceText}} 元"
+        >
+          <view class="membership-dialog-plan-head">
+            <view class="membership-dialog-plan-label">{{item.label}}</view>
+            <view wx:if="{{item.permanent}}" class="membership-dialog-plan-badge">一次开通</view>
+          </view>
+          <view class="membership-dialog-plan-days">{{item.durationText}}</view>
+          <view class="membership-dialog-plan-footer">
+            <view class="membership-dialog-plan-price"><text class="membership-dialog-plan-currency">¥</text>{{item.priceText}}</view>
+            <view class="membership-dialog-plan-buy">购买</view>
+          </view>
+        </button>
+      </view>
+      <view class="membership-dialog-note"><view class="membership-dialog-note-dot"></view>微信虚拟支付 · 支付结果以微信订单为准</view>
     </view>
   </view>
 

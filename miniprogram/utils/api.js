@@ -57,6 +57,30 @@ async function request(path, options = {}) {
   }
 }
 
+const APP_CONFIG_CACHE_MS = 1000;
+let appConfigCache = null;
+let appConfigCachedAt = 0;
+let inflightAppConfig = null;
+
+function getAppConfig() {
+  const now = Date.now();
+  if (appConfigCache && now - appConfigCachedAt < APP_CONFIG_CACHE_MS) {
+    return Promise.resolve(appConfigCache);
+  }
+  if (inflightAppConfig) return inflightAppConfig;
+
+  inflightAppConfig = request("/api/app-config")
+    .then((config) => {
+      appConfigCache = config;
+      appConfigCachedAt = Date.now();
+      return config;
+    })
+    .finally(() => {
+      inflightAppConfig = null;
+    });
+  return inflightAppConfig;
+}
+
 function wxLogin() {
   return new Promise((resolve, reject) => {
     wx.login({
@@ -245,6 +269,7 @@ function logout() {
 
 module.exports = {
   request,
+  getAppConfig,
   uploadFile,
   downloadFile,
   ensureLogin,

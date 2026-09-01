@@ -6,6 +6,7 @@ const apiModulePath = require.resolve("../../miniprogram/utils/api.js");
 
 type MiniProgramApi = {
   ensureLogin(): Promise<{ token: string }>;
+  getAppConfig(): Promise<Record<string, unknown>>;
   request(path: string): Promise<unknown>;
 };
 
@@ -40,6 +41,31 @@ afterEach(() => {
 });
 
 describe("mini program login client", () => {
+  test("coalesces concurrent app-config requests and reuses the short-lived result", async () => {
+    const storage = createStorage();
+    let resolveRequest: ((result: { statusCode: number; data: unknown }) => void) | undefined;
+    const request = vi.fn((options: {
+      success: (result: { statusCode: number; data: unknown }) => void;
+    }) => {
+      resolveRequest = options.success;
+    });
+    const api = loadApi({ ...storage, request });
+
+    const first = api.getAppConfig();
+    const second = api.getAppConfig();
+    expect(second).toBe(first);
+    expect(request).toHaveBeenCalledTimes(1);
+
+    resolveRequest?.({ statusCode: 200, data: { sportsEnabled: true } });
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { sportsEnabled: true },
+      { sportsEnabled: true }
+    ]);
+
+    await expect(api.getAppConfig()).resolves.toEqual({ sportsEnabled: true });
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
   test("does not call wx.login in timeline single-page mode", async () => {
     const storage = createStorage();
     const login = vi.fn();

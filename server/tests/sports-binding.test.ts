@@ -195,13 +195,12 @@ describe("sports account binding", () => {
     const productsJson = JSON.stringify([
       { productId: "sports_member_week", label: "周卡", durationDays: 7, priceCents: 288 },
       { productId: "sports_member_month", label: "月卡", durationDays: 30, priceCents: 888 },
-      { productId: "sports_member_quarter", label: "季卡", durationDays: 90, priceCents: 1888 },
       { productId: "sports_member_year", label: "年卡", durationDays: 365, priceCents: 2888 },
       { productId: "sports_lifetime", label: "永久卡", durationDays: 0, priceCents: 3888, permanent: true }
     ]);
     const parsed = loadConfig({ SPORTS_VIRTUAL_PAYMENT_PRODUCTS_JSON: productsJson });
-    expect(parsed.sportsVirtualPaymentProducts).toHaveLength(5);
-    expect(parsed.sportsVirtualPaymentProducts?.map((product) => product.priceCents)).toEqual([288, 888, 1888, 2888, 3888]);
+    expect(parsed.sportsVirtualPaymentProducts).toHaveLength(4);
+    expect(parsed.sportsVirtualPaymentProducts?.map((product) => product.priceCents)).toEqual([288, 888, 2888, 3888]);
     expect(parsed.sportsVirtualPaymentProducts?.at(-1)).toMatchObject({ durationDays: 0, permanent: true });
 
     const repositories = createRepositories();

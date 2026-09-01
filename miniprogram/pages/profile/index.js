@@ -1,4 +1,4 @@
-const { ensureLogin, getCurrentUser, loginWithWechat, logout, request, uploadFile } = require("../../utils/api");
+const { ensureLogin, getAppConfig, getCurrentUser, loginWithWechat, logout, request, uploadFile } = require("../../utils/api");
 const { hasConsent, setConsent } = require("../../utils/privacy");
 const { syncTabBar } = require("../../utils/tabbar");
 const { inviterSuffix, inviterQuery } = require("../../utils/share");
@@ -64,7 +64,7 @@ Page({
     const requestId = (this.configRequestId || 0) + 1;
     this.configRequestId = requestId;
     try {
-      const { exchangeEnabled, referralEnabled } = await request("/api/app-config");
+      const { exchangeEnabled, referralEnabled } = await getAppConfig();
       if (requestId !== this.configRequestId) return;
       this.setData({
         exchangeEnabled: Boolean(exchangeEnabled),
