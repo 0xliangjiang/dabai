@@ -20,6 +20,7 @@ import {
   virtualPaymentAppKey,
   WechatVirtualPaymentError
 } from "../integrations/wechat/virtual-payment.js";
+import { createSportsChatReply } from "../integrations/minimax/sports-chat.js";
 
 export type QrEncoder = (content: string) => Promise<string>;
 
@@ -61,7 +62,7 @@ export async function registerSportsRoutes(
   const virtualPaymentApi = createVirtualPaymentApi(wechatApiFetch);
   const requireSportsEnabled = async (reply: FastifyReply) => {
     if (await repositories.settings.getSportsEnabled()) return true;
-    await reply.code(404).send({ error: "运动功能暂未开放" });
+    await reply.code(404).send({ error: "运动账号服务暂未开放" });
     return false;
   };
 
@@ -241,10 +242,32 @@ export async function registerSportsRoutes(
   app.post("/api/sports/chat", {
     config: { rateLimit: { max: 12, timeWindow: "1 minute" } }
   }, async (request, reply) => {
-    if (!(await requireSportsEnabled(reply))) return;
     const parsed = sportsChatSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
+    }
+    const sportsEnabled = await repositories.settings.getSportsEnabled();
+    if (!sportsEnabled) {
+      try {
+        const chatReply = await createSportsChatReply(
+          {
+            apiUrl: config.minimaxApiUrl,
+            apiKey: config.minimaxApiKey,
+            model: config.minimaxModel
+          },
+          parsed.data.message,
+          parsed.data.history
+        );
+        return { success: true, action: "reply", mode: "chat_only", reply: chatReply };
+      } catch (error) {
+        request.log.warn({ err: error, userId: request.userId }, "sports AI chat fallback used");
+        return {
+          success: true,
+          action: "reply",
+          mode: "chat_only",
+          reply: chatOnlyFallback(parsed.data.message)
+        };
+      }
     }
 
     const possibleAccessCode = normalizeSportsAccessCode(parsed.data.message);
@@ -637,6 +660,14 @@ function maskEmail(email: string): string {
 
 function publicError(error: unknown, fallback: string): string {
   return error instanceof ZeppClientError ? error.message : fallback;
+}
+
+function chatOnlyFallback(message: string): string {
+  const intent = recognizeSportsIntent(message);
+  if (intent.type === "set_steps" || intent.type === "ask_steps") {
+    return "运动账号服务当前未开启，我不会修改或同步步数。你可以告诉我运动目的、每周可用时间和当前基础，我来帮你规划合适的日常目标。";
+  }
+  return "运动账号服务当前未开启，但我仍可以陪你聊训练计划、恢复方法和日常运动习惯。告诉我你的目标和当前运动基础吧。";
 }
 
 async function defaultQrEncoder(content: string): Promise<string> {

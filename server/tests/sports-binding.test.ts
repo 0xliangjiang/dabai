@@ -285,7 +285,7 @@ describe("sports account binding", () => {
     expect(response.json().error).toContain("ZEPP_CREDENTIAL_KEY");
   });
 
-  test("blocks sports APIs when the global sports switch is disabled", async () => {
+  test("blocks account APIs but keeps AI chat available when the sports switch is disabled", async () => {
     const repositories = createRepositories();
     await repositories.settings.setSportsEnabled(false);
     const app = await createApp({ config: testConfig, repositories, zeppClient: new MockZeppClient() });
@@ -298,7 +298,17 @@ describe("sports account binding", () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ error: "运动功能暂未开放" });
+    expect(response.json()).toEqual({ error: "运动账号服务暂未开放" });
+
+    const chat = await app.inject({
+      method: "POST",
+      url: "/api/sports/chat",
+      headers: { authorization: "Bearer local_user-sports-disabled" },
+      payload: { message: "帮我把今天的步数改成两万", history: [] }
+    });
+    expect(chat.statusCode).toBe(200);
+    expect(chat.json()).toMatchObject({ success: true, action: "reply", mode: "chat_only" });
+    expect(chat.json().reply).toContain("不会修改或同步步数");
   });
 
   test("falls back to manual captcha after OCR retries are exhausted", async () => {

@@ -625,7 +625,7 @@ export function App() {
         method: "POST",
         body: JSON.stringify({ enabled })
       });
-      toast(enabled ? "已开启运动功能" : "已关闭运动功能并隐藏入口");
+      toast(enabled ? "已开启运动账号服务" : "已关闭运动账号服务，保留 AI 对话");
       await loadData(adminToken, { silent: true });
     } catch {
       toast("操作失败，请重试", "error");
@@ -1805,16 +1805,16 @@ export function App() {
               </div>
               <div className="mb-3 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <div className="text-xs font-medium text-slate-500">运动功能开关</div>
+                  <div className="text-xs font-medium text-slate-500">运动账号服务开关</div>
                   <div className="mt-1 text-sm font-medium text-slate-700">
-                    当前：{data.config.sportsEnabled ? "已开启 · 显示运动入口并开放服务" : "已关闭 · 隐藏运动入口并停用服务"}
+                    当前：{data.config.sportsEnabled ? "已开启 · 支持账号绑定、会员与目标同步" : "已关闭 · 运动入口保留，仅提供 AI 对话"}
                   </div>
                 </div>
                 <Button
                   variant={data.config.sportsEnabled ? "danger" : "default"}
                   onClick={() => void toggleSports(!data.config.sportsEnabled)}
                 >
-                  {data.config.sportsEnabled ? "关闭运动" : "开启运动"}
+                  {data.config.sportsEnabled ? "关闭账号服务" : "开启账号服务"}
                 </Button>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

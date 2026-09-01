@@ -4,6 +4,7 @@ const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 Page({
   data: {
+    sportsEnabled: true,
     isBound: false,
     account: null,
     membershipExpiresAt: "",
@@ -42,12 +43,12 @@ Page({
 
   async onShow() {
     syncTabBar(this);
-    if (!(await this.ensureSportsEnabled())) return;
+    if (!(await this.loadSportsConfig())) return;
     await this.loadAccount();
     await this.reconcilePendingVirtualPayment();
   },
 
-  async ensureSportsEnabled() {
+  async loadSportsConfig() {
     try {
       const config = await api.getAppConfig();
       const enabled = config.sportsEnabled !== false;
@@ -61,19 +62,24 @@ Page({
             }))
         : [];
       this.setData({
+        sportsEnabled: enabled,
         sportsInviteRewardDays: Number(config.sportsInviteRewardDays) || 3,
         rewardedVideoAdUnitId: String(config.sportsRewardedVideoAdUnitId || ""),
-        virtualPaymentProducts,
-        membershipDialogVisible: virtualPaymentProducts.length
+        virtualPaymentProducts: enabled ? virtualPaymentProducts : [],
+        membershipDialogVisible: enabled && virtualPaymentProducts.length
           ? this.data.membershipDialogVisible
-          : false
+          : false,
+        ...(!enabled ? disabledSportsAccountState() : {})
       });
       getApp().globalData.sportsEnabled = enabled;
-      if (enabled) return true;
-      wx.switchTab({ url: "/pages/home/index" });
-      return false;
+      return enabled;
     } catch (_error) {
-      return getApp().globalData.sportsEnabled !== false;
+      const enabled = getApp().globalData.sportsEnabled !== false;
+      this.setData({
+        sportsEnabled: enabled,
+        ...(!enabled ? disabledSportsAccountState() : {})
+      });
+      return enabled;
     }
   },
 
@@ -100,6 +106,7 @@ Page({
   },
 
   async handleBindTap() {
+    if (!this.data.sportsEnabled) return;
     if (this.data.binding) return;
     if (this.data.isBound) {
       wx.showToast({ title: "账号已绑定", icon: "success" });
@@ -232,7 +239,7 @@ Page({
         this.setData({ membershipExpiresAt: formatDate(result.membershipExpiresAt) });
         await this.loadAccount();
         wx.showToast({ title: "会员有效期已更新", icon: "success" });
-      } else if (result.action === "bind_required" && !this.data.binding) {
+      } else if (result.action === "bind_required" && this.data.sportsEnabled && !this.data.binding) {
         await this.handleBindTap();
       } else if (result.action === "membership_expired") {
         this.setData({ membershipExpired: true, pendingExpiredMessage: text });
@@ -458,6 +465,23 @@ function formatDate(value) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function disabledSportsAccountState() {
+  return {
+    isBound: false,
+    account: null,
+    membershipExpiresAt: "",
+    membershipExpired: false,
+    todayTargetSteps: "",
+    virtualPaymentProducts: [],
+    membershipDialogVisible: false,
+    paymentLoadingProductId: "",
+    adStepGrantToken: "",
+    pendingExpiredMessage: "",
+    codeExpanded: false,
+    dialogVisible: false
+  };
 }
 
 function formatSteps(value) {

@@ -1,6 +1,6 @@
 const { getAppConfig } = require("../utils/api");
 
-// 完整 tab 列表；订单和运动入口可由后台全局开关控制
+// 完整 tab 列表；运动入口始终展示，后台开关只控制运动账号服务。
 const FULL_LIST = [
   { pagePath: "/pages/home/index", label: "优惠", icon: "/assets/tab/badge-percent.svg" },
   { pagePath: "/pages/deals/index", label: "线报", icon: "/assets/tab/newspaper.svg" },
@@ -15,11 +15,10 @@ function getCurrentRoute() {
   return current ? `/${current.route}` : "";
 }
 
-function createTabState(ordersEnabled, sportsEnabled) {
+function createTabState(ordersEnabled) {
   const route = getCurrentRoute();
   const visibleList = FULL_LIST.filter((item) => {
     if (!ordersEnabled && item.pagePath === "/pages/orders/index") return false;
-    if (!sportsEnabled && item.pagePath === "/pages/sports/index") return false;
     return true;
   });
   const selected = visibleList.findIndex((item) => item.pagePath === route);
@@ -32,8 +31,7 @@ function createTabState(ordersEnabled, sportsEnabled) {
   };
 }
 
-// 功能开关尚未拉取完成时先隐藏运动入口，避免冷启动时短暂露出已关闭的 Tab。
-const INITIAL_STATE = createTabState(true, false);
+const INITIAL_STATE = createTabState(true);
 
 Component({
   data: {
@@ -44,8 +42,7 @@ Component({
 
   lifetimes: {
     attached() {
-      // 首次挂载必须主动拉取配置；不能只依赖 pageLifetimes.show，
-      // 否则默认隐藏的运动入口在部分页面不会恢复。
+      // 首次挂载主动拉取配置，保证订单开关和运动账号服务状态及时同步。
       this.applyConfig();
     }
   },
@@ -71,7 +68,7 @@ Component({
       }
       app.globalData.ordersTabEnabled = ordersEnabled;
       app.globalData.sportsEnabled = sportsEnabled;
-      this.setData(createTabState(ordersEnabled, sportsEnabled));
+      this.setData(createTabState(ordersEnabled));
     },
 
     switchTab(event) {

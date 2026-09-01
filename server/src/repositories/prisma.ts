@@ -603,7 +603,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       },
       async getSportsEnabled() {
         const row = await prisma.setting.findUnique({ where: { key: SPORTS_ENABLED_KEY } });
-        return row?.value !== "0"; // 默认开：未配置即开放运动功能
+        return row?.value !== "0"; // 默认开：未配置即开放运动账号服务
       },
       async setSportsEnabled(enabled: boolean) {
         await prisma.setting.upsert({
