@@ -1,6 +1,11 @@
 import { createHmac } from "node:crypto";
 import type { AppConfig } from "../../config/env.js";
 import { fetchWithTimeout } from "../http.js";
+import {
+  createWechatAccessTokenProvider,
+  WECHAT_INVALID_ACCESS_TOKEN_CODES,
+  WechatAccessTokenError
+} from "./access-token.js";
 
 export type VirtualPaymentQueryResult = {
   status: number;
@@ -30,30 +35,17 @@ export function createVirtualPaymentSignatures(input: {
 }
 
 export function createVirtualPaymentApi(fetcher: typeof fetch = fetch) {
-  let cachedToken = "";
-  let cachedTokenKey = "";
-  let tokenExpiresAt = 0;
+  const accessTokens = createWechatAccessTokenProvider(fetcher);
 
-  async function accessToken(config: AppConfig): Promise<string> {
-    const key = `${config.wechatAppId}:${config.wechatAppSecret}`;
-    if (cachedToken && cachedTokenKey === key && Date.now() < tokenExpiresAt) return cachedToken;
-    const url = new URL("https://api.weixin.qq.com/cgi-bin/token");
-    url.searchParams.set("grant_type", "client_credential");
-    url.searchParams.set("appid", config.wechatAppId);
-    url.searchParams.set("secret", config.wechatAppSecret);
-    const response = await fetchWithTimeout(fetcher, url, {}, 10_000);
-    const payload = await response.json() as {
-      access_token?: string; expires_in?: number; errcode?: number; errmsg?: string;
-    };
-    if (!response.ok || !payload.access_token) {
-      throw new WechatVirtualPaymentError(
-        `获取微信接口凭证失败：${payload.errcode ?? response.status} ${payload.errmsg ?? ""}`.trim()
-      );
+  async function accessToken(config: AppConfig, forceRefresh = false): Promise<string> {
+    try {
+      return await accessTokens.get(config, { forceRefresh });
+    } catch (error) {
+      if (error instanceof WechatAccessTokenError) {
+        throw new WechatVirtualPaymentError(error.message);
+      }
+      throw error;
     }
-    cachedToken = payload.access_token;
-    cachedTokenKey = key;
-    tokenExpiresAt = Date.now() + Math.max(60, (payload.expires_in ?? 7200) - 300) * 1000;
-    return cachedToken;
   }
 
   return {
@@ -62,22 +54,28 @@ export function createVirtualPaymentApi(fetcher: typeof fetch = fetch) {
       outTradeNo: string;
       env: 0 | 1;
     }): Promise<VirtualPaymentQueryResult> {
-      const token = await accessToken(config);
       const body = JSON.stringify({ openid: input.openid, env: input.env, order_id: input.outTradeNo });
       const appKey = virtualPaymentAppKey(config, input.env);
       const paySig = hmac(appKey, `/xpay/query_order&${body}`);
-      const url = new URL("https://api.weixin.qq.com/xpay/query_order");
-      url.searchParams.set("access_token", token);
-      url.searchParams.set("pay_sig", paySig);
-      const response = await fetchWithTimeout(fetcher, url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body
-      }, 10_000);
-      const payload = await response.json() as {
-        errcode?: number; errmsg?: string;
-        order?: { status?: number; wx_order_id?: string };
-      };
+      let response!: Response;
+      let payload!: { errcode?: number; errmsg?: string; order?: { status?: number; wx_order_id?: string } };
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const token = await accessToken(config, attempt === 1);
+        const url = new URL("https://api.weixin.qq.com/xpay/query_order");
+        url.searchParams.set("access_token", token);
+        url.searchParams.set("pay_sig", paySig);
+        response = await fetchWithTimeout(fetcher, url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body
+        }, 10_000);
+        payload = await response.json() as typeof payload;
+        if (attempt === 0 && payload.errcode && WECHAT_INVALID_ACCESS_TOKEN_CODES.has(payload.errcode)) {
+          accessTokens.invalidate(config);
+          continue;
+        }
+        break;
+      }
       if (!response.ok || payload.errcode !== 0 || !Number.isInteger(payload.order?.status)) {
         throw new WechatVirtualPaymentError(
           `查询虚拟支付订单失败：${payload.errcode ?? response.status} ${payload.errmsg ?? ""}`.trim()
@@ -91,19 +89,35 @@ export function createVirtualPaymentApi(fetcher: typeof fetch = fetch) {
       wxOrderId?: string | null;
       env: 0 | 1;
     }): Promise<void> {
-      const token = await accessToken(config);
-      const url = new URL("https://api.weixin.qq.com/xpay/notify_provide_goods");
-      url.searchParams.set("access_token", token);
       const body = input.wxOrderId
         ? { order_id: input.outTradeNo, wx_order_id: input.wxOrderId, env: input.env }
         : { order_id: input.outTradeNo, env: input.env };
-      const response = await fetchWithTimeout(fetcher, url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body)
-      }, 10_000);
-      if (!response.ok) {
-        throw new WechatVirtualPaymentError(`通知虚拟商品发货失败：HTTP ${response.status}`);
+      const serializedBody = JSON.stringify(body);
+      const appKey = virtualPaymentAppKey(config, input.env);
+      const paySig = hmac(appKey, `/xpay/notify_provide_goods&${serializedBody}`);
+      let response!: Response;
+      let payload!: { errcode?: number; errmsg?: string };
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const token = await accessToken(config, attempt === 1);
+        const url = new URL("https://api.weixin.qq.com/xpay/notify_provide_goods");
+        url.searchParams.set("access_token", token);
+        url.searchParams.set("pay_sig", paySig);
+        response = await fetchWithTimeout(fetcher, url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: serializedBody
+        }, 10_000);
+        payload = await response.json() as typeof payload;
+        if (attempt === 0 && payload.errcode && WECHAT_INVALID_ACCESS_TOKEN_CODES.has(payload.errcode)) {
+          accessTokens.invalidate(config);
+          continue;
+        }
+        break;
+      }
+      if (!response.ok || payload.errcode !== 0) {
+        throw new WechatVirtualPaymentError(
+          `通知虚拟商品发货失败：${payload.errcode ?? response.status} ${payload.errmsg ?? ""}`.trim()
+        );
       }
     }
   };

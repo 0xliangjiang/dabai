@@ -53,7 +53,9 @@ describe("invite mini program code", () => {
     const wechatApiFetch = async (input: string | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
-      if (url.includes("/cgi-bin/token")) {
+      if (url.includes("/cgi-bin/stable_token")) {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toMatchObject({ force_refresh: false });
         return Response.json({ access_token: "poster-token", expires_in: 7200 });
       }
       return new Response(PNG, { status: 200, headers: { "content-type": "image/png" } });
@@ -95,7 +97,7 @@ describe("invite mini program code", () => {
       taobaoClient: new MockTaobaoClient(),
       wechatAuthFetch: async () => Response.json({ openid: "poster-error-openid" }),
       wechatApiFetch: (async (input: string | URL) => {
-        if (String(input).includes("/cgi-bin/token")) {
+        if (String(input).includes("/cgi-bin/stable_token")) {
           return Response.json({ access_token: "poster-token", expires_in: 7200 });
         }
         return Response.json({ errcode: 45009, errmsg: "reach max api daily quota" });
@@ -128,7 +130,7 @@ describe("invite mini program code", () => {
       taobaoClient: new MockTaobaoClient(),
       wechatAuthFetch: async () => Response.json({ openid: "poster-jpeg-openid" }),
       wechatApiFetch: (async (input: string | URL) => {
-        if (String(input).includes("/cgi-bin/token")) {
+        if (String(input).includes("/cgi-bin/stable_token")) {
           return Response.json({ access_token: "poster-token", expires_in: 7200 });
         }
         return new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } });

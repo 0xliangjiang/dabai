@@ -114,17 +114,26 @@ describe("sports account binding", () => {
     });
     await repositories.sportsAccounts.update(user.id, { bindStatus: "bound", status: "ready" });
     await repositories.settings.setSportsEnabled(false);
-    const apiCalls: string[] = [];
+    const apiCalls: Array<{ url: string; body?: unknown }> = [];
+    let queryAttempts = 0;
     const wechatApiFetch: typeof fetch = async (input, init) => {
       const url = String(input);
-      apiCalls.push(url);
-      if (url.includes("/cgi-bin/token")) {
-        return new Response(JSON.stringify({ access_token: "access-token", expires_in: 7200 }), {
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      apiCalls.push({ url, body });
+      if (url.includes("/cgi-bin/stable_token")) {
+        return new Response(JSON.stringify({
+          access_token: body?.force_refresh ? "refreshed-access-token" : "access-token",
+          expires_in: 7200
+        }), {
           status: 200, headers: { "content-type": "application/json" }
         });
       }
       if (url.includes("/xpay/query_order")) {
         expect(JSON.parse(String(init?.body))).toMatchObject({ openid: user.openid, env: 1 });
+        queryAttempts += 1;
+        if (queryAttempts === 1) {
+          return Response.json({ errcode: 40001, errmsg: "access_token is invalid or not latest" });
+        }
         return new Response(JSON.stringify({
           errcode: 0,
           errmsg: "ok",
@@ -132,7 +141,8 @@ describe("sports account binding", () => {
         }), { status: 200, headers: { "content-type": "application/json" } });
       }
       if (url.includes("/xpay/notify_provide_goods")) {
-        return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+        expect(new URL(url).searchParams.get("pay_sig")).toMatch(/^[a-f0-9]{64}$/);
+        return Response.json({ errcode: 0, errmsg: "ok" });
       }
       throw new Error(`unexpected WeChat API call: ${url}`);
     };
@@ -190,7 +200,11 @@ describe("sports account binding", () => {
     expect(repeated.statusCode).toBe(200);
     expect(repeated.json().alreadyDelivered).toBe(true);
     expect((await repositories.sportsAccounts.findByUser(user.id))!.membershipExpiresAt!.getTime()).toBe(firstExpiry);
-    expect(apiCalls.some((url) => url.includes("/xpay/query_order"))).toBe(true);
+    expect(apiCalls.filter(({ url }) => url.includes("/xpay/query_order"))).toHaveLength(2);
+    expect(apiCalls.filter(({ url }) => url.includes("/cgi-bin/stable_token")).map(({ body }) => body)).toEqual([
+      expect.objectContaining({ force_refresh: false }),
+      expect.objectContaining({ force_refresh: true })
+    ]);
   });
 
   test("loads all membership products and treats the lifetime product as permanent", async () => {

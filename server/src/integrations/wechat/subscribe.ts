@@ -1,5 +1,6 @@
 import type { AppConfig } from "../../config/env.js";
 import { fetchWithTimeout } from "../http.js";
+import { createWechatAccessTokenProvider } from "./access-token.js";
 
 export type SubscribeMessageSender = {
   send(input: {
@@ -23,36 +24,11 @@ export function createSubscribeMessageSender(
     };
   }
 
-  let cachedToken = "";
-  let tokenExpiresAt = 0;
-
-  async function getAccessToken(): Promise<string> {
-    if (cachedToken && Date.now() < tokenExpiresAt) {
-      return cachedToken;
-    }
-    const url = new URL("https://api.weixin.qq.com/cgi-bin/token");
-    url.searchParams.set("grant_type", "client_credential");
-    url.searchParams.set("appid", config.wechatAppId);
-    url.searchParams.set("secret", config.wechatAppSecret);
-
-    const response = await fetchWithTimeout(fetcher, url);
-    const payload = (await response.json()) as {
-      access_token?: string;
-      expires_in?: number;
-      errcode?: number;
-      errmsg?: string;
-    };
-    if (!payload.access_token) {
-      throw new Error(`获取 access_token 失败：${payload.errcode ?? ""} ${payload.errmsg ?? "unknown"}`.trim());
-    }
-    cachedToken = payload.access_token;
-    tokenExpiresAt = Date.now() + ((payload.expires_in ?? 7200) - 300) * 1000;
-    return cachedToken;
-  }
+  const accessTokens = createWechatAccessTokenProvider(fetcher);
 
   return {
     async send({ openid, templateId, page, data }) {
-      const token = await getAccessToken();
+      const token = await accessTokens.get(config);
       const response = await fetchWithTimeout(
         fetcher,
         `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${token}`,

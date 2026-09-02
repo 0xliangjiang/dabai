@@ -1,5 +1,6 @@
 import type { AppConfig } from "../../config/env.js";
 import { fetchWithTimeout } from "../http.js";
+import { createWechatAccessTokenProvider, WechatAccessTokenError } from "./access-token.js";
 
 type ConfigProvider = () => Promise<AppConfig>;
 
@@ -29,41 +30,19 @@ export function createInviteCodeGenerator(
   getConfig: ConfigProvider,
   fetcher: typeof fetch = fetch
 ): InviteCodeGenerator {
-  let cachedToken = "";
-  let tokenExpiresAt = 0;
-  let tokenConfigKey = "";
+  const accessTokens = createWechatAccessTokenProvider(fetcher);
   const codeCache = new Map<string, CachedCode>();
 
   async function getAccessToken(config: AppConfig): Promise<string> {
-    const configKey = `${config.wechatAppId}:${config.wechatAppSecret}`;
-    if (cachedToken && tokenConfigKey === configKey && Date.now() < tokenExpiresAt) {
-      return cachedToken;
-    }
     if (!isRealConfigValue(config.wechatAppId) || !isRealConfigValue(config.wechatAppSecret)) {
       throw new WechatMiniCodeError("小程序码服务尚未配置");
     }
-
-    const url = new URL("https://api.weixin.qq.com/cgi-bin/token");
-    url.searchParams.set("grant_type", "client_credential");
-    url.searchParams.set("appid", config.wechatAppId);
-    url.searchParams.set("secret", config.wechatAppSecret);
-    const response = await fetchWithTimeout(fetcher, url, {}, 10000);
-    const payload = (await response.json()) as {
-      access_token?: string;
-      expires_in?: number;
-      errcode?: number;
-      errmsg?: string;
-    };
-    if (!response.ok || !payload.access_token) {
-      throw new WechatMiniCodeError(
-        `获取微信 access_token 失败：${payload.errcode ?? response.status} ${payload.errmsg ?? ""}`.trim()
-      );
+    try {
+      return await accessTokens.get(config);
+    } catch (error) {
+      if (error instanceof WechatAccessTokenError) throw new WechatMiniCodeError(error.message);
+      throw error;
     }
-
-    cachedToken = payload.access_token;
-    tokenConfigKey = configKey;
-    tokenExpiresAt = Date.now() + Math.max(60, (payload.expires_in ?? 7200) - 300) * 1000;
-    return cachedToken;
   }
 
   return {
