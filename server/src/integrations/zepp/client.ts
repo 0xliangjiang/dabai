@@ -44,6 +44,12 @@ export class ZeppClientError extends Error {
   }
 }
 
+type RegistrationTransport = {
+  proxy: string;
+  spoofIp: string;
+  expiresAt: number;
+};
+
 export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
   const injectedFetch = options.fetchImpl;
   const directFetch = injectedFetch ?? fetch;
@@ -61,6 +67,7 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
     ? Buffer.from(options.nanrunTlsCaBase64.trim(), "base64").toString("utf8")
     : "";
   const nanrunDispatcher = nanrunTlsCa ? new Agent({ connect: { ca: nanrunTlsCa } }) : undefined;
+  const registrationTransports = new Map<string, RegistrationTransport>();
 
   async function fetchProxy(): Promise<string> {
     if (!useProxy || !proxyApiUrl || injectedFetch) return "";
@@ -72,6 +79,54 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
       // 与 AI-Step 一致：代理服务不可用时关闭本次代理，回退直连完成流程。
       return "";
     }
+  }
+
+  async function createRegistrationTransport(): Promise<RegistrationTransport> {
+    const transport = { proxy: "", spoofIp: randomPublicIpv4(), expiresAt: Date.now() + 6 * 60_000 };
+    if (injectedFetch || !useProxy) return transport;
+    if (!proxyApiUrl) {
+      throw new ZeppClientError("注册代理尚未配置，请重新获取验证码", "ZEPP_REGISTRATION_PROXY_FAILED");
+    }
+    try {
+      const response = await directFetch(proxyApiUrl, { signal: AbortSignal.timeout(10_000) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      transport.proxy = parseProxyResponse((await response.text()).trim());
+      if (!transport.proxy) throw new Error("empty proxy");
+      return transport;
+    } catch {
+      throw new ZeppClientError("注册代理暂时不可用，请重新获取验证码", "ZEPP_REGISTRATION_PROXY_FAILED");
+    }
+  }
+
+  async function registrationRequest(
+    url: string,
+    init: RequestInit,
+    transport: RegistrationTransport,
+    maxRetries = 4
+  ): Promise<Response> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < maxRetries; attempt += 1) {
+      try {
+        const headers = new Headers(init.headers);
+        if (spoofIp) addSpoofHeaders(headers, transport.spoofIp);
+        const signal = init.signal ?? AbortSignal.timeout(timeoutMs);
+        const response = transport.proxy
+          ? await undiciFetch(url, {
+              ...(init as Parameters<typeof undiciFetch>[1]),
+              headers: Object.fromEntries(headers.entries()),
+              signal,
+              dispatcher: new ProxyAgent(transport.proxy)
+            })
+          : await directFetch(url, { ...init, headers, signal });
+        if (response.status !== 429 || attempt === maxRetries - 1) return response as Response;
+        await delay(Math.min(8_000, 2 ** attempt * 1_000) + Math.floor(Math.random() * 800 + 100));
+      } catch (error) {
+        lastError = error;
+        if (attempt === maxRetries - 1) break;
+        await delay(Math.min(2_000, 300 * (attempt + 1)));
+      }
+    }
+    throw new ZeppClientError("注册代理连接失败，请重新获取验证码", "ZEPP_REGISTRATION_PROXY_FAILED");
   }
 
   async function request(url: string, init: RequestInit = {}, maxRetries = 4): Promise<Response> {
@@ -103,11 +158,21 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
 
   return {
     async getRegistrationCaptcha() {
+      const now = Date.now();
+      for (const [key, transport] of registrationTransports) {
+        if (transport.expiresAt <= now) registrationTransports.delete(key);
+      }
+      const transport = await createRegistrationTransport();
       const suffix = `${randomLetters(2)}${randomDigits(2)}`;
-      const response = await request(`https://api-user.huami.com/captcha/register?random=${suffix}`);
+      const response = await registrationRequest(
+        `https://api-user.huami.com/captcha/register?random=${suffix}`,
+        {},
+        transport
+      );
       if (!response.ok) throw new ZeppClientError(`获取 Zepp 验证码失败（${response.status}）`);
       const captchaKey = response.headers.get("captcha-key") ?? parseCaptchaCookie(response.headers.get("set-cookie"));
       if (!captchaKey) throw new ZeppClientError("Zepp 验证码响应缺少 captcha-key");
+      registrationTransports.set(captchaKey, transport);
       return { key: captchaKey, imageBase64: Buffer.from(await response.arrayBuffer()).toString("base64") };
     },
 
@@ -116,6 +181,11 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
     },
 
     async registerAccount(input) {
+      const transport = registrationTransports.get(input.captchaKey);
+      if (!transport || transport.expiresAt <= Date.now()) {
+        registrationTransports.delete(input.captchaKey);
+        throw new ZeppClientError("验证码会话已失效，请重新获取验证码", "ZEPP_REGISTRATION_SESSION_EXPIRED");
+      }
       const registrationUrl = `https://api-user.huami.com/registrations/${encodeURIComponent(input.email)}`;
       const firstBody = new URLSearchParams({
         app_name: "com.huami.webapp", country_code: "CN", countryState: "",
@@ -124,24 +194,28 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
         state: "REDIRECTION", token: "access", json_response: "true"
       });
       const headers = { app_name: "com.huami.webapp", "content-type": "application/x-www-form-urlencoded; charset=UTF-8" };
-      const first = await request(registrationUrl, { method: "POST", headers, body: firstBody }, 5);
-      const firstText = await first.text();
-      if (!first.ok) throw new ZeppClientError("验证码错误或 Zepp 注册失败", "ZEPP_CAPTCHA_OR_REGISTER_FAILED");
-      const firstJson = parseJson(firstText);
-      const redirectUrl = typeof firstJson.data === "string" ? firstJson.data : "";
-      const accessCode = redirectUrl ? new URL(redirectUrl).searchParams.get("access") : null;
-      if (!accessCode) throw new ZeppClientError("Zepp 注册响应缺少 access token");
+      try {
+        const first = await registrationRequest(registrationUrl, { method: "POST", headers, body: firstBody }, transport, 5);
+        const firstText = await first.text();
+        if (!first.ok) throw new ZeppClientError("验证码错误或 Zepp 注册失败", "ZEPP_CAPTCHA_OR_REGISTER_FAILED");
+        const firstJson = parseJson(firstText);
+        const redirectUrl = typeof firstJson.data === "string" ? firstJson.data : "";
+        const accessCode = redirectUrl ? new URL(redirectUrl).searchParams.get("access") : null;
+        if (!accessCode) throw new ZeppClientError("Zepp 注册响应缺少 access token");
 
-      const second = await request("https://account.huami.com/v1/client/register", {
-        method: "POST", headers,
-        body: new URLSearchParams({
-          app_name: "com.huami.webapp", app_version: "4.3.0", code: accessCode,
-          countryState: "", country_code: "CN", device_id: "02:00:00:00:00:00",
-          device_model: "web", grant_type: "access_token", third_name: "huami"
-        })
-      }, 3);
-      const secondJson = parseJson(await second.text());
-      if (!second.ok || secondJson.result !== "ok" || !secondJson.token_info) throw new ZeppClientError("Zepp 账号创建失败");
+        const second = await registrationRequest("https://account.huami.com/v1/client/register", {
+          method: "POST", headers,
+          body: new URLSearchParams({
+            app_name: "com.huami.webapp", app_version: "4.3.0", code: accessCode,
+            countryState: "", country_code: "CN", device_id: "02:00:00:00:00:00",
+            device_model: "web", grant_type: "access_token", third_name: "huami"
+          })
+        }, transport, 3);
+        const secondJson = parseJson(await second.text());
+        if (!second.ok || secondJson.result !== "ok" || !secondJson.token_info) throw new ZeppClientError("Zepp 账号创建失败");
+      } finally {
+        registrationTransports.delete(input.captchaKey);
+      }
     },
 
     async login(email, password) {
@@ -320,8 +394,7 @@ function buildProxyUrl(address: string, username = "", password = ""): string {
   return username && password ? `http://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${address}` : `http://${address}`;
 }
 
-function addSpoofHeaders(headers: Headers): void {
-  const ip = randomPublicIpv4();
+function addSpoofHeaders(headers: Headers, ip = randomPublicIpv4()): void {
   for (const name of ["X-Forwarded-For", "X-Real-IP", "Client-IP", "CF-Connecting-IP", "True-Client-IP"]) headers.set(name, ip);
 }
 

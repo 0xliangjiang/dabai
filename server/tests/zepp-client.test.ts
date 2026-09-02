@@ -70,11 +70,40 @@ describe("Zepp client", () => {
     await expect(client.updateSteps({ email: "sport@example.com", password: "password", steps: 20_000 }))
       .resolves.toMatchObject({ steps: 20_000 });
 
+    const registrationRequests = requests.filter((item) =>
+      item.url.includes("/captcha/register") ||
+      item.url.startsWith("https://api-user.huami.com/registrations/") ||
+      item.url.endsWith("/v1/client/register")
+    );
+    const registrationSpoofIps = registrationRequests.map((item) =>
+      new Headers(item.init?.headers).get("x-forwarded-for")
+    );
+    expect(registrationSpoofIps).toHaveLength(3);
+    expect(new Set(registrationSpoofIps).size).toBe(1);
+
     const stepRequest = requests.find((item) => item.url.includes("api.nan.run/api/xiaomisport"));
     expect(stepRequest?.init?.method).toBeUndefined();
 
     const serializedHeaders = requests.map((item) => JSON.stringify(Object.fromEntries(new Headers(item.init?.headers).entries()))).join("\n");
     expect(serializedHeaders).toMatch(/x-forwarded-for/);
     expect(serializedHeaders).toMatch(/cf-connecting-ip/);
+  });
+
+  test("rejects registration when its captcha transport session is missing", async () => {
+    const client = createZeppClient({
+      fetchImpl: async () => { throw new Error("registration request should not be sent"); },
+      timeoutMs: 1000
+    });
+
+    await expect(client.registerAccount({
+      email: "sport@example.com",
+      password: "password",
+      name: "运动用户",
+      captchaKey: "unknown-captcha-key",
+      captchaCode: "a7b9"
+    })).rejects.toMatchObject({
+      code: "ZEPP_REGISTRATION_SESSION_EXPIRED",
+      message: "验证码会话已失效，请重新获取验证码"
+    });
   });
 });
