@@ -2,9 +2,10 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
+import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import { verifyUserToken } from "./auth/token.js";
 import { type AppConfig, loadConfig } from "./config/env.js";
 import { getEffectiveConfig } from "./config/runtime.js";
@@ -114,6 +115,14 @@ export async function createApp(options: CreateAppOptions = {}) {
   await app.register(rateLimit, {
     max: 120,
     timeWindow: "1 minute",
+    // 已登录的小程序请求按会话隔离，避免运营商 NAT 下多个用户共享 IP 配额。
+    // 只把令牌摘要作为内存键，避免在限流存储中保留原始凭证。
+    keyGenerator: rateLimitKey,
+    errorResponseBuilder: (_request, context) => ({
+      statusCode: 429,
+      error: "操作太频繁，请稍后再试",
+      message: `请求次数已达上限，请在 ${context.after} 后重试`
+    }),
     allowList: () => config.nodeEnv === "test"
   });
 
@@ -233,6 +242,15 @@ export async function createApp(options: CreateAppOptions = {}) {
   await registerAdminRoutes(app, config, repositories, uploadDir, dealNotifier);
 
   return app;
+}
+
+export function rateLimitKey(request: Pick<FastifyRequest, "headers" | "ip">): string {
+  const authorization = request.headers.authorization?.trim();
+  if (authorization) {
+    const digest = createHash("sha256").update(authorization).digest("base64url");
+    return `auth:${digest}`;
+  }
+  return `ip:${request.ip}`;
 }
 
 function positiveDays(value: number | undefined, fallback: number): number {
