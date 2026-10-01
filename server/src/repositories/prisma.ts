@@ -1,3 +1,4 @@
+import { extendSportsMembership, PERMANENT_MEMBERSHIP_EXPIRY } from "../domain/sports-membership.js";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
@@ -98,12 +99,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
           if (claimed.count === 0) {
             return { rewardedCount: 0, membershipExpiresAt: account.membershipExpiresAt };
           }
-          const base = account.membershipExpiresAt && account.membershipExpiresAt > now
-            ? account.membershipExpiresAt
-            : now;
-          const membershipExpiresAt = new Date(
-            base.getTime() + claimed.count * durationDays * 86_400_000
-          );
+          const membershipExpiresAt = extendSportsMembership(account.membershipExpiresAt, claimed.count * durationDays, now);
           await tx.sportsAccount.update({
             where: { userId: inviterId },
             data: { membershipExpiresAt }
@@ -452,8 +448,7 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
             where: { id: code.id, status: "active" }, data: { status: "redeemed", redeemedByUserId: userId, redeemedAt: now }
           });
           if (claimed.count !== 1) return { ok: false, reason: "used" as const };
-          const base = account.membershipExpiresAt && account.membershipExpiresAt > now ? account.membershipExpiresAt : now;
-          const membershipExpiresAt = new Date(base.getTime() + code.durationDays * 86_400_000);
+          const membershipExpiresAt = extendSportsMembership(account.membershipExpiresAt, code.durationDays, now);
           await tx.sportsAccount.update({ where: { userId }, data: { membershipExpiresAt } });
           return { ok: true, membershipExpiresAt, durationDays: code.durationDays };
         });
@@ -524,11 +519,9 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
               alreadyDelivered: true
             };
           }
-          const base = account.membershipExpiresAt && account.membershipExpiresAt > input.deliveredAt
-            ? account.membershipExpiresAt : input.deliveredAt;
           const membershipExpiresAt = order.durationDays === 0
-            ? new Date("9999-12-31T23:59:59.999Z")
-            : new Date(base.getTime() + order.durationDays * 86_400_000);
+            ? new Date(PERMANENT_MEMBERSHIP_EXPIRY)
+            : extendSportsMembership(account.membershipExpiresAt, order.durationDays, input.deliveredAt);
           await tx.sportsAccount.update({ where: { userId: order.userId }, data: { membershipExpiresAt } });
           const delivered = await tx.sportsVirtualPaymentOrder.findUnique({ where: { id: order.id } });
           return {

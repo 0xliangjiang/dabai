@@ -1,3 +1,4 @@
+import { extendSportsMembership, PERMANENT_MEMBERSHIP_EXPIRY } from "../domain/sports-membership.js";
 import { randomUUID } from "node:crypto";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
@@ -34,7 +35,6 @@ const EXCHANGE_ENABLED_KEY = "exchange_enabled";
 const ORDERS_TAB_ENABLED_KEY = "orders_tab_enabled";
 const SPORTS_ENABLED_KEY = "sports_enabled";
 const REFERRAL_RATIO_KEY = "referral_commission_ratio";
-const PERMANENT_MEMBERSHIP_EXPIRY = "9999-12-31T23:59:59.999Z";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
 
 export function createRepositories(): Repositories {
@@ -128,12 +128,7 @@ export function createRepositories(): Repositories {
           return { rewardedCount: 0, membershipExpiresAt: account.membershipExpiresAt };
         }
         pending.forEach((user) => rewardedSportsInviteeIds.add(user.id));
-        const base = account.membershipExpiresAt && account.membershipExpiresAt > now
-          ? account.membershipExpiresAt
-          : now;
-        const membershipExpiresAt = new Date(
-          base.getTime() + pending.length * durationDays * 86_400_000
-        );
+        const membershipExpiresAt = extendSportsMembership(account.membershipExpiresAt, pending.length * durationDays, now);
         sportsAccounts.set(inviterId, { ...account, membershipExpiresAt, updatedAt: now });
         return { rewardedCount: pending.length, membershipExpiresAt };
       },
@@ -423,8 +418,7 @@ export function createRepositories(): Repositories {
         if (!code) return { ok: false, reason: "invalid" as const };
         if (code.status !== "active") return { ok: false, reason: "used" as const };
         if (code.validUntil && code.validUntil.getTime() <= now.getTime()) return { ok: false, reason: "expired" as const };
-        const base = account.membershipExpiresAt && account.membershipExpiresAt > now ? account.membershipExpiresAt : now;
-        const membershipExpiresAt = new Date(base.getTime() + code.durationDays * 86_400_000);
+        const membershipExpiresAt = extendSportsMembership(account.membershipExpiresAt, code.durationDays, now);
         sportsAccessCodes.set(code.id, { ...code, status: "redeemed", redeemedByUserId: userId, redeemedAt: now, updatedAt: now });
         sportsAccounts.set(userId, { ...account, membershipExpiresAt, updatedAt: now });
         return { ok: true, membershipExpiresAt, durationDays: code.durationDays };
@@ -478,11 +472,9 @@ export function createRepositories(): Repositories {
         if (order.deliveredAt) {
           return { order, membershipExpiresAt: account.membershipExpiresAt!, alreadyDelivered: true };
         }
-        const base = account.membershipExpiresAt && account.membershipExpiresAt > input.deliveredAt
-          ? account.membershipExpiresAt : input.deliveredAt;
         const membershipExpiresAt = order.durationDays === 0
           ? new Date(PERMANENT_MEMBERSHIP_EXPIRY)
-          : new Date(base.getTime() + order.durationDays * 86_400_000);
+          : extendSportsMembership(account.membershipExpiresAt, order.durationDays, input.deliveredAt);
         const delivered = {
           ...order, status: "delivered", wxOrderId: input.wxOrderId ?? null,
           paidAt: input.paidAt, deliveredAt: input.deliveredAt, updatedAt: input.deliveredAt

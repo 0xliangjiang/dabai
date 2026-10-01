@@ -156,24 +156,50 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
     throw lastError instanceof Error ? lastError : new ZeppClientError("Zepp 请求重试失败");
   }
 
+  // 微信绑定查询不参与注册的固定代理会话，直连并限制总等待时间。
+  // 避免每次重试先等代理，再等上游，超过小程序 30 秒请求期限。
+  async function bindingRequest(url: string): Promise<Response> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const response = await directFetch(url, { signal: AbortSignal.timeout(Math.min(timeoutMs, 6_000)) });
+        if (response.status !== 429 && response.status < 500) return response;
+        await response.body?.cancel();
+      } catch {
+        // 只读查询可以安全重试；不在错误中泄露上游 URL。
+      }
+      if (attempt === 0) await delay(300);
+    }
+    throw new ZeppClientError("微信绑定服务暂时连接失败，请稍后重试", "ZEPP_BINDING_UNAVAILABLE");
+  }
+
   return {
     async getRegistrationCaptcha() {
       const now = Date.now();
       for (const [key, transport] of registrationTransports) {
         if (transport.expiresAt <= now) registrationTransports.delete(key);
       }
-      const transport = await createRegistrationTransport();
-      const suffix = `${randomLetters(2)}${randomDigits(2)}`;
-      const response = await registrationRequest(
-        `https://api-user.huami.com/captcha/register?random=${suffix}`,
-        {},
-        transport
-      );
-      if (!response.ok) throw new ZeppClientError(`获取 Zepp 验证码失败（${response.status}）`);
-      const captchaKey = response.headers.get("captcha-key") ?? parseCaptchaCookie(response.headers.get("set-cookie"));
-      if (!captchaKey) throw new ZeppClientError("Zepp 验证码响应缺少 captcha-key");
-      registrationTransports.set(captchaKey, transport);
-      return { key: captchaKey, imageBase64: Buffer.from(await response.arrayBuffer()).toString("base64") };
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const transport = await createRegistrationTransport();
+          const suffix = `${randomLetters(2)}${randomDigits(2)}`;
+          const response = await registrationRequest(
+            `https://api-user.huami.com/captcha/register?random=${suffix}`,
+            {},
+            transport,
+            2
+          );
+          if (!response.ok) throw new ZeppClientError(`获取 Zepp 验证码失败（${response.status}）`);
+          const captchaKey = response.headers.get("captcha-key") ?? parseCaptchaCookie(response.headers.get("set-cookie"));
+          if (!captchaKey) throw new ZeppClientError("Zepp 验证码响应缺少 captcha-key");
+          const imageBase64 = Buffer.from(await response.arrayBuffer()).toString("base64");
+          registrationTransports.set(captchaKey, transport);
+          return { key: captchaKey, imageBase64 };
+        } catch (error) {
+          // 尚未取得验证码时可换一条代理；成功后注册始终复用同一会话。
+          if (!(error instanceof ZeppClientError) || error.code !== "ZEPP_REGISTRATION_PROXY_FAILED" || attempt === 1) throw error;
+        }
+      }
+      throw new ZeppClientError("注册代理暂时不可用，请重新获取验证码", "ZEPP_REGISTRATION_PROXY_FAILED");
     },
 
     async recognizeCaptcha(imageBase64) {
@@ -276,7 +302,7 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
     },
 
     async getBindTicket(userId) {
-      const response = await request(`https://weixin.amazfit.com/v1/bind/qrcode.json?${new URLSearchParams({ wxname: "md", brandName: "amazfit", userid: userId })}`);
+      const response = await bindingRequest(`https://weixin.amazfit.com/v1/bind/qrcode.json?${new URLSearchParams({ wxname: "md", brandName: "amazfit", userid: userId })}`);
       const data = parseJson(await response.text());
       const ticket = stringValue((data.data as Record<string, unknown> | undefined)?.ticket);
       if (!response.ok || data.code !== 1 || !ticket) throw new ZeppClientError("获取微信绑定二维码失败");
@@ -284,7 +310,7 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
     },
 
     async checkBindStatus(userId) {
-      const response = await request(`https://weixin.amazfit.com/v1/info/users.json?${new URLSearchParams({ wxname: "md", userid: userId })}`);
+      const response = await bindingRequest(`https://weixin.amazfit.com/v1/info/users.json?${new URLSearchParams({ wxname: "md", userid: userId })}`);
       const data = parseJson(await response.text());
       if (!response.ok || data.code !== 1 || typeof data.data !== "object" || data.data === null) throw new ZeppClientError("检查微信绑定状态失败");
       return Number((data.data as Record<string, unknown>).isbind) === 1;

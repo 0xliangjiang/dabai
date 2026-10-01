@@ -101,6 +101,28 @@ describe("sports account binding", () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
   });
 
+  test("logs in an invitee of a permanent member and settles rewards only once", async () => {
+    const repositories = createRepositories();
+    const inviter = await repositories.users.findOrCreateByOpenid("permanent-inviter");
+    const expiry = new Date("9999-12-31T23:59:59.999Z");
+    await repositories.sportsAccounts.create({
+      userId: inviter.id, email: "permanent@gmail.com", passwordCipher: "encrypted",
+      captchaKey: "captcha", captchaExpiresAt: new Date(), membershipExpiresAt: expiry
+    });
+    const app = await createApp({ config: testConfig, repositories, zeppClient: new MockZeppClient() });
+    apps.push(app);
+    const login = await app.inject({ method: "POST", url: "/api/auth/wechat-login",
+      payload: { code: "mock-permanent-invitee", inviterId: inviter.id } });
+    expect(login.statusCode).toBe(200);
+    expect(login.json().token).toBeTruthy();
+    expect((await repositories.sportsAccounts.findByUser(inviter.id))?.membershipExpiresAt).toEqual(expiry);
+    expect(await repositories.users.applyPendingSportsInviteRewards(inviter.id, 3, new Date()))
+      .toEqual({ rewardedCount: 0, membershipExpiresAt: expiry });
+    const again = await app.inject({ method: "POST", url: "/api/auth/wechat-login",
+      payload: { code: "mock-permanent-invitee" } });
+    expect(again.statusCode).toBe(200);
+  });
+
   test("confirms virtual payment against WeChat and grants membership only once", async () => {
     const repositories = createRepositories();
     const user = await repositories.users.findOrCreateByOpenid("openid-paying-user");

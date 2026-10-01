@@ -89,6 +89,56 @@ describe("Zepp client", () => {
     expect(serializedHeaders).toMatch(/cf-connecting-ip/);
   });
 
+  test("starts a new captcha transport after connection failure and pins the successful transport", async () => {
+    const captchaIps: Array<string | null> = [];
+    let registrationIp: string | null = null;
+    const client = createZeppClient({ fetchImpl: async (input, init) => {
+      const url = String(input);
+      const ip = new Headers(init?.headers).get("x-forwarded-for");
+      if (url.includes("/captcha/register")) {
+        captchaIps.push(ip);
+        if (captchaIps.length < 3) throw new TypeError("connection failed");
+        return new Response(Uint8Array.from([1]), { headers: { "captcha-key": "new-session" } });
+      }
+      registrationIp = ip;
+      if (url.endsWith("/v1/client/register")) return Response.json({ result: "ok", token_info: { user_id: "user" } });
+      return Response.json({ data: "https://example.test/?access=code" });
+    } });
+    const captcha = await client.getRegistrationCaptcha();
+    await client.registerAccount({ email: "user@example.com", password: "password", name: "user",
+      captchaKey: captcha.key, captchaCode: "abcd" });
+    expect(captchaIps).toHaveLength(3);
+    expect(captchaIps[0]).toBe(captchaIps[1]);
+    expect(captchaIps[2]).not.toBe(captchaIps[0]);
+    expect(registrationIp).toBe(captchaIps[2]);
+  });
+
+  test("retries transient binding failures and uses a fresh timeout for each attempt", async () => {
+    const signals: AbortSignal[] = [];
+    let calls = 0;
+    const client = createZeppClient({ timeoutMs: 1000, fetchImpl: async (_url, init) => {
+      signals.push(init!.signal!);
+      calls += 1;
+      if (calls === 1) throw new TypeError("fetch failed");
+      return Response.json({ code: 1, data: { isbind: 1 } });
+    } });
+    await expect(client.checkBindStatus("user")).resolves.toBe(true);
+    expect(calls).toBe(2);
+    expect(signals[0]).not.toBe(signals[1]);
+  });
+
+  test("reports binding outages after two attempts with a safe public error", async () => {
+    let calls = 0;
+    const client = createZeppClient({ fetchImpl: async () => {
+      calls += 1;
+      return new Response("unavailable", { status: 503 });
+    } });
+    await expect(client.getBindTicket("private-user-id")).rejects.toMatchObject({
+      code: "ZEPP_BINDING_UNAVAILABLE", message: "微信绑定服务暂时连接失败，请稍后重试"
+    });
+    expect(calls).toBe(2);
+  });
+
   test("rejects registration when its captcha transport session is missing", async () => {
     const client = createZeppClient({
       fetchImpl: async () => { throw new Error("registration request should not be sent"); },
