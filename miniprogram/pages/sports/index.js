@@ -4,9 +4,19 @@ const { inviterSuffix, inviterQuery } = require("../../utils/share");
 
 Page({
   data: {
+    sportsLegacyActionsEnabled: true,
+    sportsAppId: "",
+    sportsHandoffReady: false,
+    sportsHandoffLoading: false,
+    sportsHandoffError: "",
     sportsEnabled: true,
     accountFeaturesEnabled: false,
     isBound: false,
+    accountId: "",
+    selfUnbindLimit: 3,
+    selfUnbindUsed: 0,
+    selfUnbindRemaining: 0,
+    unbinding: false,
     account: null,
     membershipExpiresAt: "",
     membershipExpired: false,
@@ -53,6 +63,31 @@ Page({
     if (this.data.accountFeaturesEnabled) await this.reconcilePendingVirtualPayment();
   },
 
+  async prepareSportsApp() {
+    if (this.data.sportsHandoffLoading) return;
+    this.setData({ sportsHandoffLoading: true, sportsHandoffReady: false, sportsHandoffError: "" });
+    try {
+      await api.ensureLogin();
+      this.sportsHandoff = await api.request("/api/sports-app/handoff", { method: "POST" });
+      this.setData({ sportsHandoffReady: true });
+    } catch (error) { this.setData({ sportsHandoffError: error.error || error.errMsg || "暂时无法关联，请重试" }); }
+    finally { this.setData({ sportsHandoffLoading: false }); }
+  },
+
+  openSportsApp() {
+    const handoff = this.sportsHandoff;
+    if (!handoff || Date.parse(handoff.expiresAt) <= Date.now()) {
+      this.setData({ sportsHandoffReady: false, sportsHandoffError: "入口已过期，请重新准备" });
+      return;
+    }
+    // 跳转直接由用户点击触发；请求凭证在前一个步骤完成。
+    wx.navigateToMiniProgram({ appId: handoff.appId, path: "pages/home/index", envVersion: "release",
+      extraData: { ticket: handoff.ticket },
+      success: () => { this.sportsHandoff = null; this.setData({ sportsHandoffReady: false }); },
+      fail: () => this.setData({ sportsHandoffError: "跳转未完成，可再次点击继续" })
+    });
+  },
+
   async loadSportsConfig() {
     try {
       const config = await api.getAppConfig();
@@ -67,6 +102,8 @@ Page({
             }))
         : [];
       this.setData({
+        sportsLegacyActionsEnabled: config.sportsLegacyActionsEnabled !== false,
+        sportsAppId: (config.sportsApp && config.sportsApp.appId) || "",
         sportsEnabled: enabled,
         accountFeaturesEnabled: enabled || this.data.isBound,
         messages: enabled ? this.data.messages : [],
@@ -107,6 +144,10 @@ Page({
       : result.lastTargetSteps);
     this.setData({
       isBound,
+      accountId: (result && result.accountId) || "",
+      selfUnbindLimit: result && result.selfUnbindLimit != null ? result.selfUnbindLimit : this.data.selfUnbindLimit,
+      selfUnbindUsed: result && result.selfUnbindUsed != null ? result.selfUnbindUsed : this.data.selfUnbindUsed,
+      selfUnbindRemaining: result && result.selfUnbindRemaining != null ? result.selfUnbindRemaining : this.data.selfUnbindRemaining,
       accountFeaturesEnabled: this.data.sportsEnabled || isBound,
       account: result && result.account ? result.account : null,
       membershipExpiresAt: formatDate(result && result.membershipExpiresAt),
@@ -170,7 +211,7 @@ Page({
   },
 
   async handleBindTap() {
-    if (this.data.binding) return;
+    if (this.data.binding || this.data.unbinding) return;
     if (this.data.isBound) {
       wx.showToast({ title: "账号已绑定", icon: "success" });
       return;
@@ -186,6 +227,46 @@ Page({
     } finally {
       this.setData({ binding: false });
     }
+  },
+
+  async handleUnbindTap() {
+    if (this.data.unbinding || this.data.binding || this.data.chatLoading || this.data.adLoading || !this.data.isBound || !this.data.accountId) return;
+    return this.confirmUnbind(this.data.accountId);
+  },
+
+  async confirmUnbind(accountId) {
+    if (this.data.unbinding || this.data.binding || this.data.adLoading) return "账号正在处理中，请稍后重试解绑。";
+    if (!this.data.isBound || !accountId || accountId !== this.data.accountId) {
+      await this.loadAccount();
+      return "账号状态已变化，已刷新账号信息，请重新发起解绑。";
+    }
+    if (this.data.selfUnbindRemaining <= 0) {
+      wx.showModal({ title: "自助解绑次数已用完", content: "累计自助解绑最多 3 次，请联系页面客服，由管理员解绑。", showCancel: false });
+      return "自助解绑次数已用完，请联系客服，由管理员解绑。";
+    }
+    this.setData({ unbinding: true });
+    try {
+      const confirmed = await new Promise(resolve => wx.showModal({
+        title: "解绑运动账号",
+        content: `旧账号资料将删除，再次绑定会注册新账号，会员有效期保留。本次将使用 1 次解绑机会，当前剩余 ${this.data.selfUnbindRemaining} 次。`,
+        confirmText: "确认解绑", confirmColor: "#c54444",
+        success: result => resolve(Boolean(result.confirm)), fail: () => resolve(false)
+      }));
+      if (!confirmed) return "已取消解绑，保持当前账号绑定。";
+      await api.ensureLogin();
+      const result = await api.request("/api/sports/unbind", { method: "POST", data: { accountId } });
+      this.closeBindingDialog();
+      this.applyAccount(result);
+      this.sportsHandoff = null;
+      this.setData({ sportsHandoffReady: false, sportsHandoffError: "", adStepGrantToken: "", pendingExpiredMessage: "" });
+      wx.showToast({ title: "已解绑，请重新绑定", icon: "none" });
+      return `旧账号资料已删除，会员有效期保留。请点击上方“去绑定”注册新账号，剩余 ${result.selfUnbindRemaining} 次自助解绑机会。`;
+    } catch (error) {
+      if (error && error.code === "SPORTS_UNBIND_LIMIT") this.setData({ selfUnbindRemaining: 0, selfUnbindUsed: 3 });
+      wx.showModal({ title: "解绑未完成", content: (error && error.error) || "解绑失败，请稍后重试", showCancel: false });
+      await this.loadAccount();
+      return (error && error.error) || "解绑失败，请稍后重试。";
+    } finally { this.setData({ unbinding: false }); }
   },
 
   handleCaptchaInput(event) {
@@ -250,7 +331,7 @@ Page({
   },
 
   async sendChatMessage(overrideText, options = {}) {
-    if (this.data.chatLoading) return;
+    if (this.data.chatLoading || this.data.unbinding) return;
     const text = typeof overrideText === "string"
       ? overrideText.trim()
       : String(this.data.inputText || "").trim();
@@ -285,13 +366,22 @@ Page({
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: result.reply || "我暂时没有理解，请换一种说法。",
+        action: result.action,
         success: result.action === "steps_updated" || result.action === "access_code_redeemed"
       };
       this.setData({
         messages: [...this.data.messages, assistantMessage],
         scrollToMessage: assistantMessage.id
       });
-      if (result.action === "steps_updated") {
+      if (result.action === "unbind_confirm" || result.action === "unbind_limit") {
+        this.setData({ selfUnbindLimit: result.selfUnbindLimit, selfUnbindUsed: result.selfUnbindUsed, selfUnbindRemaining: result.selfUnbindRemaining });
+        if (result.action === "unbind_confirm") {
+          const reply = await this.confirmUnbind(result.accountId);
+          const outcome = { id: `assistant-unbind-${Date.now()}`, role: "assistant", content: reply,
+            action: this.data.isBound && this.data.selfUnbindRemaining <= 0 ? "unbind_limit" : "" };
+          this.setData({ messages: [...this.data.messages, outcome], scrollToMessage: outcome.id });
+        }
+      } else if (result.action === "steps_updated") {
         this.setData({
           todayTargetSteps: formatSteps(result.steps),
           adStepGrantToken: "",

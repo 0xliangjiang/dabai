@@ -39,10 +39,11 @@ export async function registerAdminSportsRoutes(app: FastifyInstance, repositori
     return {
       ok: true,
       account: {
-        email: account.email,
+        email: null,
         bindStatus: account.bindStatus,
         membershipExpiresAt: account.membershipExpiresAt
-      }
+      },
+      message: "旧 Zepp Life 账号资料已删除，再次绑定将创建全新账号，会员有效期保留"
     };
   });
 

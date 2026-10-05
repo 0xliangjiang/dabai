@@ -17,6 +17,7 @@ model User {
   rebateRatio Float?
   inviterId   String?
   sportsInviteRewardedAt DateTime?
+  sportsSelfUnbindCount Int @default(0)
   deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -30,6 +31,8 @@ model User {
   subscribeGrants   SubscribeGrant[]
   withdrawals       Withdrawal[]
   pointAdjustments  PointAdjustment[]
+  sportsIdentities SportsIdentity[]
+  sportsHandoffs SportsHandoff[]
   sportsAccount     SportsAccount?
   sportsDailyTargets SportsDailyTarget[]
   redeemedSportsCodes SportsAccessCode[]
@@ -428,4 +431,25 @@ model SystemConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+model SportsIdentity {
+  id String @id @default(cuid())
+  appId String @db.VarChar(64)
+  openid String @db.VarChar(128)
+  userId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
+  @@unique([appId, openid])
+  @@unique([appId, userId])
+}
+
+model SportsHandoff {
+  tokenHash String @id @db.Char(64)
+  userId String
+  appId String @db.VarChar(64)
+  expiresAt DateTime
+  consumedAt DateTime?
+  user User @relation(fields: [userId], references: [id])
+  @@index([expiresAt])
 }

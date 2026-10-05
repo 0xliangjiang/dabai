@@ -1,5 +1,6 @@
 import { extendSportsMembership, PERMANENT_MEMBERSHIP_EXPIRY } from "../domain/sports-membership.js";
 import { Prisma, PrismaClient } from "@prisma/client";
+import { replacementSportsAccountData, SPORTS_SELF_UNBIND_LIMIT, SportsAccountChangedError } from "../domain/sports-account.js";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
   AdminUserRecord,
@@ -36,6 +37,36 @@ const SPORTS_ENABLED_KEY = "sports_enabled";
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
   return {
+    sportsBridge: {
+      async createHandoff(input, now) {
+        await prisma.sportsHandoff.deleteMany({ where: { expiresAt: { lte: now } } });
+        await prisma.sportsHandoff.create({ data: input });
+      },
+      async findIdentity(appId, openid) {
+        return (await prisma.sportsIdentity.findUnique({ where: { appId_openid: { appId, openid } } }))?.userId;
+      },
+      async link(input) {
+        try {
+          return await prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT tokenHash FROM SportsHandoff WHERE tokenHash = ${input.tokenHash} FOR UPDATE`;
+            const ticket = await tx.sportsHandoff.findUnique({ where: { tokenHash: input.tokenHash } });
+            if (!ticket || ticket.appId !== input.appId || ticket.expiresAt <= input.now || ticket.consumedAt) return { ok: false, reason: "invalid" as const };
+            const user = await tx.user.findUnique({ where: { id: ticket.userId } });
+            if (!user || user.deletedAt || user.status === "banned") return { ok: false, reason: "invalid" as const };
+            if (input.unionid && user.unionid && input.unionid !== user.unionid) return { ok: false, reason: "identity_mismatch" as const };
+            const identity = await tx.sportsIdentity.findUnique({ where: { appId_openid: { appId: input.appId, openid: input.openid } } });
+            const linked = await tx.sportsIdentity.findUnique({ where: { appId_userId: { appId: input.appId, userId: user.id } } });
+            if ((identity && identity.userId !== user.id) || (linked && linked.openid !== input.openid)) return { ok: false, reason: "conflict" as const };
+            if (!identity) await tx.sportsIdentity.create({ data: { appId: input.appId, openid: input.openid, userId: user.id } });
+            await tx.sportsHandoff.update({ where: { tokenHash: input.tokenHash }, data: { consumedAt: input.now } });
+            return { ok: true, userId: user.id };
+          });
+        } catch (error) {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return { ok: false, reason: "conflict" };
+          throw error;
+        }
+      }
+    },
     users: {
       async findOrCreateByOpenid(
         openid: string,
@@ -311,6 +342,35 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
       }
     },
     sportsAccounts: {
+      async getSelfUnbindCount(userId) {
+        return (await prisma.user.findUnique({ where: { id: userId }, select: { sportsSelfUnbindCount: true } }))?.sportsSelfUnbindCount ?? 0;
+      },
+      async selfUnbind(userId, accountId) {
+        return prisma.$transaction(async tx => {
+          // 锁定用户计数与账号，再在同一事务中扣次数、替换身份。
+          const [user] = await tx.$queryRaw<Array<{ sportsSelfUnbindCount: number; deletedAt: Date | null; status: string }>>`
+            SELECT sportsSelfUnbindCount, deletedAt, status FROM User WHERE id = ${userId} FOR UPDATE`;
+          if (!user || user.deletedAt || user.status === "banned") return { ok: false, reason: "no_account" as const };
+          await tx.$queryRaw`SELECT id FROM SportsAccount WHERE userId = ${userId} FOR UPDATE`;
+          const existing = await tx.sportsAccount.findUnique({ where: { userId } });
+          if (!existing) return { ok: false, reason: "no_account" as const };
+          if (existing.id !== accountId) return { ok: false, reason: "changed" as const };
+          if (existing.bindStatus !== "bound" || !existing.zeppUserId) return { ok: false, reason: "no_account" as const };
+          if (user.sportsSelfUnbindCount >= SPORTS_SELF_UNBIND_LIMIT) return { ok: false, reason: "limit" as const };
+          await tx.sportsAccount.delete({ where: { id: existing.id } });
+          const account = await tx.sportsAccount.create({ data: replacementSportsAccountData(existing) });
+          await tx.user.update({ where: { id: userId }, data: { sportsSelfUnbindCount: { increment: 1 } } });
+          return { ok: true, account: mapSportsAccount(account), used: user.sportsSelfUnbindCount + 1 };
+        });
+      },
+      async initializePassword(userId, accountId, passwordCipher) {
+        await prisma.sportsAccount.updateMany({
+          where: { userId, id: accountId, passwordCipher: "" }, data: { passwordCipher }
+        });
+        const record = await prisma.sportsAccount.findUnique({ where: { userId, id: accountId } });
+        if (!record) throw new SportsAccountChangedError();
+        return mapSportsAccount(record);
+      },
       async findByUser(userId: string) {
         const record = await prisma.sportsAccount.findUnique({ where: { userId } });
         return record ? mapSportsAccount(record) : undefined;
@@ -328,17 +388,25 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         });
         return mapSportsAccount(record);
       },
-      async update(userId, input) {
-        const record = await prisma.sportsAccount.update({
-          where: { userId },
-          data: input
-        });
-        return mapSportsAccount(record);
+      async update(userId, input, expectedAccountId) {
+        try {
+          const record = await prisma.sportsAccount.update({
+            where: { userId, ...(expectedAccountId ? { id: expectedAccountId } : {}) },
+            data: input
+          });
+          return mapSportsAccount(record);
+        } catch (error) {
+          if (expectedAccountId && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+            throw new SportsAccountChangedError();
+          }
+          throw error;
+        }
       },
-      async claimCaptcha(userId, now) {
+      async claimCaptcha(userId, now, expectedAccountId) {
         const result = await prisma.sportsAccount.updateMany({
           where: {
             userId,
+            ...(expectedAccountId ? { id: expectedAccountId } : {}),
             status: "awaiting_captcha",
             captchaKey: { not: null },
             captchaExpiresAt: { gt: now }
@@ -382,11 +450,17 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         })) };
       },
       async adminUnbind(userId) {
-        const existing = await prisma.sportsAccount.findUnique({ where: { userId } });
-        if (!existing) return undefined;
-        return mapSportsAccount(await prisma.sportsAccount.update({
-          where: { userId }, data: { bindStatus: "unbound", status: "registered" }
-        }));
+        return prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM SportsAccount WHERE userId = ${userId} FOR UPDATE`;
+          const existing = await tx.sportsAccount.findUnique({ where: { userId } });
+          if (!existing) return undefined;
+          if (existing.status === "awaiting_registration") return mapSportsAccount(existing);
+          // 在同一事务里删除旧账号，保留会员权益到待注册的新身份。
+          await tx.sportsAccount.delete({ where: { id: existing.id } });
+          return mapSportsAccount(await tx.sportsAccount.create({
+            data: replacementSportsAccountData(existing)
+          }));
+        });
       }
     },
     sportsDailyTargets: {

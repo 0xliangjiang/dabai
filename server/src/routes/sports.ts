@@ -1,3 +1,5 @@
+import { legacySportsActionsEnabled } from "./sports-app.js";
+import { generateSportsEmail, SPORTS_SELF_UNBIND_LIMIT, SportsAccountChangedError } from "../domain/sports-account.js";
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import QRCode from "qrcode";
@@ -71,11 +73,33 @@ export async function registerSportsRoutes(
 
   app.get("/api/sports/account", async (request) => {
     const targetDate = sportsTargetDate();
-    const [account, dailyTarget] = await Promise.all([
+    const [account, dailyTarget, used] = await Promise.all([
       repositories.sportsAccounts.findByUser(request.userId),
-      repositories.sportsDailyTargets.findByUserAndDate(request.userId, targetDate)
+      repositories.sportsDailyTargets.findByUserAndDate(request.userId, targetDate),
+      repositories.sportsAccounts.getSelfUnbindCount(request.userId)
     ]);
-    return accountView(account, dailyTarget?.steps ?? null);
+    return { ...accountView(account, dailyTarget?.steps ?? null), ...selfUnbindQuota(used) };
+  });
+
+  app.post("/api/sports/unbind", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } }
+  }, async (request, reply) => {
+    const parsed = z.object({ accountId: z.string().trim().min(1).max(191) }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "账号状态已变化，请刷新后重试" });
+    const result = await repositories.sportsAccounts.selfUnbind(request.userId, parsed.data.accountId);
+    if (!result.ok) {
+      const errors = {
+        no_account: "当前没有已绑定的 Zepp Life 账号，无需解绑",
+        changed: "账号已解绑或更换，请刷新后重试",
+        limit: "自助解绑已使用 3 次，请联系客服，由管理员解绑"
+      };
+      return reply.code(409).send({ error: errors[result.reason], code: `SPORTS_UNBIND_${result.reason.toUpperCase()}` });
+    }
+    const dailyTarget = await repositories.sportsDailyTargets.findByUserAndDate(request.userId, sportsTargetDate());
+    return {
+      ...accountView(result.account, dailyTarget?.steps ?? null), ...selfUnbindQuota(result.used),
+      message: "旧账号资料已删除，请重新绑定新账号，会员有效期保留"
+    };
   });
 
   app.post("/api/sports/virtual-payment/create", async (request, reply) => {
@@ -211,7 +235,9 @@ export async function registerSportsRoutes(
   app.post("/api/sports/ad/reward", {
     config: { rateLimit: { max: 30, timeWindow: "1 day" } }
   }, async (request, reply) => {
-    if (!config.sportsRewardedVideoAdUnitId?.trim()) {
+    if (!request.sportsAppId && !legacySportsActionsEnabled(config)) return reply.code(410).send({ error: "步数和广告服务已迁移，请前往独立运动小程序", code: "SPORTS_MIGRATED" });
+    const adUnitId = request.sportsAppId ? config.sportsAppRewardedVideoAdUnitId : config.sportsRewardedVideoAdUnitId;
+    if (!adUnitId?.trim()) {
       return reply.code(503).send({ error: "激励广告暂未配置，请使用卡密或邀请好友" });
     }
     const account = await repositories.sportsAccounts.findByUser(request.userId);
@@ -263,6 +289,7 @@ export async function registerSportsRoutes(
   app.post("/api/sports/chat", {
     config: { rateLimit: { max: 12, timeWindow: "1 minute" } }
   }, async (request, reply) => {
+    if (!request.sportsAppId && !legacySportsActionsEnabled(config)) return reply.code(410).send({ error: "步数和广告服务已迁移，请前往独立运动小程序", code: "SPORTS_MIGRATED" });
     const parsed = sportsChatSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? "消息格式不正确" });
@@ -297,6 +324,25 @@ export async function registerSportsRoutes(
     }
 
     const intent = recognizeSportsIntent(parsed.data.message, parsed.data.history);
+    if (intent.type === "unbind") {
+      // 对话只返回待确认动作，实际解绑仍使用带账号版本和次数校验的统一接口。
+      if (request.sportsAppId) return { success: false, action: "manage_account", reply: "请返回原小程序的运动页面管理账号和解绑。" };
+      const [account, used] = await Promise.all([
+        repositories.sportsAccounts.findByUser(request.userId),
+        repositories.sportsAccounts.getSelfUnbindCount(request.userId)
+      ]);
+      const quota = selfUnbindQuota(used);
+      if (!account?.zeppUserId || account.bindStatus !== "bound") return {
+        success: false, action: "unbind_no_account", ...quota, reply: "当前没有已绑定的运动账号，无需解绑。"
+      };
+      if (used >= SPORTS_SELF_UNBIND_LIMIT) return {
+        success: false, action: "unbind_limit", ...quota, reply: "累计自助解绑的 3 次机会已用完，请点击联系客服，由管理员解绑。"
+      };
+      return {
+        success: true, action: "unbind_confirm", accountId: account.id, ...quota,
+        reply: `你要解绑当前运动账号，剩余 ${quota.selfUnbindRemaining} 次自助解绑机会。请在弹窗中确认；会员有效期保留，下一次绑定会注册新账号。`
+      };
+    }
     if (intent.type === "ask_steps") {
       return {
         success: true,
@@ -329,7 +375,7 @@ export async function registerSportsRoutes(
         if (!isBound) {
           return { success: false, action: "bind_required", reply: "账号还没有绑定微信，请先完成扫码绑定，再设置今天的运动目标。" };
         }
-        account = await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" });
+        account = await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" }, account.id);
       }
       const membershipExpired = !account.membershipExpiresAt || account.membershipExpiresAt.getTime() <= Date.now();
       if (membershipExpired) {
@@ -390,14 +436,20 @@ export async function registerSportsRoutes(
     config: { rateLimit: { max: 5, timeWindow: "10 minutes" } }
   }, async (request, reply) => {
     try {
-      const existing = await repositories.sportsAccounts.findByUser(request.userId);
+      let existing = await repositories.sportsAccounts.findByUser(request.userId);
       if (existing?.bindStatus === "bound") return accountView(existing);
       if (!(await requireSportsEnabled(reply))) return;
       const readinessError = validateFeatureConfig(config);
       if (readinessError) return reply.code(503).send({ error: readinessError });
-      if (existing?.zeppUserId) return await qrView(existing, zeppClient, qrEncoder);
+      if (existing?.zeppUserId) return await qrView(existing, zeppClient, qrEncoder, repositories);
 
-      const password = existing
+      if (existing && !existing.passwordCipher) {
+        existing = await repositories.sportsAccounts.initializePassword(
+          request.userId, existing.id, encryptCredential(generatePassword(), config.zeppCredentialKey!)
+        );
+      }
+
+      const password = existing?.passwordCipher
         ? decryptCredential(existing.passwordCipher, config.zeppCredentialKey!)
         : generatePassword();
       let account = existing;
@@ -412,7 +464,7 @@ export async function registerSportsRoutes(
           try {
             account = await repositories.sportsAccounts.create({
               userId: request.userId,
-              email: generateRandomEmail(),
+              email: generateSportsEmail(),
               passwordCipher: encryptCredential(password, config.zeppCredentialKey!),
               captchaKey: captcha.key,
               captchaExpiresAt,
@@ -433,7 +485,7 @@ export async function registerSportsRoutes(
           status: "registering",
           captchaKey: captcha.key,
           captchaExpiresAt
-        });
+        }, account.id);
 
         try {
           const code = await zeppClient.recognizeCaptcha(captcha.imageBase64);
@@ -450,17 +502,19 @@ export async function registerSportsRoutes(
           });
           return await finishRegistration(account, password, config.zeppCredentialKey!, repositories, zeppClient, qrEncoder);
         } catch (error) {
+          if (error instanceof SportsAccountChangedError) throw error;
           lastError = error instanceof Error ? error.message : "自动识别注册失败";
         }
       }
 
       // 与原项目一致：自动 OCR 全部失败后，才返回一张新验证码供人工输入。
+      if (!account) throw new Error("sports account not created");
       const captcha = await zeppClient.getRegistrationCaptcha();
       account = await repositories.sportsAccounts.update(request.userId, {
         status: "awaiting_captcha",
         captchaKey: captcha.key,
         captchaExpiresAt: new Date(Date.now() + 5 * 60_000)
-      });
+      }, account.id);
       return {
         ...accountView(account),
         action: "captcha",
@@ -469,7 +523,7 @@ export async function registerSportsRoutes(
       };
     } catch (error) {
       request.log.warn({ err: error, userId: request.userId }, "start Zepp binding failed");
-      return reply.code(error instanceof ZeppClientError ? 502 : 500).send({
+      return reply.code(error instanceof SportsAccountChangedError ? 409 : error instanceof ZeppClientError ? 502 : 500).send({
         error: publicError(error, "暂时无法开始绑定，请稍后重试")
       });
     }
@@ -493,7 +547,7 @@ export async function registerSportsRoutes(
     if (account.captchaExpiresAt.getTime() <= Date.now()) {
       return reply.code(409).send({ error: "验证码已过期，请重新获取" });
     }
-    if (!(await repositories.sportsAccounts.claimCaptcha(request.userId, new Date()))) {
+    if (!(await repositories.sportsAccounts.claimCaptcha(request.userId, new Date(), account.id))) {
       return reply.code(409).send({ error: "账号正在创建，请勿重复提交" });
     }
 
@@ -508,11 +562,17 @@ export async function registerSportsRoutes(
       });
       return await finishRegistration(account, password, config.zeppCredentialKey!, repositories, zeppClient, qrEncoder);
     } catch (error) {
-      await repositories.sportsAccounts.update(request.userId, {
-        status: "registration_failed",
-        captchaKey: null,
-        captchaExpiresAt: null
-      });
+      if (error instanceof SportsAccountChangedError) return reply.code(409).send({ error: error.message });
+      try {
+        await repositories.sportsAccounts.update(request.userId, {
+          status: "registration_failed",
+          captchaKey: null,
+          captchaExpiresAt: null
+        }, account.id);
+      } catch (updateError) {
+        if (updateError instanceof SportsAccountChangedError) return reply.code(409).send({ error: updateError.message });
+        throw updateError;
+      }
       request.log.warn({ err: error, userId: request.userId }, "complete Zepp registration failed");
       const captchaFailed = error instanceof ZeppClientError && error.code === "ZEPP_CAPTCHA_OR_REGISTER_FAILED";
       return reply.code(captchaFailed ? 400 : 502).send({
@@ -532,23 +592,25 @@ export async function registerSportsRoutes(
     try {
       const isBound = await zeppClient.checkBindStatus(account.zeppUserId);
       const updated = isBound
-        ? await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" })
+        ? await repositories.sportsAccounts.update(request.userId, { status: "ready", bindStatus: "bound" }, account.id)
         : account;
       if (isBound) return { ...accountView(updated), message: "微信绑定成功" };
-      return { ...(await qrView(updated, zeppClient, qrEncoder)), message: "暂未检测到绑定，请扫码后再次检查" };
+      return { ...(await qrView(updated, zeppClient, qrEncoder, repositories)), message: "暂未检测到绑定，请扫码后再次检查" };
     } catch (error) {
       request.log.warn({ err: error, userId: request.userId }, "refresh Zepp binding failed");
-      return reply.code(502).send({ error: publicError(error, "检查绑定状态失败，请稍后重试") });
+      return reply.code(error instanceof SportsAccountChangedError ? 409 : 502).send({ error: publicError(error, "检查绑定状态失败，请稍后重试") });
     }
   });
 }
 
-async function qrView(account: SportsAccountRecord, client: ZeppClient, encoder: QrEncoder) {
+async function qrView(account: SportsAccountRecord, client: ZeppClient, encoder: QrEncoder, repositories: Repositories) {
   const ticket = await client.getBindTicket(account.zeppUserId!);
+  const qrcodeImage = await encoder(ticket);
+  if ((await repositories.sportsAccounts.findByUser(account.userId))?.id !== account.id) throw new SportsAccountChangedError();
   return {
     ...accountView(account),
     action: "scan",
-    qrcodeImage: await encoder(ticket),
+    qrcodeImage,
     message: "请使用微信扫描二维码完成绑定"
   };
 }
@@ -570,14 +632,15 @@ async function finishRegistration(
     bindStatus: "unbound",
     captchaKey: null,
     captchaExpiresAt: null
-  });
-  return qrView(registered, client, encoder);
+  }, account.id);
+  return qrView(registered, client, encoder, repositories);
 }
 
 function accountView(account?: SportsAccountRecord, todayTargetSteps: number | null = null) {
   if (!account) {
     return {
       isBound: false,
+      accountId: null,
       status: "unbound",
       account: null,
       membershipExpiresAt: null,
@@ -587,12 +650,21 @@ function accountView(account?: SportsAccountRecord, todayTargetSteps: number | n
   }
   return {
     isBound: account.bindStatus === "bound",
+    accountId: account.id,
     status: account.status,
-    account: { platform: "Zepp Life", email: maskEmail(account.email) },
+    account: account.status === "awaiting_registration" ? null : { platform: "Zepp Life", email: maskEmail(account.email) },
     membershipExpiresAt: account.membershipExpiresAt?.toISOString() ?? null,
     todayTargetSteps,
     // 兼容尚未更新的小程序版本；该字段现在同样只表示当天目标。
     lastTargetSteps: todayTargetSteps
+  };
+}
+
+function selfUnbindQuota(used: number) {
+  return {
+    selfUnbindLimit: SPORTS_SELF_UNBIND_LIMIT,
+    selfUnbindUsed: used,
+    selfUnbindRemaining: Math.max(0, SPORTS_SELF_UNBIND_LIMIT - used)
   };
 }
 
@@ -622,10 +694,6 @@ function validateStepApiConfig(config: AppConfig): string | null {
     return "运动目标服务尚未配置 NANRUN_API_KEY";
   }
   return null;
-}
-
-function generateRandomEmail(): string {
-  return `${randomString("abcdefghijklmnopqrstuvwxyz0123456789", 10)}@gmail.com`;
 }
 
 function generatePassword(): string {
@@ -660,7 +728,7 @@ function maskEmail(email: string): string {
 }
 
 function publicError(error: unknown, fallback: string): string {
-  return error instanceof ZeppClientError ? error.message : fallback;
+  return error instanceof ZeppClientError || error instanceof SportsAccountChangedError ? error.message : fallback;
 }
 
 async function defaultQrEncoder(content: string): Promise<string> {

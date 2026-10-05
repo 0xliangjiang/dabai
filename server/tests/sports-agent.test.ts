@@ -2,6 +2,13 @@ import { describe, expect, test } from "vitest";
 import { recognizeSportsIntent } from "../src/domain/sports-agent.js";
 
 describe("sports agent intent recognition", () => {
+  test.each(["解绑", "解绑账号", "帮我解绑运动账号", "我要解绑 Zepp Life 账号", "解除 Zepp Life 绑定", "取消账号绑定"])("recognizes an unbind request: %s", message => {
+    expect(recognizeSportsIntent(message)).toEqual({ type: "unbind" });
+  });
+  test.each(["不要解绑", "别解绑账号", "取消解绑", "不想解除微信绑定", "不用取消账号绑定", "怎么解绑", "解绑会影响会员吗", "解绑后还能绑定吗"])("does not request unbinding for negation or questions: %s", message => {
+    expect(recognizeSportsIntent(message).type).toBe("chat");
+  });
+
   test.each([
     ["帮我刷到 20000 步", 20_000],
     ["把步数改成35,000步", 35_000],

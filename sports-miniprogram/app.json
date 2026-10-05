@@ -1,0 +1,18 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/privacy/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "运动服务",
+    "navigationBarBackgroundColor": "#087f6b",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f3f7f5"
+  },
+  "networkTimeout": {
+    "request": 20000
+  },
+  "style": "v2",
+  "__usePrivacyCheck__": true,
+  "sitemapLocation": "sitemap.json"
+}

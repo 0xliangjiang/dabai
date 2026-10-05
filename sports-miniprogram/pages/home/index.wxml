@@ -1,0 +1,13 @@
+<view class="page">
+  <view class="hero"><view class="hero-label">DAILY MOVEMENT</view><view class="hero-title">今天，向目标迈一步</view><view class="sub">共用已绑定账号，集中管理步数服务</view></view>
+  <view wx:if="{{loading}}" class="card"><view class="sub">正在连接账号…</view></view>
+  <view wx:elif="{{!linked}}" class="card"><view class="title">先关联你的运动账号</view><view class="sub">请在原小程序完成微信绑定，再从运动页面进入这里。已关联用户可直接登录。</view><view wx:if="{{error}}" class="error">{{error}}</view><button class="primary" bindtap="openSource">前往原小程序绑定</button><button bindtap="reload" disabled="{{busy}}">重新登录</button></view>
+  <block wx:else>
+    <view wx:if="{{!enabled}}" class="card"><view class="sub">当前步数服务暂未开放，账号与会员信息仍可查看。</view></view>
+    <view class="card"><view class="title">{{accountName}}</view><view class="sub">{{isBound ? '微信已绑定' : '请返回原小程序完成微信绑定'}}</view><view class="stats"><view class="stat"><view class="stat-value">{{todaySteps || '—'}}</view><view class="stat-label">今日已设置步数</view></view><view class="stat"><view class="stat-value">{{membershipText}}</view><view class="stat-label">会员有效期</view></view></view><button wx:if="{{!isBound}}" bindtap="openSource">去完成绑定</button></view>
+    <view class="card"><view class="title">设置今日步数</view><view class="sub">输入 1–98,800 步；提交后以微信运动实际显示为准。</view><input type="number" maxlength="5" value="{{stepsInput}}" bindinput="inputSteps" placeholder="输入目标步数" disabled="{{busy}}"/><view class="suggestions"><button data-steps="10000" bindtap="chooseSteps" disabled="{{busy}}">10,000</button><button data-steps="20000" bindtap="chooseSteps" disabled="{{busy}}">20,000</button></view><button class="primary" bindtap="submitSteps" loading="{{busy && !adLoading}}" disabled="{{busy || !isBound || !enabled}}">提交步数</button><view wx:if="{{result}}" class="result">{{result}}</view><view wx:if="{{error}}" class="error">{{error}}</view></view>
+    <view wx:if="{{expired}}" class="card"><view class="title">解锁一次步数服务</view><view class="sub">会员已到期。完整观看一次广告后，可提交一次；失败不会消耗本次授权。</view><button wx:if="{{adUnitId}}" bindtap="watchAd" loading="{{adLoading}}" disabled="{{busy || !isBound || !enabled}}">{{grantToken ? '已解锁，请提交步数' : '观看广告，解锁一次'}}</button><view wx:else class="sub">广告服务暂未开放，可使用卡密延期。</view></view>
+    <view class="card"><view class="title">卡密延期</view><input class="code" value="{{accessCode}}" bindinput="inputCode" placeholder="请输入运动会员卡密" disabled="{{busy}}"/><button bindtap="redeemCode" disabled="{{busy}}">兑换卡密</button><button bindtap="openSource">返回原小程序管理账号</button></view>
+  </block>
+  <navigator class="link" url="/pages/privacy/index">隐私说明</navigator>
+</view>

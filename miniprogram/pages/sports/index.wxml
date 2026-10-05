@@ -1,4 +1,11 @@
 <view class="sports-page">
+  <view wx:if="{{sportsAppId && isBound}}" class="sports-bridge-panel">
+    <view class="sports-bridge-title">独立运动服务已开放</view>
+    <view class="sports-bridge-copy">关联当前运动账号，在新小程序设置步数和观看广告。账号与会员状态自动共用。</view>
+    <button wx:if="{{!sportsHandoffReady}}" bindtap="prepareSportsApp" loading="{{sportsHandoffLoading}}" disabled="{{sportsHandoffLoading}}">准备关联账号</button>
+    <button wx:else bindtap="openSportsApp">确认关联并前往运动服务</button>
+    <view wx:if="{{sportsHandoffError}}" class="sports-bridge-error">{{sportsHandoffError}}</view>
+  </view>
   <view wx:if="{{accountFeaturesEnabled}}" class="account-panel anim-up" aria-label="运动账号信息">
     <view class="account-emblem" aria-hidden="true"><view class="emblem-line"></view></view>
     <view class="account-summary">
@@ -16,14 +23,20 @@
       aria-label="{{isBound ? '运动账号已绑定' : '绑定运动账号'}}"
       bindtap="handleBindTap"
       loading="{{binding}}"
-      disabled="{{binding}}"
+      disabled="{{binding || unbinding}}"
     >
       <view wx:if="{{!binding}}" class="bind-status-dot" aria-hidden="true"></view>
       <text class="bind-title">{{isBound ? '已绑定' : (binding ? '处理中' : '去绑定')}}</text>
     </button>
   </view>
 
-  <view class="chat-panel anim-up delay-1" aria-label="{{sportsEnabled ? '运动目标设置' : '手动步数目标设置'}}">
+  <view wx:if="{{isBound && accountId}}" class="unbind-panel">
+    <view class="unbind-copy">自助解绑剩余 {{selfUnbindRemaining}} / {{selfUnbindLimit}} 次</view>
+    <button wx:if="{{selfUnbindRemaining > 0}}" class="unbind-action" bindtap="handleUnbindTap" loading="{{unbinding}}" disabled="{{unbinding || binding || chatLoading || adLoading}}">解绑账号</button>
+    <button wx:else class="unbind-action" open-type="contact" show-message-card="{{true}}" send-message-title="运动账号自助解绑次数已用完，请管理员协助解绑" send-message-path="pages/sports/index">联系管理员解绑</button>
+  </view>
+
+  <view wx:if="{{sportsLegacyActionsEnabled}}" class="chat-panel anim-up delay-1" aria-label="{{sportsEnabled ? '运动目标设置' : '手动步数目标设置'}}">
     <view class="chat-header">
       <view wx:if="{{sportsEnabled}}" class="assistant-identity">
         <view class="assistant-avatar" aria-hidden="true"><view class="activity-line"></view></view>
@@ -142,12 +155,12 @@
           <view class="empty-conversation-mark" aria-hidden="true"></view>
           <view class="empty-conversation-copy">
             <view class="empty-conversation-title">告诉我你想设置的步数</view>
-            <view class="empty-conversation-text">我会先检查绑定和会员状态，成功后同步更新上方目标。</view>
+            <view class="empty-conversation-text">我会先检查绑定和会员状态。也可以输入“解绑账号”管理绑定。</view>
           </view>
         </view>
         <view wx:for="{{messages}}" wx:key="id" id="{{item.id}}" class="message-row {{item.role === 'user' ? 'is-user' : ''}}">
           <view class="message-avatar" aria-hidden="true"><view class="message-avatar-mark {{item.role === 'user' ? 'is-user' : ''}}"></view></view>
-          <view class="message-group"><view class="message-author">{{item.role === 'user' ? '你' : '运动助手'}}</view><view class="message-bubble {{item.success ? 'is-success' : ''}}">{{item.content}}</view></view>
+          <view class="message-group"><view class="message-author">{{item.role === 'user' ? '你' : '运动助手'}}</view><view class="message-bubble {{item.success ? 'is-success' : ''}}">{{item.content}}</view><button wx:if="{{item.action === 'unbind_limit'}}" class="message-contact-action" open-type="contact" show-message-card="{{true}}" send-message-title="运动账号自助解绑次数已用完，请管理员协助解绑" send-message-path="pages/sports/index">联系客服协助解绑</button></view>
         </view>
         <view wx:if="{{chatLoading}}" class="message-row">
           <view class="message-avatar" aria-hidden="true"><view class="message-avatar-mark"></view></view>
@@ -171,10 +184,10 @@
           bindfocus="handleComposerFocus"
           bindblur="handleComposerBlur"
           bindconfirm="sendChatMessage"
-          disabled="{{chatLoading}}"
+          disabled="{{chatLoading || unbinding}}"
           aria-label="输入今天运动目标"
         />
-        <button class="send-button {{!inputText || chatLoading ? 'is-disabled' : 'is-active'}}" bindtap="sendChatMessage" disabled="{{!inputText || chatLoading}}" aria-label="发送消息"><text class="send-label">发送</text></button>
+        <button class="send-button {{!inputText || chatLoading || unbinding ? 'is-disabled' : 'is-active'}}" bindtap="sendChatMessage" disabled="{{!inputText || chatLoading || unbinding}}" aria-label="发送消息"><text class="send-label">发送</text></button>
       </view>
     </view>
     </block>

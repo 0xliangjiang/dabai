@@ -392,7 +392,14 @@ export type CreateCommissionLedgerInput = {
   reason: string;
 };
 
+export type SportsLinkResult = { ok: true; userId: string } | { ok: false; reason: "invalid" | "conflict" | "identity_mismatch" };
+
 export type Repositories = {
+  sportsBridge: {
+    createHandoff(input: { tokenHash: string; userId: string; appId: string; expiresAt: Date }, now: Date): Promise<void>;
+    findIdentity(appId: string, openid: string): Promise<string | undefined>;
+    link(input: { tokenHash: string; appId: string; openid: string; unionid?: string | null; now: Date }): Promise<SportsLinkResult>;
+  };
   users: {
     findOrCreateByOpenid(
       openid: string,
@@ -427,7 +434,13 @@ export type Repositories = {
     setRebateRatio(id: string, ratio: number | null): Promise<UserRecord>;
   };
   sportsAccounts: {
+    getSelfUnbindCount(userId: string): Promise<number>;
+    selfUnbind(userId: string, accountId: string): Promise<
+      | { ok: true; account: SportsAccountRecord; used: number }
+      | { ok: false; reason: "no_account" | "changed" | "limit" }
+    >;
     findByUser(userId: string): Promise<SportsAccountRecord | undefined>;
+    initializePassword(userId: string, accountId: string, passwordCipher: string): Promise<SportsAccountRecord>;
     create(input: {
       userId: string;
       email: string;
@@ -452,9 +465,10 @@ export type Repositories = {
           | "membershipExpiresAt"
           | "lastTargetSteps"
         >
-      >
+      >,
+      expectedAccountId?: string
     ): Promise<SportsAccountRecord>;
-    claimCaptcha(userId: string, now: Date): Promise<boolean>;
+    claimCaptcha(userId: string, now: Date, expectedAccountId?: string): Promise<boolean>;
     listAdmin(options: {
       page: number;
       pageSize: number;

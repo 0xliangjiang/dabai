@@ -9,7 +9,12 @@ export type SportsChatMessage = {
 export type SportsIntent =
   | { type: "set_steps"; steps: number }
   | { type: "ask_steps" }
+  | { type: "unbind" }
   | { type: "chat"; reply: string };
+
+const UNBIND_PATTERN = /解绑|(?:解除|取消)\s*(?:(?:当前|这个|我的|运动|微信|zepp\s*life|zeeplife|小米)\s*)?(?:账号\s*)?绑定/i;
+const UNBIND_NEGATION_PATTERN = /(?:不要|不用|无需|别|不想|不需要|不能|不再|不进行|不)\s*.{0,8}(?:解绑|解除.{0,12}绑定|取消.{0,12}绑定)|取消\s*(?:此次|这次|本次)?\s*解绑/i;
+const UNBIND_QUESTION_PATTERN = /^(?:怎么|如何|怎样|为什么|什么|哪里|在哪|能不能|能否|是否|可以)|(?:解绑|解除.{0,12}绑定|取消.{0,12}绑定).*(?:次数|限制|流程|方法|影响|失败|会|后|吗|[？?])/i;
 
 const MUTATION_PATTERN =
   /(?:刷步|刷到|刷成|刷\s*(?:一|两|二|三|四|五|六|七|八|九|十|百|千|万|\d)|步数.{0,8}(?:改|调|设|设置|同步|上传)|(?:今天(?:的)?(?:运动)?目标|今日(?:运动)?目标|运动目标).{0,8}(?:设|设置|定|调整|为|到|[零〇一二两三四五六七八九十百千万\d])|目标.{0,4}(?:设|设置|定|调整)(?:为|到)?|(?:改|调|设|设置|调整|同步|上传|弄到).{0,8}(?:步数|步)|帮我.{0,8}(?:刷|改|调|设)|(?:来|搞)(?:个|到)?\s*(?:[零〇一二两三四五六七八九十百千万]|\d))/i;
@@ -21,6 +26,14 @@ const PURE_STEP_VALUE_PATTERN = /^[\s，,。.!！?？]*(?:\d[\d,]*(?:\.\d+)?\s*(
 export function recognizeSportsIntent(input: string, history: SportsChatMessage[] = []): SportsIntent {
   const text = normalizeText(input);
   if (!text) return { type: "chat", reply: "告诉我今天的运动目标，例如“今天运动目标 20000 步”。" };
+
+  if (UNBIND_PATTERN.test(text)) {
+    if (UNBIND_NEGATION_PATTERN.test(text)) return { type: "chat", reply: "好的，保持当前账号绑定，不进行解绑。" };
+    if (UNBIND_QUESTION_PATTERN.test(text)) return {
+      type: "chat", reply: "你可以说“解绑账号”或点击账号下方的解绑入口，确认后删除旧账号资料，下次注册新账号，会员有效期保留。累计自助解绑最多 3 次，用完后请联系客服，由管理员解绑。"
+    };
+    return { type: "unbind" };
+  }
 
   if (NEGATED_MUTATION_PATTERN.test(text)) {
     return { type: "chat", reply: "好的，本次不会设置今天的运动目标。" };

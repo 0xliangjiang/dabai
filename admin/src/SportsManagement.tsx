@@ -72,11 +72,11 @@ export function SportsUserManager({ adminToken }: { adminToken: string }) {
 
   async function unbind(user: SportsUser) {
     const label = user.nickname || user.account?.email || user.openid.slice(0, 8);
-    if (!window.confirm(`确认解除「${label}」的 Zepp Life 绑定？\n\n用户需要重新扫码绑定；账号资料和会员有效期会保留。`)) return;
+    if (!window.confirm(`确认解除「${label}」的 Zepp Life 绑定并删除旧账号资料？\n\n再次绑定将创建全新的 Zepp Life 账号，不再复用旧账号；会员有效期保留。`)) return;
     setUnbindingId(user.id);
     try {
       await fetchAdminApi(`/api/admin/sports/users/${user.id}/unbind`, adminToken, { method: "POST", body: "{}" });
-      toast("已解除绑定，用户可重新发起扫码绑定");
+      toast("旧账号资料已删除，再次绑定将创建新账号，会员有效期保留");
       await load(page);
     } catch {
       toast("解绑失败，请稍后重试", "error");
@@ -117,7 +117,7 @@ export function SportsUserManager({ adminToken }: { adminToken: string }) {
                   <div className="min-w-0"><div className="truncate font-medium text-slate-800">{user.nickname || "未设置昵称"}</div><div className="mt-0.5 max-w-52 truncate font-mono text-[11px] text-slate-400">{user.openid}</div></div>
                 </div>
               </TableCell>
-              <TableCell className="font-mono text-xs">{user.account?.email || "—"}</TableCell>
+              <TableCell className="font-mono text-xs">{user.account?.status === "awaiting_registration" ? "待重新注册" : user.account?.email || "—"}</TableCell>
               <TableCell><BindingBadge account={user.account} /></TableCell>
               <TableCell>{user.account?.membershipExpiresAt ? <div><span className={`tabular-nums ${expired ? "text-rose-600" : "text-slate-700"}`}>{formatDate(user.account.membershipExpiresAt)}</span><div className="mt-0.5 text-[11px] text-slate-400">{expired ? "已到期" : remainingDays(user.account.membershipExpiresAt)}</div></div> : <span className="text-slate-400">—</span>}</TableCell>
               <TableCell className="text-right font-semibold tabular-nums">{user.todayTargetSteps === null ? <span className="font-normal text-slate-400">未设置</span> : `${user.todayTargetSteps.toLocaleString("zh-CN")} 步`}</TableCell>

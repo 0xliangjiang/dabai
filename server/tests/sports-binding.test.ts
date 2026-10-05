@@ -67,7 +67,7 @@ class MockZeppClient implements ZeppClient {
     this.registerCalls += 1;
   }
 
-  async login() {
+  async login(_email?: string) {
     return { userId: "zepp-user-1", loginToken: "login-token", appToken: "app-token" };
   }
 
@@ -288,7 +288,7 @@ describe("sports account binding", () => {
     });
 
     const pending = await repositories.sportsAccounts.findByUser("user-sports-1");
-    expect(pending?.email).toMatch(/^[a-z0-9]{10}@gmail\.com$/);
+    expect(pending?.email).toMatch(/^[a-f0-9]{40}@gmail\.com$/);
     expect(pending?.passwordCipher).not.toContain("a7b9");
     expect(decryptCredential(pending!.passwordCipher, credentialKey)).toMatch(/^[a-z]{12}$/);
     expect(decryptCredential(pending!.loginTokenCipher!, credentialKey)).toBe("login-token");
@@ -647,5 +647,93 @@ describe("sports account binding", () => {
     expect(unbound.json()).toMatchObject({ ok: true, account: { bindStatus: "unbound" } });
     const preserved = await repositories.sportsAccounts.findByUser(userId);
     expect(preserved?.membershipExpiresAt).toEqual(after?.membershipExpiresAt);
+    expect(preserved?.id).not.toBe(after?.id);
+    expect(preserved?.email).not.toBe(after?.email);
+    expect(preserved).toMatchObject({
+      passwordCipher: "", zeppUserId: null, loginTokenCipher: null, appTokenCipher: null,
+      captchaKey: null, captchaExpiresAt: null, status: "awaiting_registration", lastTargetSteps: null
+    });
+    const view = await app.inject({ method: "GET", url: "/api/sports/account", headers: userHeaders });
+    expect(view.json()).toMatchObject({ isBound: false, account: null, membershipExpiresAt: after!.membershipExpiresAt!.toISOString() });
+    const staleRefresh = await app.inject({ method: "POST", url: "/api/sports/bind/refresh", headers: userHeaders });
+    expect(staleRefresh.statusCode).toBe(409);
+    const repeatedUnbind = await app.inject({ method: "POST", url: `/api/admin/sports/users/${userId}/unbind`, headers: adminHeaders });
+    expect(repeatedUnbind.statusCode).toBe(200);
+    expect((await repositories.sportsAccounts.findByUser(userId))?.id).toBe(preserved!.id);
+  });
+
+  test("rebinds with fresh credentials and a fresh Zepp identity while preserving permanent membership", async () => {
+    class FreshIdentityClient extends MockZeppClient {
+      emails: string[] = [];
+      stepEmails: string[] = [];
+      override async login(email?: string) {
+        this.emails.push(email!);
+        return { userId: `zepp-user-${this.emails.length}`, loginToken: `login-${this.emails.length}`, appToken: `app-${this.emails.length}` };
+      }
+      override async getBindTicket(userId: string) { return `ticket-${userId}`; }
+      override async updateSteps(input: { email: string; password: string; steps: number }) {
+        this.stepEmails.push(input.email);
+        return super.updateSteps(input);
+      }
+    }
+    const repositories = createRepositories();
+    const user = await repositories.users.findOrCreateByOpenid("fresh-zepp-rebind");
+    const client = new FreshIdentityClient();
+    const app = await createApp({ config: testConfig, repositories, zeppClient: client, sportsQrEncoder: async ticket => ticket });
+    apps.push(app);
+    const headers = { authorization: `Bearer local_${user.id}` };
+    expect((await app.inject({ method: "POST", url: "/api/sports/bind/start", headers })).statusCode).toBe(200);
+    client.bound = true;
+    await app.inject({ method: "POST", url: "/api/sports/bind/refresh", headers });
+    const expiry = new Date("9999-12-31T23:59:59.999Z");
+    const old = await repositories.sportsAccounts.update(user.id, { membershipExpiresAt: expiry });
+    await app.inject({ method: "POST", url: `/api/admin/sports/users/${user.id}/unbind`, headers: { "x-admin-token": testConfig.adminToken } });
+    client.bound = false;
+    const again = await app.inject({ method: "POST", url: "/api/sports/bind/start", headers });
+    expect(again.statusCode).toBe(200);
+    expect(again.json()).toMatchObject({ action: "scan", qrcodeImage: "ticket-zepp-user-2" });
+    const next = (await repositories.sportsAccounts.findByUser(user.id))!;
+    expect(next.email).not.toBe(old.email);
+    expect(decryptCredential(next.passwordCipher, credentialKey)).not.toBe(decryptCredential(old.passwordCipher, credentialKey));
+    expect(next.zeppUserId).not.toBe(old.zeppUserId);
+    expect(next.membershipExpiresAt).toEqual(expiry);
+    expect(client.registerCalls).toBe(2);
+    client.bound = true;
+    await app.inject({ method: "POST", url: "/api/sports/bind/refresh", headers });
+    const steps = await app.inject({ method: "POST", url: "/api/sports/chat", headers, payload: { message: "刷 12345 步", history: [] } });
+    expect(steps.json()).toMatchObject({ success: true, action: "steps_updated" });
+    expect(client.stepEmails).toEqual([next.email]);
+  });
+
+  test("a registration completing after unbind cannot restore old credentials", async () => {
+    const repositories = createRepositories();
+    const user = await repositories.users.findOrCreateByOpenid("unbind-inflight-registration");
+    let entered!: () => void;
+    const loginEntered = new Promise<void>(resolve => { entered = resolve; });
+    let release!: () => void;
+    const loginReleased = new Promise<void>(resolve => { release = resolve; });
+    class SlowLogin extends MockZeppClient {
+      override async login() { entered(); await loginReleased; return super.login(); }
+    }
+    const app = await createApp({ config: testConfig, repositories, zeppClient: new SlowLogin() });
+    apps.push(app);
+    const headers = { authorization: `Bearer local_${user.id}` };
+    const pending = app.inject({ method: "POST", url: "/api/sports/bind/start", headers });
+    await loginEntered;
+    const before = (await repositories.sportsAccounts.findByUser(user.id))!;
+    await app.inject({ method: "POST", url: `/api/admin/sports/users/${user.id}/unbind`, headers: { "x-admin-token": testConfig.adminToken } });
+    release();
+    expect((await pending).statusCode).toBe(409);
+    const next = (await repositories.sportsAccounts.findByUser(user.id))!;
+    expect(next.id).not.toBe(before.id);
+    expect(next).toMatchObject({ status: "awaiting_registration", zeppUserId: null, passwordCipher: "", loginTokenCipher: null });
+    await expect(repositories.sportsAccounts.update(user.id, { zeppUserId: "stale" }, before.id)).rejects.toThrow("已解绑或更换");
+    expect(await repositories.sportsAccounts.claimCaptcha(user.id, new Date(), before.id)).toBe(false);
+    await expect(repositories.sportsAccounts.initializePassword(user.id, before.id, "stale-password")).rejects.toThrow("已解绑或更换");
+    const initialized = await Promise.all([
+      repositories.sportsAccounts.initializePassword(user.id, next.id, "new-password-1"),
+      repositories.sportsAccounts.initializePassword(user.id, next.id, "new-password-2")
+    ]);
+    expect(initialized[0]!.passwordCipher).toBe(initialized[1]!.passwordCipher);
   });
 });

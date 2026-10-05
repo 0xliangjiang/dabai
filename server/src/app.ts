@@ -1,3 +1,5 @@
+import { verifySportsToken } from "./auth/sports-token.js";
+import { registerSportsAppRoutes, sportsAppConfigured, legacySportsActionsEnabled } from "./routes/sports-app.js";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
@@ -36,6 +38,7 @@ import { registerSportsRoutes, type QrEncoder } from "./routes/sports.js";
 declare module "fastify" {
   interface FastifyRequest {
     userId: string;
+    sportsAppId: string;
   }
   interface FastifyInstance {
     deps: {
@@ -139,12 +142,15 @@ export async function createApp(options: CreateAppOptions = {}) {
   });
 
   app.decorateRequest("userId", "");
+  app.decorateRequest("sportsAppId", "");
   app.decorate("deps", { config, repositories, getConfig, buildTaobaoClient, buildOrderClients });
 
   app.addHook("preHandler", async (request, reply) => {
     if (
       request.url === "/health" ||
       request.url === "/api/auth/wechat-login" ||
+      request.url.split("?")[0] === "/api/sports-app/login" ||
+      request.url.split("?")[0] === "/api/sports-app/config" ||
       request.url === "/api/app-config" ||
       request.url === "/api/client-events"
     ) {
@@ -175,13 +181,21 @@ export async function createApp(options: CreateAppOptions = {}) {
     }
 
     const token = authorization.slice("Bearer ".length).trim();
-    const userId = resolveUserId(token, config);
+    const sportsSession = verifySportsToken(token, config.authTokenSecret);
+    if (sportsSession) {
+      if (!sportsAppConfigured(config) || sportsSession.appId !== config.sportsAppId) return reply.code(401).send({ error: "运动登录已失效" });
+      const allowed = new Set(["GET /api/sports/account", "POST /api/sports/chat", "POST /api/sports/ad/reward", "POST /api/sports/access-code/redeem"]);
+      if (!allowed.has(`${request.method} ${request.url.split("?")[0]}`)) return reply.code(403).send({ error: "运动小程序无权访问此功能" });
+      request.sportsAppId = sportsSession.appId;
+    }
+    const userId = sportsSession?.userId ?? resolveUserId(token, config);
     if (!userId) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
     // 删除是软删除：用户带 token 回访时自动复活，重新可被后台管理（封禁才是真正拉黑）
     const user = await repositories.users.getOrReviveById(userId);
+    if (sportsSession && !user) return reply.code(401).send({ error: "登录已失效" });
     if (user && user.status === "banned") {
       return reply.code(403).send({ error: "账号已被禁用，请联系客服" });
     }
@@ -197,6 +211,8 @@ export async function createApp(options: CreateAppOptions = {}) {
     referralEnabled: await repositories.settings.getReferralEnabled(),
     ordersTabEnabled: await repositories.settings.getOrdersTabEnabled(),
     sportsEnabled: await repositories.settings.getSportsEnabled(),
+    sportsLegacyActionsEnabled: legacySportsActionsEnabled(config),
+    sportsApp: sportsAppConfigured(config) ? { appId: config.sportsAppId } : null,
     sportsInviteRewardDays: positiveDays(config.sportsInviteRewardDays, 3),
     sportsRewardedVideoAdUnitId: config.sportsRewardedVideoAdUnitId?.trim() || "",
     sportsVirtualPaymentProducts: virtualPaymentConfigured(config)
@@ -207,6 +223,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   }));
 
   await registerAuthRoutes(app, repositories, config, options.wechatAuthFetch);
+  await registerSportsAppRoutes(app, repositories, config, options.wechatAuthFetch);
   await registerClientEventRoutes(app);
   await registerSportsRoutes(
     app,

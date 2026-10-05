@@ -1,5 +1,6 @@
 import { extendSportsMembership, PERMANENT_MEMBERSHIP_EXPIRY } from "../domain/sports-membership.js";
 import { randomUUID } from "node:crypto";
+import { replacementSportsAccountData, SPORTS_SELF_UNBIND_LIMIT, SportsAccountChangedError } from "../domain/sports-account.js";
 import { resolveEffectiveStatus } from "../domain/order-status.js";
 import type {
   AdminUserRecord,
@@ -38,9 +39,19 @@ const REFERRAL_RATIO_KEY = "referral_commission_ratio";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
 
 export function createRepositories(): Repositories {
+  const handoffs = new Map<string, { userId: string; appId: string; expiresAt: Date; consumedAt?: Date }>();
+  const identities = new Map<string, string>();
   const users = new Map<string, UserRecord>();
   const usersByOpenid = new Map<string, string>();
   const sportsAccounts = new Map<string, SportsAccountRecord>();
+  const selfUnbindCounts = new Map<string, number>();
+  function replaceSportsAccount(current: SportsAccountRecord) {
+    const now = new Date();
+    const replacement = { ...replacementSportsAccountData(current), id: randomUUID(), createdAt: now, updatedAt: now };
+    sportsAccounts.delete(current.userId);
+    sportsAccounts.set(current.userId, replacement);
+    return replacement;
+  }
   const sportsDailyTargets = new Map<string, SportsDailyTargetRecord>();
   const sportsAccessCodes = new Map<string, SportsAccessCodeRecord>();
   const sportsAdGrants = new Map<string, SportsAdGrantRecord>();
@@ -72,6 +83,26 @@ export function createRepositories(): Repositories {
   let syncLease: { owner: string; leaseUntil: number } | null = null;
 
   return {
+    sportsBridge: {
+      async createHandoff(input, now) {
+        for (const [hash, ticket] of handoffs) if (ticket.expiresAt <= now) handoffs.delete(hash);
+        handoffs.set(input.tokenHash, { ...input });
+      },
+      async findIdentity(appId, openid) { return identities.get(`${appId}:${openid}`); },
+      async link(input) {
+        const ticket = handoffs.get(input.tokenHash);
+        if (!ticket || ticket.appId !== input.appId || ticket.expiresAt <= input.now || ticket.consumedAt) return { ok: false, reason: "invalid" };
+        const user = users.get(ticket.userId);
+        if (!user || deletedUserIds.has(user.id) || user.status === "banned") return { ok: false, reason: "invalid" };
+        if (input.unionid && user.unionid && input.unionid !== user.unionid) return { ok: false, reason: "identity_mismatch" };
+        const key = `${input.appId}:${input.openid}`;
+        const owner = identities.get(key);
+        if ((owner && owner !== user.id) || [...identities.entries()].some(([k,v]) => k.startsWith(`${input.appId}:`) && v === user.id && k !== key)) return { ok: false, reason: "conflict" };
+        identities.set(key, user.id);
+        ticket.consumedAt = input.now;
+        return { ok: true, userId: user.id };
+      }
+    },
     users: {
       async findOrCreateByOpenid(
         openid: string,
@@ -272,6 +303,27 @@ export function createRepositories(): Repositories {
       }
     },
     sportsAccounts: {
+      async getSelfUnbindCount(userId) { return selfUnbindCounts.get(userId) ?? 0; },
+      async selfUnbind(userId, accountId) {
+        const current = sportsAccounts.get(userId);
+        const user = users.get(userId);
+        if (!user || user.status === "banned" || deletedUserIds.has(userId) || !current) return { ok: false, reason: "no_account" };
+        if (current.id !== accountId) return { ok: false, reason: "changed" };
+        if (current.bindStatus !== "bound" || !current.zeppUserId) return { ok: false, reason: "no_account" };
+        const used = selfUnbindCounts.get(userId) ?? 0;
+        if (used >= SPORTS_SELF_UNBIND_LIMIT) return { ok: false, reason: "limit" };
+        const account = replaceSportsAccount(current);
+        selfUnbindCounts.set(userId, used + 1);
+        return { ok: true, account, used: used + 1 };
+      },
+      async initializePassword(userId, accountId, passwordCipher) {
+        const current = sportsAccounts.get(userId);
+        if (current?.id !== accountId) throw new SportsAccountChangedError();
+        if (current.passwordCipher) return current;
+        const updated = { ...current, passwordCipher, updatedAt: new Date() };
+        sportsAccounts.set(userId, updated);
+        return updated;
+      },
       async findByUser(userId: string) {
         return sportsAccounts.get(userId);
       },
@@ -300,17 +352,19 @@ export function createRepositories(): Repositories {
         sportsAccounts.set(input.userId, record);
         return record;
       },
-      async update(userId, input) {
+      async update(userId, input, expectedAccountId) {
         const current = sportsAccounts.get(userId);
+        if (expectedAccountId && current?.id !== expectedAccountId) throw new SportsAccountChangedError();
         if (!current) throw new Error(`sports account not found: ${userId}`);
         const updated = { ...current, ...input, updatedAt: new Date() };
         sportsAccounts.set(userId, updated);
         return updated;
       },
-      async claimCaptcha(userId, now) {
+      async claimCaptcha(userId, now, expectedAccountId) {
         const current = sportsAccounts.get(userId);
         if (
           !current ||
+          (expectedAccountId !== undefined && current.id !== expectedAccountId) ||
           current.status !== "awaiting_captcha" ||
           !current.captchaKey ||
           !current.captchaExpiresAt ||
@@ -361,9 +415,9 @@ export function createRepositories(): Repositories {
       async adminUnbind(userId) {
         const current = sportsAccounts.get(userId);
         if (!current) return undefined;
-        const updated = { ...current, bindStatus: "unbound", status: "registered", updatedAt: new Date() };
-        sportsAccounts.set(userId, updated);
-        return updated;
+        if (current.status === "awaiting_registration") return current;
+        // 删除旧身份，保留会员权益。新身份必须重新注册，不能复用旧二维码。
+        return replaceSportsAccount(current);
       }
     },
     sportsDailyTargets: {

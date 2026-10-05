@@ -42,6 +42,10 @@ export type AppConfig = {
   zeppSpoofIp?: boolean;
   zeppCaptchaRetryTimes?: number;
   zeppCaptchaOcrCommand?: string;
+  sportsLegacyActionsEnabled?: boolean;
+  sportsAppId?: string;
+  sportsAppSecret?: string;
+  sportsAppRewardedVideoAdUnitId?: string;
   sportsTrialDays?: number;
   sportsInviteRewardDays?: number;
   sportsRewardedVideoAdUnitId?: string;
@@ -114,6 +118,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     zeppSpoofIp: booleanEnv(env.ZEPP_SPOOF_IP, true),
     zeppCaptchaRetryTimes: Number(env.CAPTCHA_RETRY_TIMES ?? 5),
     zeppCaptchaOcrCommand: env.ZEPP_CAPTCHA_OCR_COMMAND ?? "python3",
+    sportsLegacyActionsEnabled: env.SPORTS_LEGACY_ACTIONS_ENABLED !== "false",
+    sportsAppId: env.SPORTS_APP_ID ?? "",
+    sportsAppSecret: env.SPORTS_APP_SECRET ?? "",
+    sportsAppRewardedVideoAdUnitId: env.SPORTS_APP_REWARDED_VIDEO_AD_UNIT_ID ?? "",
     sportsTrialDays: Number(env.SPORTS_TRIAL_DAYS ?? 3),
     sportsInviteRewardDays: Number(env.SPORTS_INVITE_REWARD_DAYS ?? 3),
     sportsRewardedVideoAdUnitId: env.SPORTS_REWARDED_VIDEO_AD_UNIT_ID ?? "",

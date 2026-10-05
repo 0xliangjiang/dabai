@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
-const root = path.resolve("miniprogram");
+const root = path.resolve(process.argv[2] || "miniprogram");
 const files = walk(root);
 const jsFiles = files.filter((file) => file.endsWith(".js"));
 const jsonFiles = files.filter((file) => file.endsWith(".json"));
