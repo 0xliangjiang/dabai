@@ -29,7 +29,7 @@ describe("sports mini-program client", () => {
       expect(definition.data.result).toBe(""); expect(definition.data.error).toContain("整数");
     }
     definition.data.stepsInput = "20000"; await definition.submitSteps();
-    expect(definition.data.todaySteps).toBe(20000); expect(definition.data.result).toContain("未修改微信运动");
+    expect(definition.data.todaySteps).toBe(20000); expect(definition.data.result).toContain("不修改真实账号数据");
     expect(definition.data.grantToken).toBe("unused-real-grant");
     await definition.watchAd(); await definition.redeemCode();
     expect(api.request).not.toHaveBeenCalled();

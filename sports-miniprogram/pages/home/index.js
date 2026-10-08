@@ -61,9 +61,9 @@ Page({
   async submitSteps() {
     if (this.data.busy) return;
     const steps = Number(this.data.stepsInput);
-    if (!Number.isInteger(steps) || steps < 1 || steps > 98800) { this.setData({ error: "请输入 1–98,800 之间的整数" }); return; }
+    if (!Number.isInteger(steps) || steps < 1 || steps > 98800) { this.setData({ error: this.data.previewMode ? "请输入有效的整数目标（1–98,800）" : "请输入 1–98,800 之间的整数" }); return; }
     if (this.data.previewMode) {
-      this.setData({ todaySteps: steps, error: "", result: `演示提交成功：${steps} 步。仅演示操作流程，未修改微信运动或任何账号的真实步数。` });
+      this.setData({ todaySteps: steps, error: "", result: `演示提交成功：目标 ${steps}。仅在当前页面展示，不修改真实账号数据。` });
       return;
     }
     if (this.data.expired && !this.data.grantToken) { this.setData({ error: "请先观看广告解锁一次，或使用卡密延期" }); return; }
