@@ -1,19 +1,22 @@
 const api = require("../../utils/api");
 const goals = require("../../utils/goals");
 Page({
-  data: { loading: true, linked: false, previewMode: false, previewAvailable: false, goalInput: "", busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
-  onShow() { this.reload(); },
+  data: { loading: true, configReady: false, linked: false, previewMode: false, previewAvailable: false, goalInput: "", busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
+  onLoad(options) { this.accountMode = Boolean(options && options.mode === "account"); },
+  onShow() {
+    const state = getApp().globalData;
+    if (state.accountEntryRequested) { state.accountEntryRequested = false; this.accountMode = true; }
+    this.reload();
+  },
   onUnload() { if (this.rewardedAd) this.rewardedAd.destroy(); },
-  async reload(forceAccount = false) {
+  async reload() {
     if (this.reloading || this.data.busy) return;
     this.reloading = true;
-    let pendingHandoff = false;
-    this.setData({ loading: true, error: "" });
+    this.setData({ loading: true, configReady: false, error: "" });
     try {
       const config = await api.getConfig();
-      this.setData({ sourceAppId: config.sourceAppId, enabled: config.enabled && config.sportsEnabled, previewAvailable: config.previewEnabled === true, adUnitId: config.rewardedVideoAdUnitId || "" });
-      pendingHandoff = api.hasPendingHandoff();
-      if (this.data.previewAvailable && forceAccount !== true && !this.forceAccount && !pendingHandoff && (this.data.previewMode || !api.hasLoginContext())) {
+      this.setData({ configReady: true, sourceAppId: config.sourceAppId, enabled: config.enabled && config.sportsEnabled, previewAvailable: config.previewEnabled === true, adUnitId: config.rewardedVideoAdUnitId || "" });
+      if (this.data.previewAvailable && !this.accountMode) {
         this.enterPublicGoal();
         return;
       }
@@ -23,12 +26,11 @@ Page({
       await this.loadAccount();
       this.setData({ linked: true });
     } catch (error) {
-      if (error.code === "LINK_REQUIRED" && this.data.previewAvailable && forceAccount !== true && !this.forceAccount && !pendingHandoff) this.enterPublicGoal();
-      else this.setData({ linked: false, previewMode: false, error: error.error || error.errMsg || "连接失败，请重试" });
+      this.setData({ linked: false, previewMode: false, error: error.error || error.errMsg || "连接失败，请重试" });
     } finally { this.reloading = false; this.setData({ loading: false }); }
   },
   enterPublicGoal() { this.setData({ previewMode: true, linked: false, result: "", stepsInput: "", todaySteps: "", bindingCode: "", error: "" }); },
-  useLinkedAccount() { this.forceAccount = true; return this.reload(true); },
+  useLinkedAccount() { return this.reload(); },
   inputGoal(event) { this.setData({ goalInput: event.detail.value, error: "", result: "" }); },
   submitGoal() {
     if (!this.data.previewMode || this.data.busy) return;

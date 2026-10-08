@@ -8,7 +8,7 @@ function harness() {
   const storage = new Map<string, any>();
   const wx = { getStorageSync: vi.fn((key: string) => storage.get(key)), setStorageSync: vi.fn((key: string, value: any) => storage.set(key, JSON.parse(JSON.stringify(value)))),
     showToast: vi.fn(), showModal: vi.fn(), navigateTo: vi.fn(), login: vi.fn(), request: vi.fn() };
-  const app = { globalData: { pendingTicket: "" } };
+  const app = { globalData: { pendingTicket: "", accountEntryRequested: false } };
   const requireModule = (file: string): any => {
     const module = { exports: {} };
     runInNewContext(read(file), { module, wx });
@@ -37,9 +37,27 @@ describe("public toolbox", () => {
     expect(read("pages/toolbox/index.wxml")).toContain('/pages/home/index');
   });
   test("an incoming handoff still opens the original sports route once while navigating", () => {
-    const h = harness(); h.app.globalData.pendingTicket = "a".repeat(64);
+    const h = harness(); h.app.globalData.pendingTicket = "a".repeat(64); h.app.globalData.accountEntryRequested = true;
     const page = h.page("toolbox"); page.onShow(); page.onShow();
-    expect(h.wx.navigateTo).toHaveBeenCalledTimes(1); expect(h.wx.navigateTo.mock.calls[0][0].url).toBe("/pages/home/index");
+    expect(h.wx.navigateTo).toHaveBeenCalledTimes(1); expect(h.wx.navigateTo.mock.calls[0][0].url).toBe("/pages/home/index?mode=account");
+  });
+  test("an old unconsumed ticket never redirects a normal toolbox visit to association", () => {
+    const h = harness(); h.app.globalData.pendingTicket = "a".repeat(64);
+    h.page("toolbox").onShow(); expect(h.wx.navigateTo).not.toHaveBeenCalled();
+    expect(h.app.globalData.pendingTicket).toBe("a".repeat(64));
+  });
+  test("only a fresh handoff from the configured original app requests a real-service entry", () => {
+    let app: any;
+    runInNewContext(read("app.js"), { App: (value: any) => { app = value; }, require: () => ({ sourceAppId: "trusted-source" }) });
+    app.onShow({ referrerInfo: { appId: "trusted-source", extraData: { ticket: "a".repeat(64) } } });
+    expect(app.globalData).toMatchObject({ pendingTicket: "a".repeat(64), accountEntryRequested: true });
+    app.onShow({ referrerInfo: { appId: "trusted-source", extraData: { ticket: "a".repeat(64) } } });
+    expect(app.globalData.accountEntryRequested).toBe(false);
+    app.onShow({}); expect(app.globalData).toMatchObject({ pendingTicket: "a".repeat(64), accountEntryRequested: false });
+    app.onShow({ referrerInfo: { appId: "another-app", extraData: { ticket: "b".repeat(64) } } });
+    expect(app.globalData).toMatchObject({ pendingTicket: "a".repeat(64), accountEntryRequested: false });
+    app.onShow({ referrerInfo: { appId: "trusted-source", extraData: { ticket: "invalid-ticket" } } });
+    expect(app.globalData.accountEntryRequested).toBe(false);
   });
   test("goals survive a new page instance, editing and completion", () => {
     const h = harness(); let page = h.page("goals"); page.onShow();

@@ -12,13 +12,14 @@ function sportsPage(previewEnabled = true) {
     ensureLogin: vi.fn(async (): Promise<void> => { throw { code: "LINK_REQUIRED", error: "请先关联账号" }; }),
     request: vi.fn(async () => ({ isBound: true, todayTargetSteps: 12345, membershipExpiresAt: "9999-12-31T23:59:59.999Z" }))
   };
+  const app = { globalData: { accountEntryRequested: false } };
   const storage = new Map();
   const wx = { getStorageSync: (key: string) => storage.get(key), setStorageSync: (key: string, value: any) => storage.set(key, JSON.parse(JSON.stringify(value))) };
   const module = { exports: {} as any };
   runInNewContext(read("utils/goals.js"), { module, wx });
-  runInNewContext(read("pages/home/index.js"), { Page: (value: any) => { definition = value; }, require: (name: string) => name.endsWith("goals") ? module.exports : api, wx });
+  runInNewContext(read("pages/home/index.js"), { Page: (value: any) => { definition = value; }, require: (name: string) => name.endsWith("goals") ? module.exports : api, wx, getApp: () => app });
   definition.setData = (data: any) => Object.assign(definition.data, data);
-  return { definition, api, storage, goals: module.exports };
+  return { definition, api, storage, goals: module.exports, app };
 }
 
 describe("sports mini-program client", () => {
@@ -44,11 +45,13 @@ describe("sports mini-program client", () => {
     await definition.submitSteps(); await definition.watchAd(); await definition.redeemCode();
     expect(api.request).not.toHaveBeenCalled(); expect(definition.data.grantToken).toBe("existing-grant");
   });
-  test("an unlinked cached login can use public goals but a pending handoff cannot silently fall back", async () => {
-    const { definition, api } = sportsPage(true); api.hasLoginContext.mockReturnValue(true);
-    await definition.reload(); expect(definition.data.previewMode).toBe(true);
-    api.hasPendingHandoff.mockReturnValue(true); await definition.reload();
-    expect(definition.data).toMatchObject({ previewMode: false, linked: false, error: "请先关联账号" });
+  test.each(["cached login", "pending handoff"])("public flag takes priority over %s on a normal entry without consuming credentials", async context => {
+    const { definition, api } = sportsPage(true);
+    api.hasLoginContext.mockReturnValue(true);
+    if (context === "pending handoff") api.hasPendingHandoff.mockReturnValue(true);
+    await definition.reload();
+    expect(definition.data).toMatchObject({ previewMode: true, linked: false, error: "" });
+    expect(api.ensureLogin).not.toHaveBeenCalled(); expect(api.request).not.toHaveBeenCalled();
   });
   test("local storage failure never claims success and preserves goal text", async () => {
     const { definition, api, goals } = sportsPage(true); await definition.reload();
@@ -59,7 +62,8 @@ describe("sports mini-program client", () => {
   });
   test("explicit account service requires association even with public experience enabled", async () => {
     const { definition, api } = sportsPage(true); await definition.reload();
-    await definition.useLinkedAccount();
+    definition.onLoad({ mode: "account" });
+    await definition.reload();
     expect(api.ensureLogin).toHaveBeenCalledTimes(1);
     expect(definition.data).toMatchObject({ previewMode: false, linked: false, error: "请先关联账号" });
   });
@@ -71,8 +75,9 @@ describe("sports mini-program client", () => {
     expect(definition.data).toMatchObject({ previewMode: false, previewAvailable: false, linked: false, result: "", goalInput: "" });
     expect(api.ensureLogin).toHaveBeenCalledTimes(1); expect(goals.readGoals()[0].title).toBe("整理书架");
   });
-  test.each(["session", "handoff"])("existing %s retains the real account path", async context => {
+  test.each(["session", "handoff"])("explicit real-service entry retains the existing %s account path", async context => {
     const { definition, api } = sportsPage();
+    definition.onLoad({ mode: "account" });
     api.hasLoginContext.mockReturnValue(true);
     api.ensureLogin.mockImplementation(async () => {});
     if (context === "handoff") api.hasPendingHandoff.mockReturnValue(true);
@@ -84,8 +89,28 @@ describe("sports mini-program client", () => {
     const { definition, api } = sportsPage();
     api.getConfig.mockRejectedValue({ errMsg: "request:fail url not in domain list" });
     await definition.reload();
-    expect(definition.data.linked).toBe(false); expect(definition.data.error).toContain("domain list");
+    expect(definition.data.linked).toBe(false); expect(definition.data.configReady).toBe(false); expect(definition.data.error).toContain("domain list");
     expect(api.ensureLogin).not.toHaveBeenCalled(); expect(api.request).not.toHaveBeenCalled();
+  });
+  test("a fresh original-app launch into the legacy home route retains real account linking", async () => {
+    const { definition, api, app } = sportsPage(true);
+    app.globalData.accountEntryRequested = true; api.ensureLogin.mockImplementation(async () => {});
+    definition.onLoad({}); definition.onShow();
+    await vi.waitFor(() => expect(definition.data.loading).toBe(false));
+    expect(definition.data).toMatchObject({ previewMode: false, linked: true });
+    expect(app.globalData.accountEntryRequested).toBe(false);
+    expect(api.request).toHaveBeenCalledWith("/api/sports/account");
+  });
+  test("retrying association after the flag is enabled enters public goals instead of forcing login", async () => {
+    const { definition, api } = sportsPage(false);
+    await definition.reload(); expect(definition.data.linked).toBe(false);
+    api.getConfig.mockResolvedValue({ enabled: true, sportsEnabled: true, previewEnabled: true, sourceAppId: "wx1111111111111111" });
+    api.ensureLogin.mockClear();
+    await definition.useLinkedAccount();
+    expect(definition.data).toMatchObject({ previewMode: true, error: "" }); expect(api.ensureLogin).not.toHaveBeenCalled();
+    const template = read("pages/home/index.wxml");
+    expect(template.indexOf('wx:elif="{{!configReady}}"')).toBeLessThan(template.indexOf('wx:elif="{{!linked}}"'));
+    expect(template).toContain('/pages/home/index?mode=account');
   });
   test("manual linking exchanges a fresh WeChat code in the POST body and keeps it out of storage", async () => {
     const app = { globalData: { apiBaseUrl: "https://example.test", pendingTicket: "a".repeat(64) } };
