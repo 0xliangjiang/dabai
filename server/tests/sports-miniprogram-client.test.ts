@@ -4,7 +4,7 @@ import { runInNewContext } from "node:vm";
 import path from "node:path";
 const read = (file: string) => readFileSync(path.resolve("..", "sports-miniprogram", file), "utf8");
 
-function previewPage(previewEnabled = true) {
+function sportsPage(previewEnabled = true) {
   let definition: any;
   const api = {
     getConfig: vi.fn(async () => ({ enabled: true, sportsEnabled: true, previewEnabled, sourceAppId: "wx1111111111111111" })),
@@ -18,62 +18,31 @@ function previewPage(previewEnabled = true) {
 }
 
 describe("sports mini-program client", () => {
-  test("public preview opens without login, validates input and never calls real operations", async () => {
-    const { definition, api } = previewPage();
+  test.each([false, true])("sports service requires association regardless of legacy preview setting: %s", async previewEnabled => {
+    const { definition, api } = sportsPage(previewEnabled);
     await definition.reload();
-    expect(definition.data).toMatchObject({ loading: false, previewMode: true, linked: false, error: "" });
-    expect(api.ensureLogin).not.toHaveBeenCalled(); expect(api.request).not.toHaveBeenCalled();
-    definition.data.grantToken = "unused-real-grant";
-    for (const input of ["0", "98801", "1.5"]) {
-      definition.data.stepsInput = input; await definition.submitSteps();
-      expect(definition.data.result).toBe(""); expect(definition.data.error).toContain("整数");
-    }
-    definition.data.stepsInput = "20000"; await definition.submitSteps();
-    expect(definition.data.todaySteps).toBe(20000); expect(definition.data.result).toContain("不修改真实账号数据");
-    expect(definition.data.grantToken).toBe("unused-real-grant");
-    await definition.watchAd(); await definition.redeemCode();
+    expect(api.ensureLogin).toHaveBeenCalledTimes(1);
+    expect(definition.data).toMatchObject({ linked: false, loading: false, error: "请先关联账号" });
+    definition.data.stepsInput = "20000";
+    await definition.submitSteps();
     expect(api.request).not.toHaveBeenCalled();
-    expect(definition.data.result).toContain("演示提交成功");
+    expect(definition.data.error).toContain("请先关联");
   });
-  test("disabled preview keeps the normal account association requirement", async () => {
-    const { definition, api } = previewPage(false);
-    await definition.reload();
-    expect(api.ensureLogin).toHaveBeenCalledTimes(1);
-    expect(definition.data).toMatchObject({ linked: false, previewAvailable: false, previewMode: false, error: "请先关联账号" });
-    definition.enterPreview(); expect(definition.data.previewMode).toBe(false);
-  });
-  test("the explicit real-service action leaves preview and shows association guidance", async () => {
-    const { definition, api } = previewPage();
-    await definition.reload(); definition.data.stepsInput = "10000"; await definition.submitSteps();
-    await definition.useLinkedAccount();
-    expect(api.ensureLogin).toHaveBeenCalledTimes(1);
-    expect(definition.data).toMatchObject({ previewMode: false, linked: false, todaySteps: "", result: "", error: "请先关联账号" });
-  });
-  test.each(["session", "handoff"])("existing %s retains the real account path while preview is available", async context => {
-    const { definition, api } = previewPage();
+  test.each(["session", "handoff"])("existing %s retains the real account path", async context => {
+    const { definition, api } = sportsPage();
     api.hasLoginContext.mockReturnValue(true);
     api.ensureLogin.mockImplementation(async () => {});
-    if (context === "handoff") {
-      api.hasPendingHandoff.mockReturnValue(true);
-      definition.data.previewMode = true; definition.data.result = "old simulation";
-    }
+    if (context === "handoff") api.hasPendingHandoff.mockReturnValue(true);
     await definition.reload();
     expect(api.ensureLogin).toHaveBeenCalledTimes(1); expect(api.request).toHaveBeenCalledWith("/api/sports/account");
-    expect(definition.data).toMatchObject({ linked: true, previewMode: false, todaySteps: 12345, result: "" });
+    expect(definition.data).toMatchObject({ linked: true, todaySteps: 12345, result: "" });
   });
-  test("turning preview off clears simulated results on the next reload", async () => {
-    const { definition, api } = previewPage();
-    await definition.reload(); definition.data.stepsInput = "10000"; await definition.submitSteps();
-    api.getConfig.mockResolvedValue({ enabled: true, sportsEnabled: true, previewEnabled: false, sourceAppId: "wx1111111111111111" });
-    await definition.reload();
-    expect(definition.data).toMatchObject({ previewAvailable: false, previewMode: false, result: "", todaySteps: "", linked: false });
-  });
-  test("a missing request domain is reported rather than replaced by a fake success", async () => {
-    const { definition, api } = previewPage();
+  test("a missing request domain is reported and never generates a fake success", async () => {
+    const { definition, api } = sportsPage();
     api.getConfig.mockRejectedValue({ errMsg: "request:fail url not in domain list" });
     await definition.reload();
-    expect(definition.data.previewMode).toBe(false); expect(definition.data.error).toContain("domain list");
-    expect(api.ensureLogin).not.toHaveBeenCalled();
+    expect(definition.data.linked).toBe(false); expect(definition.data.error).toContain("domain list");
+    expect(api.ensureLogin).not.toHaveBeenCalled(); expect(api.request).not.toHaveBeenCalled();
   });
   test("manual linking exchanges a fresh WeChat code in the POST body and keeps it out of storage", async () => {
     const app = { globalData: { apiBaseUrl: "https://example.test", pendingTicket: "a".repeat(64) } };
@@ -159,7 +128,7 @@ describe("sports mini-program client", () => {
     let definition: any;
     const request = vi.fn(async () => ({ success: false, action: "ad_grant_invalid", reply: "请重新观看广告" }));
     runInNewContext(read("pages/home/index.js"), { Page: (d: any) => { definition = d; }, require: () => ({ request }), wx: {} });
-    definition.data = { ...definition.data, expired: true, grantToken: "expired-grant", stepsInput: "20000" };
+    definition.data = { ...definition.data, linked: true, isBound: true, enabled: true, expired: true, grantToken: "expired-grant", stepsInput: "20000" };
     definition.setData = (d: any) => Object.assign(definition.data, d);
     await definition.submitSteps();
     expect(definition.data.grantToken).toBe("");

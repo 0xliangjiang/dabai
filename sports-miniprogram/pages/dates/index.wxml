@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="hero"><view class="hero-title">日期计算</view><view class="tool-sub">计算日期间隔，或查询指定天数后的日期。</view></view>
+  <view class="card">
+    <view class="field-label">计算方式</view><picker mode="selector" range="{{modes}}" value="{{modeIndex}}" bindchange="chooseMode"><view class="tool-picker">{{modes[modeIndex]}}<text class="picker-hint">选择 ›</text></view></picker>
+    <view class="field-label">{{modeIndex === 0 ? '开始日期' : '基准日期'}}</view><picker mode="date" start="1900-01-01" end="2100-12-31" value="{{start}}" bindchange="chooseStart"><view class="tool-picker">{{start}}<text class="picker-hint">选择 ›</text></view></picker>
+    <block wx:if="{{modeIndex === 0}}"><view class="field-label">结束日期</view><picker mode="date" start="1900-01-01" end="2100-12-31" value="{{end}}" bindchange="chooseEnd"><view class="tool-picker">{{end}}<text class="picker-hint">选择 ›</text></view></picker></block>
+    <block wx:else><label class="field-label" for="days">加减天数</label><input id="days" class="tool-input" type="text" maxlength="7" value="{{daysInput}}" bindinput="inputDays" placeholder="例如：7 或 -7" confirm-type="done" bindconfirm="calculate"/><view class="tool-sub">正数向后计算，负数向前计算。</view></block>
+    <button class="primary" bindtap="calculate">计算</button><view wx:if="{{error}}" class="error" aria-role="alert">{{error}}</view>
+  </view>
+  <view wx:if="{{result}}" class="tool-result"><view class="field-label">计算结果</view><view class="result-number" selectable="true">{{result}}</view><view class="tool-sub">{{detail}}</view></view>
+  <view class="tool-sub">按公历自然日计算，相隔天数不重复计入开始日期。支持 1900–2100 年。</view>
+</view>

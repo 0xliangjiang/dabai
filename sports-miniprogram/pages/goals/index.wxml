@@ -1,0 +1,21 @@
+<view class="page">
+  <view class="hero"><view class="hero-title">目标清单</view><view class="tool-sub">把想做的事写下来，完成后勾选。</view></view>
+  <view class="card">
+    <label class="field-label" for="goal-input">{{editingId ? '编辑目标' : '添加目标'}}</label>
+    <input id="goal-input" class="tool-input" value="{{goalInput}}" maxlength="80" placeholder="例如：今晚阅读 20 分钟" bindinput="inputGoal" focus="{{focusInput}}" disabled="{{!ready}}" confirm-type="done" bindconfirm="submitGoal"/>
+    <button class="primary" bindtap="submitGoal" disabled="{{!ready}}">{{editingId ? '保存修改' : '提交'}}</button>
+    <button wx:if="{{editingId}}" bindtap="cancelEdit">取消编辑</button>
+    <view wx:if="{{error}}" class="error" aria-role="alert">{{error}}</view>
+    <button wx:if="{{!ready}}" bindtap="loadGoals">重新读取</button>
+  </view>
+  <block wx:if="{{ready}}">
+    <view class="summary">共 {{items.length}} 项，已完成 {{completed}} 项</view>
+    <view wx:if="{{!items.length}}" class="empty">还没有目标。在上方写下第一件想完成的事。</view>
+    <view wx:for="{{items}}" wx:key="id" class="goal-row">
+      <view class="goal-main"><button class="goal-toggle {{item.done ? 'goal-done' : ''}}" bindtap="toggleGoal" data-id="{{item.id}}" aria-label="{{item.done ? '标记为未完成' : '标记为已完成'}}">{{item.done ? '✓' : '○'}}</button><view class="goal-title {{item.done ? 'goal-finished' : ''}}">{{item.title}}</view></view>
+      <view class="goal-actions"><button class="goal-action" bindtap="editGoal" data-id="{{item.id}}">编辑</button><button class="goal-action goal-delete" bindtap="deleteGoal" data-id="{{item.id}}">删除</button></view>
+    </view>
+  </block>
+  <view class="tool-sub">记录仅保存在当前设备。删除小程序数据或更换设备后无法恢复。</view>
+  <navigator class="link" url="/pages/privacy/index">隐私说明</navigator>
+</view>

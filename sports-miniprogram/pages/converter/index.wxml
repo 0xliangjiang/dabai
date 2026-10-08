@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="hero"><view class="hero-title">单位换算</view><view class="tool-sub">长度与质量，选择单位后直接换算。</view></view>
+  <view class="card">
+    <view class="field-label">换算类型</view><picker mode="selector" range="{{groups}}" value="{{groupIndex}}" bindchange="chooseGroup"><view class="tool-picker">{{groups[groupIndex]}}<text class="picker-hint">选择 ›</text></view></picker>
+    <label class="field-label" for="amount">数值</label><input id="amount" class="tool-input" type="digit" maxlength="32" value="{{amount}}" bindinput="inputAmount" placeholder="例如：12.5" confirm-type="done" bindconfirm="calculate"/>
+    <view class="unit-row"><view class="unit-column"><view class="field-label">原单位</view><picker mode="selector" range="{{units}}" range-key="name" value="{{fromIndex}}" bindchange="chooseFrom"><view class="tool-picker">{{units[fromIndex].name}}</view></picker></view><view class="unit-column"><view class="field-label">目标单位</view><picker mode="selector" range="{{units}}" range-key="name" value="{{toIndex}}" bindchange="chooseTo"><view class="tool-picker">{{units[toIndex].name}}</view></picker></view></view>
+    <button bindtap="swapUnits">交换单位</button><button class="primary" bindtap="calculate">换算</button>
+    <view wx:if="{{error}}" class="error" aria-role="alert">{{error}}</view>
+  </view>
+  <view wx:if="{{result}}" class="tool-result"><view class="field-label">换算结果</view><view class="result-number" selectable="true">{{result}}</view><view class="tool-sub" selectable="true">{{equation}}</view></view>
+  <view class="tool-sub">结果最多保留 12 位有效数字，仅用于日常换算。</view>
+</view>

@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="hero"><view class="hero-title">良匠工具箱</view><view class="tool-description">把日常小事，处理得更简单。</view></view>
+  <view class="tool-list">
+    <navigator class="tool-entry" hover-class="tool-pressed" url="/pages/goals/index" aria-label="打开目标清单">
+      <view class="tool-icon">✓</view><view class="tool-copy"><view class="title">目标清单</view><view class="tool-description">记录、编辑目标，完成一项勾选一项</view></view><text class="tool-arrow">›</text>
+    </navigator>
+    <navigator class="tool-entry" hover-class="tool-pressed" url="/pages/converter/index" aria-label="打开单位换算">
+      <view class="tool-icon">⇄</view><view class="tool-copy"><view class="title">单位换算</view><view class="tool-description">长度、质量，常用单位互相换算</view></view><text class="tool-arrow">›</text>
+    </navigator>
+    <navigator class="tool-entry" hover-class="tool-pressed" url="/pages/dates/index" aria-label="打开日期计算">
+      <view class="tool-icon">日</view><view class="tool-copy"><view class="title">日期计算</view><view class="tool-description">计算相隔天数，查询指定天数后的日期</view></view><text class="tool-arrow">›</text>
+    </navigator>
+  </view>
+  <view class="tool-note">以上工具无需登录。目标记录保存在本机。</view>
+  <navigator class="service-entry" hover-class="tool-pressed" url="/pages/home/index"><view class="tool-copy"><view class="service-title">运动账号服务</view><view class="tool-description">关联账号后查看会员、提交步数目标</view></view><text class="tool-arrow">›</text></navigator>
+  <navigator class="link" url="/pages/privacy/index">隐私说明</navigator>
+</view>
