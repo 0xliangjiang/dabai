@@ -9,6 +9,5 @@
     <view wx:if="{{!previewMode && expired}}" class="card"><view class="title">解锁一次步数服务</view><view class="sub">会员已到期。完整观看一次广告后，可提交一次；失败不会消耗本次授权。</view><button wx:if="{{adUnitId}}" bindtap="watchAd" loading="{{adLoading}}" disabled="{{busy || !isBound || !enabled}}">{{grantToken ? '已解锁，请提交步数' : '观看广告，解锁一次'}}</button><view wx:else class="sub">广告服务暂未开放，可使用卡密延期。</view></view>
     <view wx:if="{{!previewMode}}" class="card"><view class="title">卡密延期</view><input class="code" value="{{accessCode}}" bindinput="inputCode" placeholder="请输入运动会员卡密" disabled="{{busy}}"/><button bindtap="redeemCode" disabled="{{busy}}">兑换卡密</button><button bindtap="openSource">返回原小程序管理账号</button></view>
   </block>
-  <button wx:if="{{!loading && previewMode}}" class="account-link" bindtap="useLinkedAccount" disabled="{{busy}}">账号关联</button>
   <navigator class="link" url="/pages/privacy/index">隐私说明</navigator>
 </view>
