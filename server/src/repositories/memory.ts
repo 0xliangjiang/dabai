@@ -35,6 +35,7 @@ const COMMISSION_RATIO_KEY = "commission_sharing_ratio";
 const EXCHANGE_ENABLED_KEY = "exchange_enabled";
 const ORDERS_TAB_ENABLED_KEY = "orders_tab_enabled";
 const SPORTS_ENABLED_KEY = "sports_enabled";
+const SPORTS_PREVIEW_ENABLED_KEY = "sports_preview_enabled";
 const REFERRAL_RATIO_KEY = "referral_commission_ratio";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
 
@@ -583,6 +584,12 @@ export function createRepositories(): Repositories {
       },
       async setSportsEnabled(enabled: boolean) {
         settingsMap.set(SPORTS_ENABLED_KEY, enabled ? "1" : "0");
+      },
+      async getSportsPreviewEnabled() {
+        return settingsMap.get(SPORTS_PREVIEW_ENABLED_KEY) === "1";
+      },
+      async setSportsPreviewEnabled(enabled: boolean) {
+        settingsMap.set(SPORTS_PREVIEW_ENABLED_KEY, enabled ? "1" : "0");
       },
       async getOverrides() {
         return Object.fromEntries(settingsMap.entries());

@@ -1,23 +1,34 @@
 const api = require("../../utils/api");
 Page({
-  data: { loading: true, linked: false, busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
+  data: { loading: true, linked: false, previewAvailable: false, previewMode: false, busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
   onShow() { this.reload(); },
   onUnload() { if (this.rewardedAd) this.rewardedAd.destroy(); },
-  async reload() {
+  async reload(forceLogin = false) {
     if (this.reloading || this.data.busy) return;
     this.reloading = true;
     this.setData({ loading: true, error: "" });
     try {
       const config = await api.getConfig();
-      this.setData({ sourceAppId: config.sourceAppId, enabled: config.enabled && config.sportsEnabled, adUnitId: config.rewardedVideoAdUnitId || "" });
+      this.setData({ sourceAppId: config.sourceAppId, enabled: config.enabled && config.sportsEnabled, previewAvailable: config.previewEnabled === true, adUnitId: config.rewardedVideoAdUnitId || "" });
       if (!config.enabled) throw { error: "运动服务暂未开放，请稍后再来" };
+      if (this.data.previewAvailable && forceLogin !== true && !api.hasPendingHandoff() && (this.data.previewMode || !api.hasLoginContext())) {
+        this.enterPreview();
+        return;
+      }
+      if (this.data.previewMode) this.setData({ previewMode: false, result: "", todaySteps: "", stepsInput: "" });
       await api.ensureLogin();
       await this.loadAccount();
       this.setData({ linked: true });
     } catch (error) {
-      this.setData({ linked: false, error: error.error || error.errMsg || "连接失败，请重试" });
+      if (forceLogin !== true && this.data.previewAvailable && error.code === "LINK_REQUIRED") this.enterPreview();
+      else this.setData({ linked: false, previewMode: false, error: error.error || error.errMsg || "连接失败，请重试" });
     } finally { this.reloading = false; this.setData({ loading: false }); }
   },
+  enterPreview() {
+    if (!this.data.previewAvailable || this.data.busy) return;
+    this.setData({ previewMode: true, linked: false, error: "", result: "", todaySteps: "", stepsInput: "", bindingCode: "" });
+  },
+  useLinkedAccount() { return this.reload(true); },
   inputBindingCode(e) { this.setData({ bindingCode: e.detail.value.toUpperCase(), error: "" }); },
   async linkWithCode() {
     if (this.data.busy || this.reloading) return;
@@ -27,7 +38,7 @@ Page({
     try {
       await api.linkAccount(bindingCode);
       await this.loadAccount();
-      this.setData({ linked: true, bindingCode: "", grantToken: "", result: "账号关联成功" });
+      this.setData({ linked: true, previewMode: false, bindingCode: "", grantToken: "", result: "账号关联成功" });
     } catch (error) { this.setData({ error: error.error || error.errMsg || "关联失败，请重试" }); }
     finally { this.setData({ busy: false, linking: false }); }
   },
@@ -51,6 +62,10 @@ Page({
     if (this.data.busy) return;
     const steps = Number(this.data.stepsInput);
     if (!Number.isInteger(steps) || steps < 1 || steps > 98800) { this.setData({ error: "请输入 1–98,800 之间的整数" }); return; }
+    if (this.data.previewMode) {
+      this.setData({ todaySteps: steps, error: "", result: `演示提交成功：${steps} 步。仅演示操作流程，未修改微信运动或任何账号的真实步数。` });
+      return;
+    }
     if (this.data.expired && !this.data.grantToken) { this.setData({ error: "请先观看广告解锁一次，或使用卡密延期" }); return; }
     this.setData({ busy: true, error: "", result: "" });
     try {
@@ -66,6 +81,7 @@ Page({
     finally { this.setData({ busy: false }); }
   },
   async watchAd() {
+    if (this.data.previewMode) return;
     if (this.data.busy || this.data.grantToken || !this.data.adUnitId) return;
     this.setData({ busy: true, adLoading: true, error: "" });
     try {
@@ -84,6 +100,7 @@ Page({
     finally { this.setData({ busy: false, adLoading: false }); }
   },
   async redeemCode() {
+    if (this.data.previewMode) return;
     if (this.data.busy || !this.data.accessCode) return;
     this.setData({ busy: true, error: "" });
     try {

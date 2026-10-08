@@ -92,7 +92,8 @@ const emptyData: AdminData = {
     referralCommissionRatio: 0.2,
     referralEnabled: false,
     ordersTabEnabled: true,
-    sportsEnabled: true
+    sportsEnabled: true,
+    sportsPreviewEnabled: false
   },
   pendingAttributions: [],
   claims: [],
@@ -626,6 +627,19 @@ export function App() {
         body: JSON.stringify({ enabled })
       });
       toast(enabled ? "已允许新用户使用运动账号服务" : "已暂停新用户使用，已绑定用户不受影响");
+      await loadData(adminToken, { silent: true });
+    } catch {
+      toast("操作失败，请重试", "error");
+    }
+  }
+
+  async function toggleSportsPreview(enabled: boolean) {
+    try {
+      await fetchAdminApi("/api/admin/config/sports-preview-enabled", adminToken, {
+        method: "POST",
+        body: JSON.stringify({ enabled })
+      });
+      toast(enabled ? "已开放无需关联的步数演示" : "已关闭公开体验入口");
       await loadData(adminToken, { silent: true });
     } catch {
       toast("操作失败，请重试", "error");
@@ -1815,6 +1829,21 @@ export function App() {
                   onClick={() => void toggleSports(!data.config.sportsEnabled)}
                 >
                   {data.config.sportsEnabled ? "暂停新用户" : "开放新用户"}
+                </Button>
+              </div>
+              <div className="mb-3 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-slate-500">第二个小程序公开体验</div>
+                  <div className="mt-1 text-sm font-medium text-slate-700">
+                    当前：{data.config.sportsPreviewEnabled ? "已开启 · 无需关联即可提交演示步数" : "已关闭 · 需关联账号后使用"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">演示面向所有用户并明确标注，不修改真实步数。真实操作仍需关联账号。</div>
+                </div>
+                <Button
+                  variant={data.config.sportsPreviewEnabled ? "danger" : "default"}
+                  onClick={() => void toggleSportsPreview(!data.config.sportsPreviewEnabled)}
+                >
+                  {data.config.sportsPreviewEnabled ? "关闭公开体验" : "开启公开体验"}
                 </Button>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

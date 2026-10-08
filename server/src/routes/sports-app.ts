@@ -24,12 +24,16 @@ const hash = (ticket: string) => createHash("sha256").update(ticket).digest("hex
 const hashLinkCode = (code: string) => hash(`sports-link-code:${code}`);
 
 export async function registerSportsAppRoutes(app: FastifyInstance, repositories: Repositories, config: AppConfig, wechatFetch: typeof fetch = fetch) {
-  app.get("/api/sports-app/config", async () => ({
-    enabled: sportsAppConfigured(config),
-    sourceAppId: config.wechatAppId,
-    sportsEnabled: await repositories.settings.getSportsEnabled(),
-    rewardedVideoAdUnitId: config.sportsAppRewardedVideoAdUnitId?.trim() || ""
-  }));
+  app.get("/api/sports-app/config", async (_request, reply) => {
+    reply.header("cache-control", "no-store");
+    return {
+      enabled: sportsAppConfigured(config),
+      sourceAppId: config.wechatAppId,
+      sportsEnabled: await repositories.settings.getSportsEnabled(),
+      previewEnabled: await repositories.settings.getSportsPreviewEnabled(),
+      rewardedVideoAdUnitId: config.sportsAppRewardedVideoAdUnitId?.trim() || ""
+    };
+  });
   app.post("/api/sports-app/handoff", { config: { rateLimit: { max: 12, timeWindow: "1 minute" } } }, async (request, reply) => {
     if (!sportsAppConfigured(config)) return reply.code(503).send({ error: "第二个小程序尚未配置" });
     const account = await repositories.sportsAccounts.findByUser(request.userId);

@@ -1059,7 +1059,8 @@ describe("server API", () => {
         referralCommissionRatio: 0.2,
         referralEnabled: false,
         ordersTabEnabled: true,
-        sportsEnabled: true
+        sportsEnabled: true,
+        sportsPreviewEnabled: false
       }
     });
   });

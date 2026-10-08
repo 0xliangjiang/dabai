@@ -210,6 +210,7 @@ export type AdminConfig = {
     referralEnabled: boolean;
     ordersTabEnabled: boolean;
     sportsEnabled: boolean;
+    sportsPreviewEnabled: boolean;
   };
 };
 

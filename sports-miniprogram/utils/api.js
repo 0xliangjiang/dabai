@@ -52,7 +52,7 @@ async function request(path, options = {}) {
     return request(path, { ...options, retried: true });
   }
 }
-module.exports = { request, ensureLogin, linkAccount, getConfig: async () => {
+module.exports = { request, ensureLogin, linkAccount, hasLoginContext: () => Boolean(app.globalData.pendingTicket || wx.getStorageSync(TOKEN_KEY)), hasPendingHandoff: () => Boolean(app.globalData.pendingTicket), getConfig: async () => {
   try { return await raw("/api/sports-app/config", { anonymous: true }); }
   catch (error) {
     if (error.statusCode === 401 || error.statusCode === 404) throw { error: "运动服务尚未开放，请稍后再来" };

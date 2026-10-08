@@ -33,6 +33,7 @@ const REFERRAL_RATIO_KEY = "referral_commission_ratio";
 const REFERRAL_ENABLED_KEY = "referral_enabled";
 const ORDERS_TAB_ENABLED_KEY = "orders_tab_enabled";
 const SPORTS_ENABLED_KEY = "sports_enabled";
+const SPORTS_PREVIEW_ENABLED_KEY = "sports_preview_enabled";
 
 export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
@@ -685,6 +686,16 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
         await prisma.setting.upsert({
           where: { key: SPORTS_ENABLED_KEY },
           create: { key: SPORTS_ENABLED_KEY, value: enabled ? "1" : "0" },
+          update: { value: enabled ? "1" : "0" }
+        });
+      },
+      async getSportsPreviewEnabled() {
+        return (await prisma.setting.findUnique({ where: { key: SPORTS_PREVIEW_ENABLED_KEY } }))?.value === "1";
+      },
+      async setSportsPreviewEnabled(enabled: boolean) {
+        await prisma.setting.upsert({
+          where: { key: SPORTS_PREVIEW_ENABLED_KEY },
+          create: { key: SPORTS_PREVIEW_ENABLED_KEY, value: enabled ? "1" : "0" },
           update: { value: enabled ? "1" : "0" }
         });
       },

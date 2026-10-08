@@ -47,6 +47,26 @@ async function setup(legacyEnabled = true, rateLimits = false) {
 }
 
 describe("independent sports app", () => {
+  test("public preview is an admin-controlled flag and never removes real-service authentication", async () => {
+    const { app, repositories, stepCalls } = await setup();
+    const endpoint = "/api/admin/config/sports-preview-enabled";
+    expect((await app.inject({ url: "/api/sports-app/config" })).json().previewEnabled).toBe(false);
+    expect((await app.inject({ method: "POST", url: endpoint, payload: { enabled: true } })).statusCode).toBe(401);
+    expect((await app.inject({ method: "POST", url: endpoint, headers: { "x-admin-token": cfg.adminToken }, payload: { enabled: "true" } })).statusCode).toBe(400);
+    for (const enabled of [true, false]) {
+      const update = await app.inject({ method: "POST", url: endpoint, headers: { "x-admin-token": cfg.adminToken }, payload: { enabled } });
+      expect(update.statusCode).toBe(200);
+      expect(await repositories.settings.getSportsPreviewEnabled()).toBe(enabled);
+      const publicConfig = await app.inject({ url: "/api/sports-app/config" });
+      expect(publicConfig.headers["cache-control"]).toBe("no-store");
+      expect(publicConfig.json().previewEnabled).toBe(enabled);
+      expect((await app.inject({ url: "/api/admin/config", headers: { "x-admin-token": cfg.adminToken } })).json().config.sportsPreviewEnabled).toBe(enabled);
+      for (const path of ["/api/sports/chat", "/api/sports/ad/reward", "/api/sports/access-code/redeem"]) {
+        expect((await app.inject({ method: "POST", url: path, payload: { message: "今天运动目标 20000 步", preview: true } })).statusCode).toBe(401);
+      }
+    }
+    expect(stepCalls()).toBe(0);
+  });
   test("links the existing account with a one-time ticket and supports later standalone login", async () => {
     const { app, handoff, login, user, headers } = await setup();
     const ticket = await handoff();
