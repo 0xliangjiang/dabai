@@ -33,7 +33,7 @@ describe("sports mini-program client", () => {
     expect(definition.data.grantToken).toBe("unused-real-grant");
     await definition.watchAd(); await definition.redeemCode();
     expect(api.request).not.toHaveBeenCalled();
-    expect(read("pages/home/index.wxml")).toContain("公开体验 · 演示模式");
+    expect(definition.data.result).toContain("演示提交成功");
   });
   test("disabled preview keeps the normal account association requirement", async () => {
     const { definition, api } = previewPage(false);
