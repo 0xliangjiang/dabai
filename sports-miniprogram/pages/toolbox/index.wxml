@@ -12,6 +12,6 @@
     </navigator>
   </view>
   <view class="tool-note">以上工具无需登录。目标记录保存在本机。</view>
-  <navigator class="service-entry" hover-class="tool-pressed" url="/pages/home/index"><view class="tool-copy"><view class="service-title">运动账号服务</view><view class="tool-description">关联账号后查看会员、提交步数目标</view></view><text class="tool-arrow">›</text></navigator>
+  <navigator class="service-entry" hover-class="tool-pressed" url="/pages/home/index"><view class="tool-copy"><view class="service-title">运动账号服务</view><view class="tool-description">目标提交与账号管理，真实服务需关联</view></view><text class="tool-arrow">›</text></navigator>
   <navigator class="link" url="/pages/privacy/index">隐私说明</navigator>
 </view>

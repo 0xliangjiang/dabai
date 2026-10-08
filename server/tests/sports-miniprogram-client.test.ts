@@ -12,14 +12,18 @@ function sportsPage(previewEnabled = true) {
     ensureLogin: vi.fn(async (): Promise<void> => { throw { code: "LINK_REQUIRED", error: "请先关联账号" }; }),
     request: vi.fn(async () => ({ isBound: true, todayTargetSteps: 12345, membershipExpiresAt: "9999-12-31T23:59:59.999Z" }))
   };
-  runInNewContext(read("pages/home/index.js"), { Page: (value: any) => { definition = value; }, require: () => api, wx: {} });
+  const storage = new Map();
+  const wx = { getStorageSync: (key: string) => storage.get(key), setStorageSync: (key: string, value: any) => storage.set(key, JSON.parse(JSON.stringify(value))) };
+  const module = { exports: {} as any };
+  runInNewContext(read("utils/goals.js"), { module, wx });
+  runInNewContext(read("pages/home/index.js"), { Page: (value: any) => { definition = value; }, require: (name: string) => name.endsWith("goals") ? module.exports : api, wx });
   definition.setData = (data: any) => Object.assign(definition.data, data);
-  return { definition, api };
+  return { definition, api, storage, goals: module.exports };
 }
 
 describe("sports mini-program client", () => {
-  test.each([false, true])("sports service requires association regardless of legacy preview setting: %s", async previewEnabled => {
-    const { definition, api } = sportsPage(previewEnabled);
+  test("disabled public experience keeps real association required", async () => {
+    const { definition, api } = sportsPage(false);
     await definition.reload();
     expect(api.ensureLogin).toHaveBeenCalledTimes(1);
     expect(definition.data).toMatchObject({ linked: false, loading: false, error: "请先关联账号" });
@@ -27,6 +31,45 @@ describe("sports mini-program client", () => {
     await definition.submitSteps();
     expect(api.request).not.toHaveBeenCalled();
     expect(definition.data.error).toContain("请先关联");
+  });
+  test("enabled public experience needs no login and persists real local goals without calling sports APIs", async () => {
+    const { definition, api, goals } = sportsPage(true);
+    await definition.reload();
+    expect(definition.data).toMatchObject({ previewMode: true, linked: false, loading: false, error: "" });
+    expect(api.ensureLogin).not.toHaveBeenCalled(); expect(api.request).not.toHaveBeenCalled();
+    definition.data.goalInput = "阅读 20 分钟"; definition.submitGoal();
+    expect(goals.readGoals()).toEqual([expect.objectContaining({ title: "阅读 20 分钟", done: false })]);
+    expect(definition.data.result).toContain("不修改微信运动");
+    definition.data.stepsInput = "20000"; definition.data.grantToken = "existing-grant"; definition.data.accessCode = "example";
+    await definition.submitSteps(); await definition.watchAd(); await definition.redeemCode();
+    expect(api.request).not.toHaveBeenCalled(); expect(definition.data.grantToken).toBe("existing-grant");
+  });
+  test("an unlinked cached login can use public goals but a pending handoff cannot silently fall back", async () => {
+    const { definition, api } = sportsPage(true); api.hasLoginContext.mockReturnValue(true);
+    await definition.reload(); expect(definition.data.previewMode).toBe(true);
+    api.hasPendingHandoff.mockReturnValue(true); await definition.reload();
+    expect(definition.data).toMatchObject({ previewMode: false, linked: false, error: "请先关联账号" });
+  });
+  test("local storage failure never claims success and preserves goal text", async () => {
+    const { definition, api, goals } = sportsPage(true); await definition.reload();
+    goals.writeGoals = () => { throw new Error("保存失败"); };
+    definition.data.goalInput = "阅读"; definition.submitGoal();
+    expect(definition.data).toMatchObject({ result: "", goalInput: "阅读", error: "保存失败" });
+    expect(api.request).not.toHaveBeenCalled();
+  });
+  test("explicit account service requires association even with public experience enabled", async () => {
+    const { definition, api } = sportsPage(true); await definition.reload();
+    await definition.useLinkedAccount();
+    expect(api.ensureLogin).toHaveBeenCalledTimes(1);
+    expect(definition.data).toMatchObject({ previewMode: false, linked: false, error: "请先关联账号" });
+  });
+  test("turning public experience off restores account association and keeps saved goals", async () => {
+    const { definition, api, goals } = sportsPage(true); await definition.reload();
+    definition.data.goalInput = "整理书架"; definition.submitGoal();
+    api.getConfig.mockResolvedValue({ enabled: true, sportsEnabled: true, previewEnabled: false, sourceAppId: "wx1111111111111111" });
+    await definition.reload();
+    expect(definition.data).toMatchObject({ previewMode: false, previewAvailable: false, linked: false, result: "", goalInput: "" });
+    expect(api.ensureLogin).toHaveBeenCalledTimes(1); expect(goals.readGoals()[0].title).toBe("整理书架");
   });
   test.each(["session", "handoff"])("existing %s retains the real account path", async context => {
     const { definition, api } = sportsPage();

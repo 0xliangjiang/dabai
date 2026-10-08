@@ -1,24 +1,46 @@
 const api = require("../../utils/api");
+const goals = require("../../utils/goals");
 Page({
-  data: { loading: true, linked: false, busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
+  data: { loading: true, linked: false, previewMode: false, previewAvailable: false, goalInput: "", busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
   onShow() { this.reload(); },
   onUnload() { if (this.rewardedAd) this.rewardedAd.destroy(); },
-  async reload() {
+  async reload(forceAccount = false) {
     if (this.reloading || this.data.busy) return;
     this.reloading = true;
+    let pendingHandoff = false;
     this.setData({ loading: true, error: "" });
     try {
       const config = await api.getConfig();
-      this.setData({ sourceAppId: config.sourceAppId, enabled: config.enabled && config.sportsEnabled, adUnitId: config.rewardedVideoAdUnitId || "" });
+      this.setData({ sourceAppId: config.sourceAppId, enabled: config.enabled && config.sportsEnabled, previewAvailable: config.previewEnabled === true, adUnitId: config.rewardedVideoAdUnitId || "" });
+      pendingHandoff = api.hasPendingHandoff();
+      if (this.data.previewAvailable && forceAccount !== true && !this.forceAccount && !pendingHandoff && (this.data.previewMode || !api.hasLoginContext())) {
+        this.enterPublicGoal();
+        return;
+      }
+      if (this.data.previewMode) this.setData({ previewMode: false, goalInput: "", result: "", stepsInput: "", todaySteps: "" });
       if (!config.enabled) throw { error: "运动服务暂未开放，请稍后再来" };
       await api.ensureLogin();
       await this.loadAccount();
       this.setData({ linked: true });
     } catch (error) {
-      this.setData({ linked: false, error: error.error || error.errMsg || "连接失败，请重试" });
+      if (error.code === "LINK_REQUIRED" && this.data.previewAvailable && forceAccount !== true && !this.forceAccount && !pendingHandoff) this.enterPublicGoal();
+      else this.setData({ linked: false, previewMode: false, error: error.error || error.errMsg || "连接失败，请重试" });
     } finally { this.reloading = false; this.setData({ loading: false }); }
   },
-  useLinkedAccount() { return this.reload(); },
+  enterPublicGoal() { this.setData({ previewMode: true, linked: false, result: "", stepsInput: "", todaySteps: "", bindingCode: "", error: "" }); },
+  useLinkedAccount() { this.forceAccount = true; return this.reload(true); },
+  inputGoal(event) { this.setData({ goalInput: event.detail.value, error: "", result: "" }); },
+  submitGoal() {
+    if (!this.data.previewMode || this.data.busy) return;
+    try {
+      const title = goals.validateTitle(this.data.goalInput);
+      const items = goals.readGoals();
+      if (items.length >= goals.LIMIT) throw new Error("最多保存 100 个目标，请先到目标清单删除不需要的记录");
+      const createdAt = Date.now();
+      goals.writeGoals([{ id: `${createdAt}-${Math.random().toString(36).slice(2, 10)}`, title, done: false, createdAt }].concat(items));
+      this.setData({ goalInput: "", result: "目标已保存到本机，可在目标清单中查看。不修改微信运动。", error: "" });
+    } catch (error) { this.setData({ result: "", error: error.message }); }
+  },
   inputBindingCode(e) { this.setData({ bindingCode: e.detail.value.toUpperCase(), error: "" }); },
   async linkWithCode() {
     if (this.data.busy || this.reloading) return;
@@ -49,7 +71,7 @@ Page({
   chooseSteps(e) { this.setData({ stepsInput: String(e.currentTarget.dataset.steps), error: "", result: "" }); },
   inputCode(e) { this.setData({ accessCode: e.detail.value.trim() }); },
   async submitSteps() {
-    if (this.data.busy) return;
+    if (this.data.busy || this.data.previewMode) return;
     const steps = Number(this.data.stepsInput);
     if (!Number.isInteger(steps) || steps < 1 || steps > 98800) { this.setData({ error: "请输入 1–98,800 之间的整数" }); return; }
     if (!this.data.linked || !this.data.isBound || !this.data.enabled) { this.setData({ error: "请先关联已绑定的账号，并确认运动服务已开放" }); return; }
@@ -68,7 +90,7 @@ Page({
     finally { this.setData({ busy: false }); }
   },
   async watchAd() {
-    if (this.data.busy || this.data.grantToken || !this.data.adUnitId) return;
+    if (this.data.previewMode || this.data.busy || this.data.grantToken || !this.data.adUnitId) return;
     this.setData({ busy: true, adLoading: true, error: "" });
     try {
       await new Promise((resolve, reject) => {
@@ -86,7 +108,7 @@ Page({
     finally { this.setData({ busy: false, adLoading: false }); }
   },
   async redeemCode() {
-    if (this.data.busy || !this.data.accessCode) return;
+    if (this.data.previewMode || this.data.busy || !this.data.accessCode) return;
     this.setData({ busy: true, error: "" });
     try {
       await api.request("/api/sports/access-code/redeem", { method: "POST", data: { code: this.data.accessCode } });
