@@ -5,6 +5,44 @@ import path from "node:path";
 const read = (file: string) => readFileSync(path.resolve("..", "sports-miniprogram", file), "utf8");
 
 describe("sports mini-program client", () => {
+  test("manual linking exchanges a fresh WeChat code in the POST body and keeps it out of storage", async () => {
+    const app = { globalData: { apiBaseUrl: "https://example.test", pendingTicket: "a".repeat(64) } };
+    const storage = new Map(); const calls: any[] = [];
+    const module = { exports: {} as any };
+    runInNewContext(read("utils/api.js"), { getApp: () => app, module, wx: {
+      getStorageSync: (key: string) => storage.get(key), setStorageSync: (key: string, value: unknown) => storage.set(key,value),
+      login: (options: any) => options.success({ code: "fresh-wechat-code" }),
+      request: (options: any) => { calls.push(options); options.success({ statusCode: 200, data: { token: "sports-session" } }); }
+    } });
+    await module.exports.linkAccount("ABCDEFGHJKLM");
+    expect(calls[0].data).toEqual({ code: "fresh-wechat-code", bindingCode: "ABCDEFGHJKLM" });
+    expect(calls[0].url).not.toContain("ABCDEFGHJKLM");
+    expect([...storage.entries()]).toEqual([["sports_session", "sports-session"]]);
+    expect(app.globalData.pendingTicket).toBe("");
+  });
+  test("an invalid manual code never falls back to an unrelated cached identity", async () => {
+    const storage = new Map(); const request = vi.fn((options: any) => options.success({ statusCode: 410, data: { error: "绑定码已失效" } }));
+    const module = { exports: {} as any };
+    runInNewContext(read("utils/api.js"), { getApp: () => ({ globalData: { apiBaseUrl: "https://example.test" } }), module, wx: {
+      setStorageSync: (key: string, value: unknown) => storage.set(key,value), login: (options: any) => options.success({ code: "fresh-code" }), request
+    } });
+    await expect(module.exports.linkAccount("ABCDEFGHJKLM")).rejects.toMatchObject({ statusCode: 410 });
+    expect(request).toHaveBeenCalledTimes(1); expect(storage.size).toBe(0);
+  });
+  test("the manual form validates, prevents duplicate submission and loads shared account data", async () => {
+    let definition: any; let resolveLink!: () => void;
+    const linkAccount = vi.fn(() => new Promise<void>(resolve => { resolveLink = resolve; }));
+    const request = vi.fn(async () => ({ isBound: true, account: { email: "source@example.com" }, membershipExpiresAt: "9999-12-31T23:59:59.999Z" }));
+    runInNewContext(read("pages/home/index.js"), { Page: (page: any) => { definition = page; }, require: () => ({ linkAccount, request }), wx: {} });
+    definition.setData = (data: any) => Object.assign(definition.data, data);
+    definition.data.bindingCode = "bad";
+    await definition.linkWithCode(); expect(linkAccount).not.toHaveBeenCalled();
+    definition.data.bindingCode = "abcd-efgh-jklm";
+    const pending = definition.linkWithCode(); await definition.linkWithCode();
+    expect(linkAccount).toHaveBeenCalledTimes(1); expect(linkAccount).toHaveBeenCalledWith("ABCDEFGHJKLM");
+    resolveLink(); await pending;
+    expect(definition.data).toMatchObject({ linked: true, bindingCode: "", busy: false, linking: false, accountName: "source@example.com", membershipText: "永久有效" });
+  });
   test("recovers a consumed ticket with fresh WeChat login after a lost response", async () => {
     const app = { globalData: { apiBaseUrl: "https://example.test", pendingTicket: "a".repeat(64) } };
     const storage = new Map(); const calls: any[] = []; let loginCalls = 0;

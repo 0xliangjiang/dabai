@@ -9,6 +9,11 @@ Page({
     sportsHandoffReady: false,
     sportsHandoffLoading: false,
     sportsHandoffError: "",
+    sportsLinkDialogVisible: false,
+    sportsLinkCode: "",
+    sportsLinkCodeExpiresAt: "",
+    sportsLinkCodeLoading: false,
+    sportsLinkCodeError: "",
     sportsEnabled: true,
     accountFeaturesEnabled: false,
     isBound: false,
@@ -58,13 +63,38 @@ Page({
 
   async onShow() {
     syncTabBar(this);
+    if (this.data.sportsLinkCode && Date.parse(this.data.sportsLinkCodeExpiresAt) <= Date.now()) {
+      this.setData({ sportsLinkCode: "", sportsLinkCodeError: "绑定码已过期，请重新生成" });
+    }
     await this.loadSportsConfig();
     await this.loadAccount();
     if (this.data.accountFeaturesEnabled) await this.reconcilePendingVirtualPayment();
   },
 
+  async generateSportsLinkCode() {
+    if (this.data.sportsLinkCodeLoading || this.data.sportsHandoffLoading || this.data.unbinding || !this.data.isBound) return;
+    const accountId = this.data.accountId;
+    this.setData({ sportsLinkDialogVisible: true, sportsLinkCodeLoading: true, sportsLinkCode: "", sportsLinkCodeError: "" });
+    try {
+      await api.ensureLogin();
+      const result = await api.request("/api/sports-app/link-code", { method: "POST" });
+      if (!this.data.isBound || this.data.accountId !== accountId) throw { error: "账号状态已变化，请重新生成绑定码" };
+      this.sportsHandoff = null;
+      this.setData({ sportsLinkCode: result.bindingCode.match(/.{4}/g).join("-"), sportsLinkCodeExpiresAt: result.expiresAt, sportsHandoffReady: false, sportsHandoffError: "" });
+    } catch (error) { this.setData({ sportsLinkCodeError: error.error || error.errMsg || "绑定码生成失败，请重试" }); }
+    finally { this.setData({ sportsLinkCodeLoading: false }); }
+  },
+  closeSportsLinkCode() { this.setData({ sportsLinkDialogVisible: false }); },
+  copySportsLinkCode() {
+    if (!this.data.sportsLinkCode || Date.parse(this.data.sportsLinkCodeExpiresAt) <= Date.now()) {
+      this.setData({ sportsLinkCode: "", sportsLinkCodeError: "绑定码已过期，请重新生成" });
+      return;
+    }
+    wx.setClipboardData({ data: this.data.sportsLinkCode, fail: () => this.setData({ sportsLinkCodeError: "复制失败，请手动输入绑定码" }) });
+  },
+
   async prepareSportsApp() {
-    if (this.data.sportsHandoffLoading) return;
+    if (this.data.sportsHandoffLoading || this.data.sportsLinkCodeLoading || this.data.unbinding) return;
     this.setData({ sportsHandoffLoading: true, sportsHandoffReady: false, sportsHandoffError: "" });
     try {
       await api.ensureLogin();
@@ -139,6 +169,10 @@ Page({
 
   applyAccount(result) {
     const isBound = Boolean(result && result.isBound);
+    if (!isBound || this.data.accountId !== ((result && result.accountId) || "")) {
+      this.sportsHandoff = null;
+      this.setData({ sportsLinkCode: "", sportsLinkCodeExpiresAt: "", sportsLinkDialogVisible: false, sportsHandoffReady: false });
+    }
     const targetSteps = result && (result.todayTargetSteps != null
       ? result.todayTargetSteps
       : result.lastTargetSteps);

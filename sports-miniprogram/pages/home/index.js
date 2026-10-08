@@ -1,10 +1,10 @@
 const api = require("../../utils/api");
 Page({
-  data: { loading: true, linked: false, busy: false, adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
+  data: { loading: true, linked: false, busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
   onShow() { this.reload(); },
   onUnload() { if (this.rewardedAd) this.rewardedAd.destroy(); },
   async reload() {
-    if (this.reloading) return;
+    if (this.reloading || this.data.busy) return;
     this.reloading = true;
     this.setData({ loading: true, error: "" });
     try {
@@ -17,6 +17,19 @@ Page({
     } catch (error) {
       this.setData({ linked: false, error: error.error || error.errMsg || "连接失败，请重试" });
     } finally { this.reloading = false; this.setData({ loading: false }); }
+  },
+  inputBindingCode(e) { this.setData({ bindingCode: e.detail.value.toUpperCase(), error: "" }); },
+  async linkWithCode() {
+    if (this.data.busy || this.reloading) return;
+    const bindingCode = this.data.bindingCode.replace(/[\s-]/g, "").toUpperCase();
+    if (!/^[A-HJ-NP-Z2-9]{12}$/.test(bindingCode)) { this.setData({ error: "请输入原小程序生成的 12 位绑定码" }); return; }
+    this.setData({ busy: true, linking: true, error: "" });
+    try {
+      await api.linkAccount(bindingCode);
+      await this.loadAccount();
+      this.setData({ linked: true, bindingCode: "", grantToken: "", result: "账号关联成功" });
+    } catch (error) { this.setData({ error: error.error || error.errMsg || "关联失败，请重试" }); }
+    finally { this.setData({ busy: false, linking: false }); }
   },
   async loadAccount() {
     const account = await api.request("/api/sports/account");

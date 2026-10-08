@@ -84,8 +84,11 @@ export function createRepositories(): Repositories {
 
   return {
     sportsBridge: {
-      async createHandoff(input, now) {
+      async createHandoff(input, now, replaceExisting = false) {
         for (const [hash, ticket] of handoffs) if (ticket.expiresAt <= now) handoffs.delete(hash);
+        if (replaceExisting) {
+          for (const [hash, ticket] of handoffs) if (ticket.userId === input.userId && ticket.appId === input.appId) handoffs.delete(hash);
+        }
         handoffs.set(input.tokenHash, { ...input });
       },
       async findIdentity(appId, openid) { return identities.get(`${appId}:${openid}`); },

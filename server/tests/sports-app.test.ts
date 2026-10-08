@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { createApp } from "../src/app.js";
 import { signUserToken } from "../src/auth/token.js";
@@ -10,14 +10,14 @@ import { createRepositories } from "../src/repositories/memory.js";
 const apps: Awaited<ReturnType<typeof createApp>>[] = [];
 afterEach(async () => { await Promise.all(apps.splice(0).map(a => a.close())); });
 const cfg = { ...loadConfig({ NODE_ENV: "test" }), wechatAppId: "wx1111111111111111", wechatAppSecret: "source-secret", sportsAppId: "wx2222222222222222", sportsAppSecret: "sports-secret", sportsAppRewardedVideoAdUnitId: "adunit-sports", sportsRewardedVideoAdUnitId: "", zeppCredentialKey: "bridge-test-credential-key-123456", nanrunApiKey: "test-key" };
-async function setup(legacyEnabled = true) {
+async function setup(legacyEnabled = true, rateLimits = false) {
   let stepCalls = 0;
   const repositories = createRepositories();
   const user = await repositories.users.findOrCreateByOpenid("source-openid", { unionid: "same-union" });
   await repositories.sportsAccounts.create({ userId: user.id, email: "sports@example.com", passwordCipher: encryptCredential("never-expose-this", cfg.zeppCredentialKey), captchaKey: "captcha", captchaExpiresAt: new Date(), membershipExpiresAt: null });
   await repositories.sportsAccounts.update(user.id, { bindStatus: "bound", status: "ready", zeppUserId: "zepp-id" });
   await repositories.settings.setSportsEnabled(true);
-  const app = await createApp({ config: { ...cfg, sportsLegacyActionsEnabled: legacyEnabled }, repositories,
+  const app = await createApp({ config: { ...cfg, ...(rateLimits ? { nodeEnv: "development" as const } : {}), sportsLegacyActionsEnabled: legacyEnabled }, repositories,
     zeppClient: {
       getRegistrationCaptcha: async () => { throw new Error("unused"); }, recognizeCaptcha: async () => "unused",
       registerAccount: async () => {}, login: async () => { throw new Error("unused"); }, getBindTicket: async () => "unused",
@@ -27,8 +27,9 @@ async function setup(legacyEnabled = true) {
     expect(url.searchParams.get("appid")).toBe(cfg.sportsAppId);
     expect(url.searchParams.get("secret")).toBe(cfg.sportsAppSecret);
     const code = url.searchParams.get("js_code");
-    return Response.json({ openid: code === "other" ? "other-sports-openid" : "sports-openid", unionid: code === "mismatch" ? "different-union" : "same-union" });
+    return Response.json({ openid: code === "other" ? "other-sports-openid" : "sports-openid", ...(code === "no-union" ? {} : { unionid: code === "mismatch" ? "different-union" : "same-union" }) });
   } });
+  if (rateLimits) app.log.level = "silent";
   apps.push(app);
   const headers = { authorization: `Bearer ${signUserToken(user.id, cfg.authTokenSecret)}` };
   const handoff = async () => {
@@ -36,7 +37,13 @@ async function setup(legacyEnabled = true) {
     expect(res.statusCode).toBe(200); return res.json().ticket as string;
   };
   const login = (ticket?: string, code = "valid") => app.inject({ method: "POST", url: "/api/sports-app/login", payload: { code, ...(ticket ? { ticket } : {}) } });
-  return { app, repositories, user, headers, handoff, login, stepCalls: () => stepCalls };
+  const linkCode = async () => {
+    const res = await app.inject({ method: "POST", url: "/api/sports-app/link-code", headers });
+    expect(res.statusCode).toBe(200); expect(res.headers["cache-control"]).toBe("no-store");
+    return res.json() as { bindingCode: string; expiresAt: string };
+  };
+  const loginWithCode = (bindingCode: string, code = "valid") => app.inject({ method: "POST", url: "/api/sports-app/login", payload: { code, bindingCode } });
+  return { app, repositories, user, headers, handoff, login, linkCode, loginWithCode, stepCalls: () => stepCalls };
 }
 
 describe("independent sports app", () => {
@@ -59,7 +66,7 @@ describe("independent sports app", () => {
   test("blocks orders, withdrawal, account binding, virtual payment and further handoffs for sports sessions", async () => {
     const { app, handoff, login } = await setup();
     const token = (await login(await handoff())).json().token;
-    for (const [method, url] of [["GET", "/api/orders/me"], ["POST", "/api/withdrawals"], ["POST", "/api/sports/bind/start"], ["POST", "/api/sports/unbind"], ["POST", "/api/sports/virtual-payment/create"], ["POST", "/api/sports-app/handoff"]] as const) {
+    for (const [method, url] of [["GET", "/api/orders/me"], ["POST", "/api/withdrawals"], ["POST", "/api/sports/bind/start"], ["POST", "/api/sports/unbind"], ["POST", "/api/sports/virtual-payment/create"], ["POST", "/api/sports-app/handoff"], ["POST", "/api/sports-app/link-code"]] as const) {
       expect((await app.inject({ method, url, headers: { authorization: `Bearer ${token}` }, payload: method === "POST" ? {} : undefined })).statusCode).toBe(403);
     }
     const chat = await app.inject({ method: "POST", url: "/api/sports/chat", headers: { authorization: `Bearer ${token}` }, payload: { message: "解绑账号", history: [] } });
@@ -133,5 +140,61 @@ describe("independent sports app", () => {
     await repositories.users.updateStatus(user.id, "banned");
     expect((await app.inject({ url: "/api/sports/account", headers: { authorization: `Bearer ${token}` } })).statusCode).toBe(403);
     expect((await login()).statusCode).toBe(403);
+  });
+  test("manual codes share the original account, are hashed at rest and can only be used once", async () => {
+    const { app, repositories, user, linkCode, loginWithCode, login } = await setup();
+    const persist = vi.spyOn(repositories.sportsBridge, "createHandoff");
+    const before = Date.now();
+    const { bindingCode, expiresAt } = await linkCode();
+    expect(bindingCode).toMatch(/^[A-HJ-NP-Z2-9]{12}$/);
+    expect(Date.parse(expiresAt) - before).toBeGreaterThanOrEqual(299_000);
+    expect(persist.mock.calls[0][0].tokenHash).toBe(createHash("sha256").update(`sports-link-code:${bindingCode}`).digest("hex"));
+    expect(JSON.stringify(persist.mock.calls)).not.toContain(bindingCode);
+    const grouped = bindingCode.toLowerCase().match(/.{4}/g)!.join(" - ");
+    const result = await loginWithCode(grouped, "no-union");
+    expect(result.statusCode).toBe(200);
+    expect(verifySportsToken(result.json().token, cfg.authTokenSecret)?.userId).toBe(user.id);
+    expect((await app.inject({ url: "/api/sports/account", headers: { authorization: `Bearer ${result.json().token}` } })).json()).toMatchObject({ isBound: true });
+    expect((await loginWithCode(bindingCode)).statusCode).toBe(410);
+    expect((await login()).statusCode).toBe(200);
+  });
+  test("regeneration revokes older credentials and concurrent redemption only succeeds once", async () => {
+    const { handoff, login, linkCode, loginWithCode } = await setup();
+    const ticket = await handoff();
+    const first = await linkCode();
+    const current = await linkCode();
+    expect((await login(ticket)).statusCode).toBe(410);
+    expect((await loginWithCode(first.bindingCode)).statusCode).toBe(410);
+    const results = await Promise.all(Array.from({ length: 6 }, () => loginWithCode(current.bindingCode)));
+    expect(results.filter(result => result.statusCode === 200)).toHaveLength(1);
+    expect(results.filter(result => result.statusCode === 410)).toHaveLength(5);
+  });
+  test("manual codes enforce expiry, identity matching and credential type without overwriting links", async () => {
+    const { app, repositories, user, linkCode, loginWithCode } = await setup();
+    const { bindingCode } = await linkCode();
+    expect((await loginWithCode(bindingCode, "mismatch")).statusCode).toBe(409);
+    expect((await loginWithCode(bindingCode)).statusCode).toBe(200);
+    expect((await loginWithCode((await linkCode()).bindingCode, "other")).statusCode).toBe(409);
+    const expired = "ABCDEFGHJKLM";
+    await repositories.sportsBridge.createHandoff({ tokenHash: createHash("sha256").update(`sports-link-code:${expired}`).digest("hex"), userId: user.id, appId: cfg.sportsAppId, expiresAt: new Date(0) }, new Date());
+    const failure = await loginWithCode(expired);
+    expect(failure.statusCode).toBe(410); expect(failure.json().error).toContain("重新生成");
+    expect((await loginWithCode("123456")).statusCode).toBe(400);
+    expect((await app.inject({ method: "POST", url: "/api/sports-app/login", payload: { code: "valid", bindingCode, ticket: "a".repeat(64) } })).statusCode).toBe(400);
+  });
+  test("requires source authentication and binding, and limits manual code generation", async () => {
+    const { app, headers, repositories, user, linkCode } = await setup(true, true);
+    expect((await app.inject({ method: "POST", url: "/api/sports-app/link-code" })).statusCode).toBe(401);
+    for (let index = 0; index < 6; index++) await linkCode();
+    expect((await app.inject({ method: "POST", url: "/api/sports-app/link-code", headers })).statusCode).toBe(429);
+    const other = await repositories.users.findOrCreateByOpenid("unbound-source");
+    const unbound = await app.inject({ method: "POST", url: "/api/sports-app/link-code", headers: { authorization: `Bearer ${signUserToken(other.id, cfg.authTokenSecret)}` } });
+    expect(unbound.statusCode).toBe(409);
+    expect(await repositories.sportsBridge.findIdentity(cfg.sportsAppId, "sports-openid")).toBeUndefined();
+    expect((await repositories.sportsAccounts.findByUser(user.id))?.bindStatus).toBe("bound");
+    for (let index = 0; index < 31; index++) {
+      const result = await app.inject({ method: "POST", url: "/api/sports-app/login", headers: { authorization: `Bearer spoofed-${index}` }, payload: { code: "valid", bindingCode: "invalid" } });
+      expect(result.statusCode).toBe(index < 30 ? 400 : 429);
+    }
   });
 });

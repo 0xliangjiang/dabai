@@ -396,7 +396,7 @@ export type SportsLinkResult = { ok: true; userId: string } | { ok: false; reaso
 
 export type Repositories = {
   sportsBridge: {
-    createHandoff(input: { tokenHash: string; userId: string; appId: string; expiresAt: Date }, now: Date): Promise<void>;
+    createHandoff(input: { tokenHash: string; userId: string; appId: string; expiresAt: Date }, now: Date, replaceExisting?: boolean): Promise<void>;
     findIdentity(appId: string, openid: string): Promise<string | undefined>;
     link(input: { tokenHash: string; appId: string; openid: string; unionid?: string | null; now: Date }): Promise<SportsLinkResult>;
   };

@@ -1,7 +1,7 @@
 <view class="page">
   <view class="hero"><view class="hero-label">DAILY MOVEMENT</view><view class="hero-title">今天，向目标迈一步</view><view class="sub">共用已绑定账号，集中管理步数服务</view></view>
   <view wx:if="{{loading}}" class="card"><view class="sub">正在连接账号…</view></view>
-  <view wx:elif="{{!linked}}" class="card"><view class="title">先关联你的运动账号</view><view class="sub">请在原小程序完成微信绑定，再从运动页面进入这里。已关联用户可直接登录。</view><view wx:if="{{error}}" class="error">{{error}}</view><button class="primary" bindtap="openSource">前往原小程序绑定</button><button bindtap="reload" disabled="{{busy}}">重新登录</button></view>
+  <view wx:elif="{{!linked}}" class="card"><view class="title">关联你的运动账号</view><view class="sub">在原小程序的运动页面生成绑定码，复制到这里完成关联。请使用同一个微信账号。</view><input class="binding-code" maxlength="32" value="{{bindingCode}}" bindinput="inputBindingCode" placeholder="输入 12 位绑定码" disabled="{{busy}}"/><button class="primary" bindtap="linkWithCode" loading="{{linking}}" disabled="{{busy || !bindingCode}}">确认关联账号</button><view wx:if="{{error}}" class="error">{{error}}</view><button bindtap="openSource" disabled="{{busy}}">前往原小程序获取绑定码</button><button bindtap="reload" disabled="{{busy}}">已关联，重新登录</button></view>
   <block wx:else>
     <view wx:if="{{!enabled}}" class="card"><view class="sub">当前步数服务暂未开放，账号与会员信息仍可查看。</view></view>
     <view class="card"><view class="title">{{accountName}}</view><view class="sub">{{isBound ? '微信已绑定' : '请返回原小程序完成微信绑定'}}</view><view class="stats"><view class="stat"><view class="stat-value">{{todaySteps || '—'}}</view><view class="stat-label">今日已设置步数</view></view><view class="stat"><view class="stat-value">{{membershipText}}</view><view class="stat-label">会员有效期</view></view></view><button wx:if="{{!isBound}}" bindtap="openSource">去完成绑定</button></view>

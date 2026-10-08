@@ -2,9 +2,25 @@
   <view wx:if="{{sportsAppId && isBound}}" class="sports-bridge-panel">
     <view class="sports-bridge-title">独立运动服务已开放</view>
     <view class="sports-bridge-copy">关联当前运动账号，在新小程序设置步数和观看广告。账号与会员状态自动共用。</view>
-    <button wx:if="{{!sportsHandoffReady}}" bindtap="prepareSportsApp" loading="{{sportsHandoffLoading}}" disabled="{{sportsHandoffLoading}}">准备关联账号</button>
-    <button wx:else bindtap="openSportsApp">确认关联并前往运动服务</button>
+    <view class="sports-bridge-actions">
+      <button wx:if="{{!sportsHandoffReady}}" bindtap="prepareSportsApp" loading="{{sportsHandoffLoading}}" disabled="{{sportsHandoffLoading || sportsLinkCodeLoading || unbinding}}">准备直接前往</button>
+      <button wx:else bindtap="openSportsApp" disabled="{{sportsLinkCodeLoading || unbinding}}">确认前往运动服务</button>
+      <button class="sports-bridge-secondary" bindtap="generateSportsLinkCode" disabled="{{sportsHandoffLoading || sportsLinkCodeLoading || unbinding}}">显示绑定码</button>
+    </view>
     <view wx:if="{{sportsHandoffError}}" class="sports-bridge-error">{{sportsHandoffError}}</view>
+  </view>
+  <view wx:if="{{sportsLinkDialogVisible}}" class="sports-link-overlay">
+    <view class="sports-link-dialog">
+      <view class="sports-bridge-title">关联第二个小程序</view>
+      <view class="sports-bridge-copy">复制绑定码，在第二个小程序输入并确认关联。账号与会员状态共用。</view>
+      <view wx:if="{{sportsLinkCodeLoading}}" class="sports-link-value">正在生成…</view>
+      <view wx:elif="{{sportsLinkCode}}" class="sports-link-value" user-select="{{true}}">{{sportsLinkCode}}</view>
+      <view class="sports-bridge-copy">5 分钟内有效，仅可使用一次。重新生成会使旧关联凭证失效，请勿分享给他人。</view>
+      <view wx:if="{{sportsLinkCodeError}}" class="sports-bridge-error">{{sportsLinkCodeError}}</view>
+      <button wx:if="{{sportsLinkCode}}" class="sports-link-primary" bindtap="copySportsLinkCode">复制绑定码</button>
+      <button bindtap="generateSportsLinkCode" loading="{{sportsLinkCodeLoading}}" disabled="{{sportsLinkCodeLoading}}">重新生成</button>
+      <button bindtap="closeSportsLinkCode">关闭</button>
+    </view>
   </view>
   <view wx:if="{{accountFeaturesEnabled}}" class="account-panel anim-up" aria-label="运动账号信息">
     <view class="account-emblem" aria-hidden="true"><view class="emblem-line"></view></view>

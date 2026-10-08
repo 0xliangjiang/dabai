@@ -38,16 +38,25 @@ export function createPrismaRepositories(databaseUrl?: string): Repositories {
   const prisma = databaseUrl ? new PrismaClient({ datasourceUrl: databaseUrl }) : new PrismaClient();
   return {
     sportsBridge: {
-      async createHandoff(input, now) {
+      async createHandoff(input, now, replaceExisting = false) {
         await prisma.sportsHandoff.deleteMany({ where: { expiresAt: { lte: now } } });
-        await prisma.sportsHandoff.create({ data: input });
+        await prisma.$transaction(async tx => {
+          // 串行生成同一用户的凭证，保证并发重新生成后也只有最新一份有效。
+          await tx.$queryRaw`SELECT id FROM User WHERE id = ${input.userId} FOR UPDATE`;
+          if (replaceExisting) await tx.sportsHandoff.deleteMany({ where: { userId: input.userId, appId: input.appId } });
+          await tx.sportsHandoff.create({ data: input });
+        });
       },
       async findIdentity(appId, openid) {
         return (await prisma.sportsIdentity.findUnique({ where: { appId_openid: { appId, openid } } }))?.userId;
       },
       async link(input) {
         try {
+          const owner = await prisma.sportsHandoff.findUnique({ where: { tokenHash: input.tokenHash }, select: { userId: true } });
+          if (!owner) return { ok: false, reason: "invalid" };
           return await prisma.$transaction(async tx => {
+            // 与重新生成使用相同的锁顺序，避免删除凭证与兑换相互等待。
+            await tx.$queryRaw`SELECT id FROM User WHERE id = ${owner.userId} FOR UPDATE`;
             await tx.$queryRaw`SELECT tokenHash FROM SportsHandoff WHERE tokenHash = ${input.tokenHash} FOR UPDATE`;
             const ticket = await tx.sportsHandoff.findUnique({ where: { tokenHash: input.tokenHash } });
             if (!ticket || ticket.appId !== input.appId || ticket.expiresAt <= input.now || ticket.consumedAt) return { ok: false, reason: "invalid" as const };
