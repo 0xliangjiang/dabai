@@ -41,8 +41,8 @@ describe("sports mini-program client", () => {
     definition.data.goalInput = "阅读 20 分钟"; definition.submitGoal();
     expect(goals.readGoals()).toEqual([expect.objectContaining({ title: "阅读 20 分钟", done: false })]);
     expect(definition.data.result).toContain("不修改微信运动");
-    definition.data.stepsInput = "20000"; definition.data.grantToken = "existing-grant"; definition.data.accessCode = "example";
-    await definition.submitSteps(); await definition.watchAd(); await definition.redeemCode();
+    definition.data.stepsInput = "20000"; definition.data.grantToken = "existing-grant";
+    await definition.submitSteps(); await definition.watchAd();
     expect(api.request).not.toHaveBeenCalled(); expect(definition.data.grantToken).toBe("existing-grant");
   });
   test.each(["cached login", "pending handoff"])("public flag takes priority over %s on a normal entry without consuming credentials", async context => {

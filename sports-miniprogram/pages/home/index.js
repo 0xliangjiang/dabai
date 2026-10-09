@@ -1,7 +1,7 @@
 const api = require("../../utils/api");
 const goals = require("../../utils/goals");
 Page({
-  data: { loading: true, configReady: false, linked: false, previewMode: false, previewAvailable: false, goalInput: "", busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", accessCode: "", enabled: false, adUnitId: "", sourceAppId: "" },
+  data: { loading: true, configReady: false, linked: false, previewMode: false, previewAvailable: false, goalInput: "", busy: false, linking: false, bindingCode: "", adLoading: false, error: "", result: "", accountName: "运动账号", isBound: false, todaySteps: "", membershipText: "未开通", expired: true, stepsInput: "", grantToken: "", enabled: false, adUnitId: "", sourceAppId: "" },
   onLoad(options) { this.accountMode = Boolean(options && options.mode === "account"); },
   onShow() {
     const state = getApp().globalData;
@@ -71,13 +71,12 @@ Page({
   },
   inputSteps(e) { this.setData({ stepsInput: e.detail.value, error: "", result: "" }); },
   chooseSteps(e) { this.setData({ stepsInput: String(e.currentTarget.dataset.steps), error: "", result: "" }); },
-  inputCode(e) { this.setData({ accessCode: e.detail.value.trim() }); },
   async submitSteps() {
     if (this.data.busy || this.data.previewMode) return;
     const steps = Number(this.data.stepsInput);
     if (!Number.isInteger(steps) || steps < 1 || steps > 98800) { this.setData({ error: "请输入 1–98,800 之间的整数" }); return; }
     if (!this.data.linked || !this.data.isBound || !this.data.enabled) { this.setData({ error: "请先关联已绑定的账号，并确认运动服务已开放" }); return; }
-    if (this.data.expired && !this.data.grantToken) { this.setData({ error: "请先观看广告解锁一次，或使用卡密延期" }); return; }
+    if (this.data.expired && !this.data.grantToken) { this.setData({ error: "请先观看广告解锁一次，或返回原小程序管理会员" }); return; }
     this.setData({ busy: true, error: "", result: "" });
     try {
       const result = await api.request("/api/sports/chat", { method: "POST", timeout: 120000,
@@ -108,14 +107,5 @@ Page({
       this.setData({ grantToken: reward.grantToken, result: "已解锁一次，请输入步数并提交" });
     } catch (error) { this.setData({ error: error.error || error.errMsg || "广告解锁失败" }); }
     finally { this.setData({ busy: false, adLoading: false }); }
-  },
-  async redeemCode() {
-    if (this.data.previewMode || this.data.busy || !this.data.accessCode) return;
-    this.setData({ busy: true, error: "" });
-    try {
-      await api.request("/api/sports/access-code/redeem", { method: "POST", data: { code: this.data.accessCode } });
-      await this.loadAccount(); this.setData({ accessCode: "", result: "卡密兑换成功" });
-    } catch (error) { this.setData({ error: error.error || error.errMsg || "卡密兑换失败" }); }
-    finally { this.setData({ busy: false }); }
   }
 });
