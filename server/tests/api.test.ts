@@ -1304,6 +1304,56 @@ describe("server API", () => {
     }
   });
 
+  test("activity AI receives page conditions and reports each failed conversion", async () => {
+    const originalFetch = globalThis.fetch;
+    const steps = [
+      { content: "领券", copyType: "password", copyValue: "1(coupon)/ AC33" },
+      { content: "下单，金币18496，确认收货后客服返现", copyType: "password", copyValue: "tk=product MF168" },
+      { content: "编造的链接", copyType: "link", copyValue: "https://m.tb.cn/invented" }
+    ];
+    const converted: string[] = [];
+    globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+      if (String(url) === "https://upurl.cn/test") return new Response("<p>领券 1(coupon)/ AC33</p><p>下单 tk=product MF168 金币18496，确认收货后客服返现</p>");
+      if (String(url) === "https://example.com/chat") {
+        const body = JSON.parse(String(init?.body));
+        expect(body.messages[1].content).toContain("金币18496");
+        expect(body.messages[1].content).toContain("客服返现");
+        return Response.json({ choices: [{ message: { content: JSON.stringify({ title: "石头", summary: "返现后799", steps }) } }] });
+      }
+      throw new Error("unexpected fetch");
+    }) as typeof fetch;
+    try {
+      const app = await createApp({ config: { ...testConfig, minimaxApiUrl: "https://example.com/chat", minimaxApiKey: "test-key" }, taobaoClient: {
+        async convert(raw: string) {
+          converted.push(raw);
+          if (raw.includes("coupon")) throw new Error("private provider error");
+          return { platform: "taobao", itemId: "product", itemTitle: "石头", itemImageUrl: "", itemPriceCents: 0, commissionRate: 0, estimatedCommissionCents: 0, generatedPassword: "￥own￥", generatedShortUrl: "https://s.click.taobao.com/own", generatedClickUrl: "" };
+        }, async getProductDetail() { return undefined; }
+      } });
+      apps.push(app);
+      const response = await app.inject({ method: "POST", url: "/api/admin/deals/ai-parse", headers: { "x-admin-token": "dev-admin-token" }, payload: { rawContent: "石头 https://upurl.cn/test" } });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ convertedCount: 1, failedCount: 2, conversionResults: [{ step: 1, status: "failed" }, { step: 2, status: "converted" }, { step: 3, status: "failed" }] });
+      expect(response.json().deal.steps[0].copyValue).toBe("1(coupon)/ AC33");
+      expect(response.json().deal.steps[1].copyValue).toContain("￥own￥");
+      expect(converted).toEqual(["1(coupon)/ AC33", "tk=product MF168"]);
+      expect(response.body).not.toContain("private provider error");
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  test("AI conversion does not report mock links as owned links", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => Response.json({ choices: [{ message: { content: JSON.stringify({ title: "测试", summary: "", steps: [{ content: "复制", copyType: "password", copyValue: "￥test￥" }] }) } }] })) as typeof fetch;
+    try {
+      const app = await createApp({ config: { ...testConfig, zhetaokeAppKey: "", minimaxApiKey: "test-key" } });
+      apps.push(app);
+      const response = await app.inject({ method: "POST", url: "/api/admin/deals/ai-parse", headers: { "x-admin-token": "dev-admin-token" }, payload: { rawContent: "￥test￥" } });
+      expect(response.json()).toMatchObject({ convertedCount: 0, failedCount: 1 });
+      expect(response.json().conversionResults[0].message).toContain("未配置真实转链");
+      expect(response.body).not.toContain("mockpassword");
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
   test("production config validation fails when critical config is missing", () => {
     expect(() =>
       validateProductionConfig({

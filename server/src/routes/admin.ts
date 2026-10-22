@@ -3,6 +3,8 @@ import type { AppConfig } from "../config/env.js";
 import type { Repositories } from "../repositories/types.js";
 import type { DealPublishedNotifier } from "../domain/deal-notify.js";
 import { resolveDealCopyValue } from "../domain/deal-link-resolver.js";
+import { enrichDealText } from "../domain/deal-page-reader.js";
+import { MockTaobaoClient, ConversionApiError, UnsupportedPlatformError } from "../integrations/taobao/client.js";
 import { getEffectiveConfig, buildSettingsView, isValidSettingKey, SETTING_FIELDS } from "../config/runtime.js";
 import { buildCommissionLedgerEntry, buildReferralLedgerEntry, resolveSharingRatio } from "../domain/commission.js";
 import { reattributePendingOrders, reconcileOrderLedger, resolveCommissionOptions } from "../domain/order-sync.js";
@@ -183,27 +185,45 @@ export async function registerAdminRoutes(
           model: cfg.minimaxModel
         });
         const taobaoClient = await app.deps.buildTaobaoClient();
-        const deal = await dealAiParser.parseDealFromText(request.body?.rawContent ?? "");
+        const raw = (request.body?.rawContent ?? "").trim();
+        if (!raw) return reply.code(400).send({ error: "请输入要识别的文案" });
+        if (raw.length > 20000) return reply.code(400).send({ error: "文案过长，请分批识别" });
+        const context = await enrichDealText(raw);
+        const deal = await dealAiParser.parseDealFromText(context.text);
         // 把识别到的淘口令/链接转成自己的（口令+链接），免手动再转一遍
         let convertedCount = 0;
-        for (const step of deal.steps) {
+        const conversionResults: Array<{ step: number; status: "converted" | "failed"; message: string }> = [];
+        for (const [index, step] of deal.steps.entries()) {
           const original = (step.copyValue ?? "").trim();
           if (!original || (step.copyType !== "password" && step.copyType !== "link")) continue;
           try {
+            if (!context.text.includes(original)) throw new Error("AI 返回的口令或链接不在原文和活动页中，请人工核对");
+            if (taobaoClient instanceof MockTaobaoClient) throw new Error("未配置真实转链接口，不能生成你的推广链接");
             const normalized = await resolveDealCopyValue(original);
             const r = await taobaoClient.convert(normalized);
             const link = r.generatedShortUrl || r.generatedClickUrl;
             const combined = [r.generatedPassword, link].filter(Boolean).join(" ").trim();
-            if (combined) {
+            if (combined && combined !== original && combined !== normalized) {
               step.copyValue = combined;
-              step.copyType = "password";
+              step.copyType = r.generatedPassword ? "password" : "link";
               convertedCount += 1;
+              conversionResults.push({ step: index + 1, status: "converted", message: "已转成你的推广口令/链接" });
+            } else throw new Error("转链接口未返回新的推广口令或链接");
+          } catch (error) {
+            // 保留原内容供核对，明确标记失败，不能当作自己的推广链接。
+            let message = error instanceof ConversionApiError || error instanceof UnsupportedPlatformError ||
+              (error instanceof Error && /^(AI 返回|未配置真实|转链接口未)/.test(error.message))
+              ? error.message : "转链接口请求失败或超时，请稍后重试";
+            for (const secret of [cfg.zhetaokeAppKey, cfg.minimaxApiKey, cfg.jdUnionAppSecret]) {
+              if (secret) message = message.split(secret).join("[已隐藏]");
             }
-          } catch {
-            // 转链失败（非淘宝商品、无券、平台未开通等）保留原内容
+            message = message.replace(/https?:\/\/\S+/gi, "[接口地址已隐藏]").slice(0, 250);
+            conversionResults.push({ step: index + 1, status: "failed", message });
           }
         }
-        return { deal, convertedCount };
+        const failedCount = conversionResults.filter(r => r.status === "failed").length;
+        if (!conversionResults.length) context.warnings.push("没有识别到可转链的口令或链接，尚未生成你的推广链接");
+        return { deal, convertedCount, failedCount, conversionResults, warnings: context.warnings };
       } catch (error) {
         if (error instanceof MinimaxError) {
           return reply.code(400).send({ error: error.message });

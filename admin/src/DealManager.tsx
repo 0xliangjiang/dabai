@@ -48,6 +48,7 @@ export function DealManager({ adminToken }: { adminToken: string }) {
   const [error, setError] = useState("");
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiNotices, setAiNotices] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [pinFilter, setPinFilter] = useState("");
@@ -78,10 +79,12 @@ export function DealManager({ adminToken }: { adminToken: string }) {
   }, [loadDeals]);
 
   function startCreate() {
+    setAiNotices([]);
     setDraft({ ...emptyDraft, steps: [{ ...emptyStep }] });
   }
 
   function startEdit(deal: AdminDeal) {
+    setAiNotices([]);
     setDraft({
       id: deal.id,
       title: deal.title,
@@ -102,10 +105,14 @@ export function DealManager({ adminToken }: { adminToken: string }) {
       return;
     }
     setAiLoading(true);
+    setAiNotices([]);
     try {
-      const { deal, convertedCount } = await fetchAdminApi<{
+      const { deal, convertedCount = 0, failedCount = 0, conversionResults = [], warnings = [] } = await fetchAdminApi<{
         deal: { title: string; summary: string; steps: Array<{ content: string; copyType: "link" | "password" | null; copyValue: string }> };
         convertedCount?: number;
+        failedCount?: number;
+        conversionResults?: Array<{ step: number; status: "converted" | "failed"; message: string }>;
+        warnings?: string[];
       }>("/api/admin/deals/ai-parse", adminToken, {
         method: "POST",
         body: JSON.stringify({ rawContent: raw })
@@ -114,17 +121,26 @@ export function DealManager({ adminToken }: { adminToken: string }) {
         id: prev?.id ?? null,
         title: deal.title,
         summary: deal.summary,
-        status: prev?.status ?? "published",
+        status: failedCount || warnings.length ? "draft" : prev?.status ?? "draft",
         pinned: prev?.pinned ?? false,
         steps: deal.steps.map((s) => ({ ...emptyStep, content: s.content, copyType: s.copyType, copyValue: s.copyValue }))
       }));
       setAiText("");
+      setAiNotices([
+        `转链成功 ${convertedCount} 条，失败 ${failedCount} 条。`,
+        ...warnings,
+        ...conversionResults.map(r => `第 ${r.step} 步：${r.status === "failed" ? "转链失败，保留原内容（不是你的推广链接）。" : ""}${r.message}`)
+      ]);
       toast(
-        convertedCount
+        failedCount || warnings.length
+          ? `已识别，转链成功 ${convertedCount} 条、失败 ${failedCount} 条，请查看下方提示`
+          : convertedCount
           ? `已识别，并转成你的口令+链接 ${convertedCount} 条，检查后发布`
-          : "已识别，请检查并补充图片后发布"
+          : "已识别，但尚未生成你的推广链接，请检查",
+        failedCount || warnings.length ? "error" : "success"
       );
     } catch (aiError) {
+      setAiNotices([aiError instanceof Error ? aiError.message : "识别失败，请重试"]);
       toast(aiError instanceof Error ? aiError.message : "识别失败，请重试", "error");
     } finally {
       setAiLoading(false);
@@ -274,10 +290,15 @@ export function DealManager({ adminToken }: { adminToken: string }) {
             />
             <div className="mt-2 flex items-center gap-2">
               <Button size="sm" disabled={aiLoading} onClick={() => void aiParse()}>
-                {aiLoading ? "识别中…" : "AI 识别并填充"}
+                {aiLoading ? "读取活动页、识别并转链中…" : "AI 识别并填充"}
               </Button>
               <span className="text-xs text-slate-400">识别后会覆盖下方标题/摘要/步骤，图片仍需手动上传</span>
             </div>
+            {aiNotices.length > 0 ? (
+              <div role="status" className="mt-3 space-y-1 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                {aiNotices.map((notice, index) => <p key={index}>{notice}</p>)}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

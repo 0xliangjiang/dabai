@@ -71,13 +71,17 @@ async function resolveExpandedUrl(url: string, fetcher: typeof fetch): Promise<s
 }
 
 async function resolveIyunzkSuperPage(url: string, fetcher: typeof fetch): Promise<string | undefined> {
+  return findTkl(await readIyunzkSuperPage(url, fetcher));
+}
+
+export async function readIyunzkSuperPage(url: string, fetcher: typeof fetch = fetch): Promise<unknown> {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
     return undefined;
   }
-  if (!/oss\.taobyhq\.com$/i.test(parsed.hostname)) return undefined;
+  if (parsed.hostname.toLowerCase() !== "oss.taobyhq.com") return undefined;
 
   const key = readParam(parsed.href, "k") || readParam(parsed.href, "key");
   if (!key) return undefined;
@@ -121,7 +125,7 @@ async function resolveIyunzkSuperPage(url: string, fetcher: typeof fetch): Promi
   if (!response.ok) return undefined;
 
   const payload = (await response.json().catch(() => null)) as unknown;
-  return findTkl(payload);
+  return payload;
 }
 
 function readParam(url: string, key: string): string {

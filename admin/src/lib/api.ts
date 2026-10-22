@@ -294,7 +294,8 @@ export async function fetchAdminApi<T>(path: string, adminToken: string, init: R
   });
 
   if (!response.ok) {
-    throw new Error(`后台接口请求失败：${response.status}`);
+    const payload = await response.json().catch(() => null) as { error?: unknown } | null;
+    throw new Error(typeof payload?.error === "string" ? payload.error : `后台接口请求失败：${response.status}`);
   }
 
   return response.json() as Promise<T>;

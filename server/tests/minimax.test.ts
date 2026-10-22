@@ -50,6 +50,22 @@ describe("MiniMax deal parser", () => {
     expect(deal.steps[0].copyType).toBe("password");
   });
 
+  test("requests direct M3 output with room for activity steps", async () => {
+    const parser = createDealAiParser(CONFIG, (async (_url: string | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body));
+      expect(request.thinking).toEqual({ type: "disabled" });
+      expect(request.max_tokens).toBeGreaterThan(2000);
+      expect(request.reasoning_split).toBe(true);
+      return minimaxResponse('<think>{"not":"a deal"}</think>' + JSON.stringify({ title: "测试", steps: [{ content: "查看", copyType: null, copyValue: "" }] }));
+    }) as typeof fetch);
+    expect((await parser.parseDealFromText("测试")).title).toBe("测试");
+  });
+
+  test("reports truncated responses instead of accepting incomplete steps", async () => {
+    const parser = createDealAiParser(CONFIG, (async () => Response.json({ choices: [{ finish_reason: "length", message: { content: "" } }] })) as typeof fetch);
+    await expect(parser.parseDealFromText("测试")).rejects.toThrow(/长度限制/);
+  });
+
   test("throws on empty input", async () => {
     const parser = createDealAiParser(CONFIG, (async () => minimaxResponse("{}")) as unknown as typeof fetch);
     await expect(parser.parseDealFromText("   ")).rejects.toThrow(MinimaxError);
