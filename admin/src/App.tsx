@@ -269,11 +269,10 @@ export function App() {
 
     setLoading(true);
     try {
-      const [overview, usersResponse, configResponse, pendingResponse, claimsResponse, withdrawalsResponse] = await Promise.all([
+      const [overview, usersResponse, configResponse, claimsResponse, withdrawalsResponse] = await Promise.all([
         fetchAdminApi<AdminOverview>("/api/admin/overview", token),
         fetchAdminApi<{ users: AdminUser[]; total: number }>("/api/admin/users?page=1&pageSize=50", token),
         fetchAdminApi<AdminConfig>("/api/admin/config", token),
-        fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token),
         fetchAdminApi<{ claims: AdminClaim[] }>("/api/admin/claims", token),
         fetchAdminApi<{ withdrawals: AdminWithdrawal[] }>("/api/admin/withdrawals", token)
       ]);
@@ -281,7 +280,7 @@ export function App() {
         overview,
         users: usersResponse.users,
         config: configResponse.config,
-        pendingAttributions: pendingResponse.items,
+        pendingAttributions: [],
         claims: claimsResponse.claims,
         withdrawals: withdrawalsResponse.withdrawals
       });
@@ -295,6 +294,9 @@ export function App() {
       setAdminToken(token);
       setAuthed(true);
       if (!options.silent) toast("数据已刷新");
+      void fetchAdminApi<{ items: PendingAttribution[] }>("/api/admin/pending-attributions", token)
+        .then((pendingResponse) => setData((current) => ({ ...current, pendingAttributions: pendingResponse.items })))
+        .catch(() => toast("待复核列表加载失败，可稍后重试", "error"));
       void fetchAdminApi<{ total: number; items: AdminOrder[] }>("/api/admin/orders?page=1&pageSize=50", token)
         .then((r) => { setOrders(r); setOrdersPage(1); })
         .catch(() => null);
