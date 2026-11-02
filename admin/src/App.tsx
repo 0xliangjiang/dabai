@@ -717,7 +717,7 @@ export function App() {
     }
   }
 
-  function openUserDetail(user: AdminUser) {
+  function openUserDetail(user: Pick<AdminUser, "id" | "nickname">) {
     setUserDetailTarget({ id: user.id, nickname: user.nickname || "未设置昵称" });
     setUserDetail(null);
     void loadUserDetail(user.id);
@@ -1584,7 +1584,7 @@ export function App() {
           <SectionCard
             id="withdrawals"
             title="提现审核"
-            subtitle={`${filteredWithdrawals.length} 条结果，核对后打款或驳回`}
+            subtitle={`${filteredWithdrawals.length} 条结果，核对后打款或驳回；可查看用户订单明细`}
             headerRight={
               <Button
                 size="sm"
@@ -1671,17 +1671,30 @@ export function App() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
+                      <span className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openUserDetail({
+                            id: w.userId,
+                            nickname: w.userNickname || w.userOpenid.slice(0, 8) + "…"
+                          })}
+                        >
+                          <Eye className="h-4 w-4" />
+                          查看订单
+                        </Button>
                       {w.status === "pending" ? (
-                        <span className="flex justify-end gap-2">
-                          <Button size="sm" onClick={() => void reviewWithdrawal(w.id, "paid")}>
-                            <Check className="h-4 w-4" />
-                            已打款
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => void reviewWithdrawal(w.id, "rejected")}>
-                            驳回
-                          </Button>
-                        </span>
+                          <>
+                            <Button size="sm" onClick={() => void reviewWithdrawal(w.id, "paid")}>
+                              <Check className="h-4 w-4" />
+                              已打款
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => void reviewWithdrawal(w.id, "rejected")}>
+                              驳回
+                            </Button>
+                          </>
                       ) : null}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
