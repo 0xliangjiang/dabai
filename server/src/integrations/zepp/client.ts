@@ -223,7 +223,7 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
       try {
         const first = await registrationRequest(registrationUrl, { method: "POST", headers, body: firstBody }, transport, 5);
         const firstText = await first.text();
-        if (!first.ok) throw new ZeppClientError("验证码错误或 Zepp 注册失败", "ZEPP_CAPTCHA_OR_REGISTER_FAILED");
+        if (!first.ok) throw registrationResponseError(first, "验证码错误或 Zepp 注册失败");
         const firstJson = parseJson(firstText);
         const redirectUrl = typeof firstJson.data === "string" ? firstJson.data : "";
         const accessCode = redirectUrl ? new URL(redirectUrl).searchParams.get("access") : null;
@@ -238,7 +238,9 @@ export function createZeppClient(options: ZeppClientOptions = {}): ZeppClient {
           })
         }, transport, 3);
         const secondJson = parseJson(await second.text());
-        if (!second.ok || secondJson.result !== "ok" || !secondJson.token_info) throw new ZeppClientError("Zepp 账号创建失败");
+        if (!second.ok || secondJson.result !== "ok" || !secondJson.token_info) {
+          throw registrationResponseError(second, "Zepp 账号创建失败");
+        }
       } finally {
         registrationTransports.delete(input.captchaKey);
       }
@@ -444,6 +446,19 @@ function encryptLoginPayload(plain: Buffer, keyText: string, ivText: string): Bu
 function parseJson(text: string): Record<string, unknown> {
   try { return JSON.parse(text) as Record<string, unknown>; }
   catch { throw new ZeppClientError("Zepp 返回了无法解析的响应"); }
+}
+
+function registrationResponseError(response: Response, fallback: string): ZeppClientError {
+  if (response.status === 429) {
+    return new ZeppClientError("Zepp 注册服务暂时繁忙，请稍后重新获取验证码", "ZEPP_REGISTRATION_RATE_LIMITED");
+  }
+  if (response.status >= 500) {
+    return new ZeppClientError("Zepp 注册服务暂时不可用，请稍后重新获取验证码", "ZEPP_REGISTRATION_UPSTREAM_FAILED");
+  }
+  if (response.status >= 400 && response.status < 500) {
+    return new ZeppClientError("验证码不正确或已失效，请重新获取验证码", "ZEPP_CAPTCHA_OR_REGISTER_FAILED");
+  }
+  return new ZeppClientError(fallback, "ZEPP_REGISTRATION_FAILED");
 }
 
 function extractAccessCode(location: string | null): string {

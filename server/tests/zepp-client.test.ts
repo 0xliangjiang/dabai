@@ -156,4 +156,37 @@ describe("Zepp client", () => {
       message: "验证码会话已失效，请重新获取验证码"
     });
   });
+
+  test("classifies captcha and upstream registration failures separately", async () => {
+    let registrationStatus = 400;
+    const client = createZeppClient({
+      fetchImpl: async (input) => {
+        const url = String(input);
+        if (url.includes("/captcha/register")) {
+          return new Response(Uint8Array.from([1]), { headers: { "captcha-key": `captcha-${registrationStatus}` } });
+        }
+        return new Response("failed", { status: registrationStatus });
+      },
+      timeoutMs: 1000
+    });
+
+    const captcha = await client.getRegistrationCaptcha();
+    await expect(client.registerAccount({
+      email: "sport@example.com", password: "password", name: "运动用户",
+      captchaKey: captcha.key, captchaCode: "a7b9"
+    })).rejects.toMatchObject({
+      code: "ZEPP_CAPTCHA_OR_REGISTER_FAILED",
+      message: "验证码不正确或已失效，请重新获取验证码"
+    });
+
+    registrationStatus = 503;
+    const nextCaptcha = await client.getRegistrationCaptcha();
+    await expect(client.registerAccount({
+      email: "sport@example.com", password: "password", name: "运动用户",
+      captchaKey: nextCaptcha.key, captchaCode: "a7b9"
+    })).rejects.toMatchObject({
+      code: "ZEPP_REGISTRATION_UPSTREAM_FAILED",
+      message: "Zepp 注册服务暂时不可用，请稍后重新获取验证码"
+    });
+  });
 });

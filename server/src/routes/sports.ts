@@ -577,7 +577,7 @@ export async function registerSportsRoutes(
       const captchaFailed = error instanceof ZeppClientError && error.code === "ZEPP_CAPTCHA_OR_REGISTER_FAILED";
       return reply.code(captchaFailed ? 400 : 502).send({
         error: captchaFailed
-          ? "验证码不正确，请关闭弹窗后重新点击绑定账号"
+          ? "验证码不正确或已失效，请关闭弹窗后重新点击绑定账号"
           : publicError(error, "Zepp 账号创建失败，请稍后重试")
       });
     }

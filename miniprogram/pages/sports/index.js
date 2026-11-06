@@ -622,9 +622,17 @@ Page({
   },
 
   showBindingError(error, fallback) {
+    const code = error && error.code;
+    const message = code === "ZEPP_REGISTRATION_RATE_LIMITED"
+      ? "注册请求过于频繁，请稍后再试，不要连续点击绑定"
+      : code === "ZEPP_REGISTRATION_PROXY_FAILED"
+        ? "绑定服务暂时不可用，请稍后重新点击绑定账号"
+        : code === "ZEPP_REGISTRATION_SESSION_EXPIRED"
+          ? "验证码会话已失效，请关闭弹窗后重新点击绑定账号"
+          : (error && error.error) || fallback;
     this.setData({
       dialogVisible: true,
-      bindingError: (error && error.error) || fallback
+      bindingError: message
     });
   },
 
